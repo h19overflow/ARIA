@@ -1,0 +1,75 @@
+"""
+Normalise raw scraped data into a uniform N8nDocument shape
+ready for embedding and storage in ChromaDB.
+"""
+
+from dataclasses import dataclass, field
+
+
+@dataclass
+class N8nDocument:
+    id: str
+    name: str
+    doc_type: str          # "node" | "workflow_template"
+    description: str
+    text: str              # the string that gets embedded
+    metadata: dict = field(default_factory=dict)
+
+
+def normalize_node(raw: dict) -> N8nDocument:
+    """
+    Normalise a scraped node page dict into an N8nDocument.
+    Expected raw keys: name, node_type, description, operations, parameters, type_version, url
+    """
+    name = raw.get("name", "")
+    description = raw.get("description", "")
+    operations = raw.get("operations", [])
+    parameters = raw.get("parameters", [])
+    ops_text = ", ".join(operations) if operations else ""
+
+    text = f"Node: {name}. {description}"
+    if ops_text:
+        text += f" Operations: {ops_text}."
+
+    return N8nDocument(
+        id=f"node::{raw.get('node_type', name).lower().replace(' ', '_')}",
+        name=name,
+        doc_type="node",
+        description=description,
+        text=text,
+        metadata={
+            "node_type": raw.get("node_type", ""),
+            "type_version": str(raw.get("type_version", "1")),
+            "url": raw.get("url", ""),
+            "operations": ops_text,
+            "parameters_count": str(len(parameters)),
+        },
+    )
+
+
+def normalize_workflow_template(raw: dict) -> N8nDocument:
+    """
+    Normalise a scraped workflow template into an N8nDocument.
+    Expected raw keys: id, name, description, nodes_used, url
+    """
+    name = raw.get("name", "")
+    description = raw.get("description", "")
+    nodes_used = raw.get("nodes_used", [])
+    nodes_text = ", ".join(nodes_used) if nodes_used else ""
+
+    text = f"Workflow template: {name}. {description}"
+    if nodes_text:
+        text += f" Uses nodes: {nodes_text}."
+
+    return N8nDocument(
+        id=f"template::{raw.get('id', name.lower().replace(' ', '_'))}",
+        name=name,
+        doc_type="workflow_template",
+        description=description,
+        text=text,
+        metadata={
+            "template_id": str(raw.get("id", "")),
+            "url": raw.get("url", ""),
+            "nodes_used": nodes_text,
+        },
+    )
