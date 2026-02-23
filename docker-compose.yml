@@ -25,6 +25,8 @@ services:
       - WEBHOOK_URL=http://localhost:5678/
       - N8N_ENCRYPTION_KEY=change-me-before-production
       - GENERIC_TIMEZONE=UTC
+      - N8N_USER_MANAGEMENT_DISABLED=true
+      - N8N_DIAGNOSTICS_ENABLED=false
     restart: unless-stopped
 
 volumes:
