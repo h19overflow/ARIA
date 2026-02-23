@@ -2,25 +2,25 @@
 Scrapes n8n node documentation and workflow templates.
 
 Node docs  → httpx + BeautifulSoup (fully static HTML)
-Workflows  → sitemap URL discovery + Playwright (Vue/Nuxt SPA)
+Workflows  → api.n8n.io/api/templates REST API (fast JSON, no browser)
 """
 
 import asyncio
-import xml.etree.ElementTree as ET
+from urllib.parse import urljoin, urldefrag
 
 import httpx
 from bs4 import BeautifulSoup
-from playwright.async_api import async_playwright
 
 from src.boundary.scraper._internals.normalizer import N8nDocument, normalize_node, normalize_workflow_template
 
 DOCS_BASE = "https://docs.n8n.io"
 NODE_INDEX_URL = f"{DOCS_BASE}/integrations/builtin/app-nodes/"
-WORKFLOW_SITEMAP_URL = "https://n8n.io/sitemap-workflows.xml"
+TEMPLATES_API = "https://api.n8n.io/api/templates"
+TEMPLATES_PAGE_URL = "https://n8n.io/workflows/{id}"
 
-# Concurrency limits to avoid hammering the servers
+# Concurrency limits
 NODE_CONCURRENCY = 5
-WORKFLOW_CONCURRENCY = 3
+WORKFLOW_CONCURRENCY = 20  # pure HTTP — can go much higher
 
 
 # ---------------------------------------------------------------------------
@@ -33,13 +33,14 @@ async def scrape_all_nodes() -> list[N8nDocument]:
     return await _fetch_nodes_concurrent(urls)
 
 
-async def scrape_workflow_templates(limit: int = 200) -> list[N8nDocument]:
+async def scrape_workflow_templates(limit: int = 1000) -> list[N8nDocument]:
     """
-    Discover workflow template URLs from the sitemap, then render each page
-    via Playwright to extract the workflow JSON and metadata.
+    Fetch workflow templates from the n8n templates REST API.
+    Returns up to `limit` templates as normalised N8nDocuments.
+    Uses pure httpx — no browser required.
     """
-    urls = await _discover_workflow_urls(limit=limit)
-    return await _fetch_workflows_concurrent(urls)
+    ids = await _discover_template_ids(limit=limit)
+    return await _fetch_templates_concurrent(ids)
 
 
 # ---------------------------------------------------------------------------
@@ -53,14 +54,18 @@ async def _discover_node_urls() -> list[str]:
         response.raise_for_status()
 
     soup = BeautifulSoup(response.text, "html.parser")
+    seen: set[str] = set()
     urls: list[str] = []
 
     for anchor in soup.find_all("a", href=True):
         href: str = anchor["href"]
-        if "n8n-nodes-base." in href or "n8n-nodes-langchain." in href:
-            full_url = href if href.startswith("http") else f"{DOCS_BASE}{href}"
-            if full_url not in urls:
-                urls.append(full_url)
+        if "n8n-nodes-base." not in href and "n8n-nodes-langchain." not in href:
+            continue
+        full_url = href if href.startswith("http") else urljoin(NODE_INDEX_URL, href)
+        clean, _ = urldefrag(full_url)
+        if clean not in seen:
+            seen.add(clean)
+            urls.append(clean)
 
     return urls
 
@@ -70,7 +75,6 @@ async def _fetch_nodes_concurrent(urls: list[str]) -> list[N8nDocument]:
     async with httpx.AsyncClient(follow_redirects=True, timeout=30) as client:
         tasks = [_fetch_one_node(client, semaphore, url) for url in urls]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-
     return [r for r in results if isinstance(r, N8nDocument)]
 
 
@@ -90,17 +94,11 @@ async def _fetch_one_node(
 
 def _parse_node_page(html: str, url: str) -> N8nDocument:
     soup = BeautifulSoup(html, "html.parser")
-
     name = _extract_text(soup, "h1") or url.rstrip("/").split(".")[-1]
     description = _extract_text(soup, "p") or ""
-
-    # Operations are usually listed in the first <table> or <ul> after an "Operations" heading
     operations = _extract_operations(soup)
     parameters = _extract_parameters(soup)
-
-    # node_type derived from URL: .../n8n-nodes-base.slack/ → n8n-nodes-base.slack
     node_type = url.rstrip("/").split("/")[-1]
-
     return normalize_node({
         "name": name,
         "node_type": node_type,
@@ -136,74 +134,62 @@ def _extract_parameters(soup: BeautifulSoup) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# Workflow template scraping (Playwright)
+# Workflow template scraping (REST API — no browser)
 # ---------------------------------------------------------------------------
 
-async def _discover_workflow_urls(limit: int) -> list[str]:
-    """Parse the n8n workflow sitemap and return up to `limit` URLs."""
+async def _discover_template_ids(limit: int) -> list[int]:
+    """Page through the templates search API and collect workflow IDs."""
+    ids: list[int] = []
+    page = 1
+    page_size = 50
+
     async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.get(WORKFLOW_SITEMAP_URL)
-        response.raise_for_status()
+        while len(ids) < limit:
+            resp = await client.get(
+                f"{TEMPLATES_API}/search",
+                params={"page": page, "rows": page_size},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            workflows = data.get("workflows", [])
+            if not workflows:
+                break
+            ids.extend(w["id"] for w in workflows)
+            if len(ids) >= data.get("totalWorkflows", 0):
+                break
+            page += 1
 
-    root = ET.fromstring(response.text)
-    ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-    urls = [loc.text for loc in root.findall("sm:url/sm:loc", ns) if loc.text]
-    return urls[:limit]
+    return ids[:limit]
 
 
-async def _fetch_workflows_concurrent(urls: list[str]) -> list[N8nDocument]:
+async def _fetch_templates_concurrent(ids: list[int]) -> list[N8nDocument]:
     semaphore = asyncio.Semaphore(WORKFLOW_CONCURRENCY)
-    async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=True)
-        tasks = [_fetch_one_workflow(browser, semaphore, url) for url in urls]
+    async with httpx.AsyncClient(timeout=30) as client:
+        tasks = [_fetch_one_template(client, semaphore, wf_id) for wf_id in ids]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        await browser.close()
-
     return [r for r in results if isinstance(r, N8nDocument)]
 
 
-async def _fetch_one_workflow(browser, semaphore, url: str) -> N8nDocument | None:
+async def _fetch_one_template(
+    client: httpx.AsyncClient,
+    semaphore: asyncio.Semaphore,
+    wf_id: int,
+) -> N8nDocument | None:
     async with semaphore:
-        page = await browser.new_page()
         try:
-            captured: dict = {}
-
-            async def handle_response(response):
-                if "workflow" in response.url and response.status == 200:
-                    try:
-                        captured["data"] = await response.json()
-                    except Exception:
-                        pass
-
-            page.on("response", handle_response)
-            await page.goto(url, wait_until="networkidle", timeout=30000)
-
-            # Fallback: parse visible page text if no XHR captured
-            name = await page.title()
-            description = ""
-            desc_el = await page.query_selector('meta[name="description"]')
-            if desc_el:
-                description = await desc_el.get_attribute("content") or ""
-
-            nodes_used: list[str] = []
-            workflow_id = url.rstrip("/").split("/")[-1].split("-")[0]
-
-            if "data" in captured:
-                data = captured["data"]
-                name = data.get("name", name)
-                description = data.get("description", description)
-                nodes_used = [
-                    n.get("type", "") for n in data.get("nodes", []) if n.get("type")
-                ]
-
+            resp = await client.get(f"{TEMPLATES_API}/workflows/{wf_id}")
+            resp.raise_for_status()
+            data = resp.json().get("workflow", {})
+            nodes_used = list({
+                n["type"] for n in data.get("workflow", {}).get("nodes", [])
+                if n.get("type")
+            })
             return normalize_workflow_template({
-                "id": workflow_id,
-                "name": name,
-                "description": description,
+                "id": str(wf_id),
+                "name": data.get("name", ""),
+                "description": data.get("description", ""),
                 "nodes_used": nodes_used,
-                "url": url,
+                "url": TEMPLATES_PAGE_URL.format(id=wf_id),
             })
         except Exception:
             return None
-        finally:
-            await page.close()

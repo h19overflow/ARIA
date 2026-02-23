@@ -21,7 +21,7 @@ def normalize_node(raw: dict) -> N8nDocument:
     Normalise a scraped node page dict into an N8nDocument.
     Expected raw keys: name, node_type, description, operations, parameters, type_version, url
     """
-    name = raw.get("name", "")
+    name = raw.get("name", "").rstrip("#").strip()
     description = raw.get("description", "")
     operations = raw.get("operations", [])
     parameters = raw.get("parameters", [])
