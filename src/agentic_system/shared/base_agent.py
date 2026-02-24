@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import weave
 from typing import Any, AsyncIterator, Generic, Type, TypeVar, Union
 
 from langchain.agents import create_agent
@@ -11,6 +12,7 @@ from pydantic import BaseModel
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from src.api.settings import settings
+from src.agentic_system.shared.weave_logger import ensure_weave_init
 
 S = TypeVar("S", bound=BaseModel)
 
@@ -65,13 +67,15 @@ class BaseAgent(Generic[S]):
             thinking_budget=thinking_budget,
         )
 
+        self._tools_list: list[BaseTool] = tools or []
         self._agent = create_agent(
             model=model,
-            tools=tools or [],
+            tools=self._tools_list,
             system_prompt=prompt,
             response_format=schema,
             name=self.name,
         )
+        ensure_weave_init()
 
     # ── Internal ──────────────────────────────────────────────────────────
 
@@ -96,6 +100,7 @@ class BaseAgent(Generic[S]):
 
     # ── Public API ────────────────────────────────────────────────────────
 
+    @weave.op
     async def invoke(
         self,
         messages: list[BaseMessage],

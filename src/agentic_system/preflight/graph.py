@@ -12,6 +12,7 @@ from src.agentic_system.preflight.nodes.hitl_clarify import (
 from src.agentic_system.preflight.nodes.credential_scanner import (
     credential_scanner_node,
 )
+from src.agentic_system.preflight.nodes.credential_guide import credential_guide_node
 from src.agentic_system.preflight.nodes.credential_saver import (
     credential_saver_node,
 )
@@ -31,7 +32,7 @@ def _route_orchestrator_decision(state: ARIAState) -> str:
 def _needs_credentials(state: ARIAState) -> str:
     """Route based on whether credentials are still pending."""
     if state.get("pending_credential_types"):
-        return "credential_saver"
+        return "credential_guide"
     return "handoff"
 
 
@@ -54,6 +55,7 @@ def build_preflight_graph() -> StateGraph:
     graph.add_node("orchestrator", orchestrator_node)
     graph.add_node("hitl_clarify", hitl_clarify_node)
     graph.add_node("credential_scanner", credential_scanner_node)
+    graph.add_node("credential_guide", credential_guide_node)
     graph.add_node("credential_saver", credential_saver_node)
     graph.add_node("handoff", _build_blueprint)
 
@@ -74,11 +76,12 @@ def build_preflight_graph() -> StateGraph:
         "credential_scanner",
         _needs_credentials,
         {
-            "credential_saver": "credential_saver",
+            "credential_guide": "credential_guide",
             "handoff": "handoff",
         },
     )
 
+    graph.add_edge("credential_guide", "credential_saver")
     graph.add_edge("credential_saver", "credential_scanner")
     graph.add_edge("handoff", END)
 

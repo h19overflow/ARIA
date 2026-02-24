@@ -1,124 +1,121 @@
-"""Build Cycle Phase Planner -- splits workflow topology into ordered build phases."""
+"""Build Cycle Phase Planner — LLM-driven topology decomposition."""
 from __future__ import annotations
+
+import json
 
 from langchain_core.messages import HumanMessage
 
-from src.agentic_system.shared.state import ARIAState, WorkflowTopology, PhaseEntry
+from src.agentic_system.shared.base_agent import BaseAgent
+from src.agentic_system.shared.state import ARIAState, PhaseEntry, WorkflowTopology
+from src.agentic_system.build_cycle.schemas.phase_plan import PhasePlan
+from src.agentic_system.build_cycle.prompts.phase_planner import (
+    PHASE_PLANNER_SYSTEM_PROMPT,
+)
 
-LOGIC_NODES = {"if", "switch", "merge", "set", "code", "splitInBatches", "noOp"}
-_MAX_LOGIC_PER_PHASE = 2
+_agent = BaseAgent[PhasePlan](
+    prompt=PHASE_PLANNER_SYSTEM_PROMPT,
+    schema=PhasePlan,
+    name="PhasePlanner",
+)
 
 
 async def phase_planner_node(state: ARIAState) -> dict:
-    """Split workflow topology into ordered build phases."""
+    """Use LLM to decompose workflow topology into ordered build phases."""
     blueprint = state.get("build_blueprint") or {}
-    topology = blueprint.get("topology")
+    topology: WorkflowTopology | None = blueprint.get("topology")
+    intent: str = blueprint.get("intent") or state.get("intent", "")
+    cred_ids: dict = state.get("resolved_credential_ids", {})
+    templates: list[dict] = state.get("node_templates", [])
 
-    if topology:
-        phases = _build_phases_from_topology(topology)
-    else:
-        required = state.get("required_nodes", [])
-        if not required:
-            return _empty_plan()
-        phases = _fallback_phases(required)
+    if not topology and not state.get("required_nodes"):
+        return _empty_plan()
 
+    prompt = _build_planner_prompt(intent, topology, cred_ids, templates)
+    plan: PhasePlan = await _agent.invoke([HumanMessage(content=prompt)])
+
+    phases = _plan_to_phase_entries(plan, topology)
     return {
         "phase_node_map": phases,
         "total_phases": len(phases),
         "build_phase": 0,
         "messages": [HumanMessage(
-            content=f"[Planner] Split into {len(phases)} phases."
+            content=(
+                f"[Planner] {plan.overall_strategy} → "
+                f"{len(phases)} phases: "
+                + ", ".join(
+                    f"[{', '.join(p.nodes)}]" for p in plan.phases
+                )
+            )
         )],
     }
 
 
-def _build_phases_from_topology(topology: WorkflowTopology) -> list[PhaseEntry]:
-    """BFS walk of topology edges → ordered list of PhaseEntry."""
-    phase_buckets = _bfs_assign_phases(topology)
-    return _attach_edges(phase_buckets, topology)
+# ── Prompt assembly ──────────────────────────────────────────────────────────
+
+def _build_planner_prompt(
+    intent: str,
+    topology: WorkflowTopology | None,
+    cred_ids: dict,
+    templates: list[dict],
+) -> str:
+    sections = [f"## Intent\n{intent}"]
+
+    if topology:
+        sections.append(f"## Topology\n{json.dumps(topology, indent=2)}")
+    else:
+        sections.append("## Topology\n(none — fallback to linear plan)")
+
+    sections.append(f"## Available credentials\n{json.dumps(cred_ids, indent=2)}")
+
+    if templates:
+        summaries = _summarise_templates(templates)
+        sections.append(f"## RAG context (node template summaries)\n{summaries}")
+
+    return "\n\n".join(sections)
 
 
-def _bfs_assign_phases(topology: WorkflowTopology) -> list[list[str]]:
-    """BFS from entry_node, assign each node to a phase bucket respecting density limits."""
-    edges = topology.get("edges", [])
-    adj: dict[str, list[str]] = {}
-    for edge in edges:
-        adj.setdefault(edge["from_node"], []).append(edge["to_node"])
-
-    entry = topology["entry_node"]
-    phases: list[list[str]] = [[entry]]
-    visited: set[str] = {entry}
-    queue: list[str] = list(adj.get(entry, []))
-    current_phase: list[str] = []
-    logic_count = 0
-
-    while queue:
-        node = queue.pop(0)
-        if node in visited:
-            continue
-        visited.add(node)
-
-        if _is_logic_node(node):
-            current_phase.append(node)
-            logic_count += 1
-            if logic_count >= _MAX_LOGIC_PER_PHASE:
-                phases.append(current_phase)
-                current_phase = []
-                logic_count = 0
-        else:
-            if current_phase:
-                phases.append(current_phase)
-                current_phase = []
-                logic_count = 0
-            phases.append([node])
-
-        queue.extend(n for n in adj.get(node, []) if n not in visited)
-
-    if current_phase:
-        phases.append(current_phase)
-
-    return phases
+def _summarise_templates(templates: list[dict]) -> str:
+    """One-line summary per template to keep the prompt tight."""
+    lines: list[str] = []
+    for t in templates[:12]:  # cap at 12 to avoid prompt bloat
+        node_type = t.get("node_type") or t.get("name", "unknown")
+        doc = t.get("document", "")[:120].replace("\n", " ")
+        lines.append(f"- {node_type}: {doc}")
+    return "\n".join(lines)
 
 
-def _attach_edges(
-    phase_buckets: list[list[str]], topology: WorkflowTopology
+# ── Plan → PhaseEntry conversion ─────────────────────────────────────────────
+
+def _plan_to_phase_entries(
+    plan: PhasePlan,
+    topology: WorkflowTopology | None,
 ) -> list[PhaseEntry]:
-    """For each phase bucket, split edges into internal vs entry (cross-phase)."""
-    all_edges = topology.get("edges", [])
-    result: list[PhaseEntry] = []
+    """Convert PhasePlan output to PhaseEntry list consumed by the engineer."""
+    all_edges = topology.get("edges", []) if topology else []
+    phase_entries: list[PhaseEntry] = []
 
-    for i, bucket in enumerate(phase_buckets):
-        bucket_set = set(bucket)
-        prev_set = set(phase_buckets[i - 1]) if i > 0 else set()
+    for i, phase in enumerate(plan.phases):
+        bucket_set = set(phase.nodes)
+        prev_buckets = {n for p in plan.phases[:i] for n in p.nodes}
+
         internal = [
             e for e in all_edges
             if e["from_node"] in bucket_set and e["to_node"] in bucket_set
         ]
         entry = [
             e for e in all_edges
-            if e["from_node"] in prev_set and e["to_node"] in bucket_set
+            if e["from_node"] in prev_buckets and e["to_node"] in bucket_set
         ]
-        result.append({"nodes": bucket, "internal_edges": internal, "entry_edges": entry})
+        phase_entries.append({
+            "nodes": phase.nodes,
+            "internal_edges": internal,
+            "entry_edges": entry,
+        })
 
-    return result
-
-
-def _fallback_phases(required_nodes: list[str]) -> list[PhaseEntry]:
-    """Backward compat: flat list → PhaseEntry list with no edge data."""
-    trigger = required_nodes[0]
-    phases: list[PhaseEntry] = [{"nodes": [trigger], "internal_edges": [], "entry_edges": []}]
-    for node in required_nodes[1:]:
-        phases.append({"nodes": [node], "internal_edges": [], "entry_edges": []})
-    return phases
-
-
-def _is_logic_node(node_type: str) -> bool:
-    """Check if a node type is logic-only (no credentials)."""
-    return node_type.lower() in LOGIC_NODES
+    return phase_entries
 
 
 def _empty_plan() -> dict:
-    """Return empty phase plan."""
     return {
         "phase_node_map": [],
         "total_phases": 0,

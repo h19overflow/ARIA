@@ -16,10 +16,11 @@ async def credential_saver_node(state: ARIAState) -> dict:
     if not pending:
         return {"pending_credential_types": [], "resolved_credential_ids": resolved}
 
+    guide = state.get("credential_guide_payload") or {}
     user_creds: dict[str, dict] = interrupt({
         "type": "credential_request",
         "pending_types": pending,
-        "message": f"Please provide credentials for: {', '.join(pending)}",
+        **guide,
     })
 
     # user_creds may be {} when the user manually set up credentials in n8n

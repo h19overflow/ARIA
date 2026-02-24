@@ -65,6 +65,7 @@ class ARIAState(TypedDict):
     required_nodes: list[str]
     resolved_credential_ids: dict[str, str]
     pending_credential_types: list[str]
+    credential_guide_payload: dict | None
     build_blueprint: BuildBlueprint | None
 
     # Topology (written by orchestrator on commit, copied into build_blueprint by handoff)

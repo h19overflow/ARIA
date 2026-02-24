@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-3.1-pro-preview"
     embedding_model: str = "models/gemini-embedding-001"
 
+    # Weights & Biases / Weave
+    wandb_project: str = "ARIA"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

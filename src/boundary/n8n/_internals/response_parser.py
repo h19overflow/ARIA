@@ -10,20 +10,22 @@ def parse_credentials(raw: list[dict]) -> list[dict]:
 
 
 def parse_credential_schema(raw: dict) -> dict:
-    """Extract {type, displayName, properties} from a schema response."""
+    """Extract {required_fields, optional_fields} from a JSON Schema credential response."""
+    properties: dict = raw.get("properties", {})
+    required_set: set[str] = set(raw.get("required", []))
     props = [
         {
-            "name": p.get("name", ""),
-            "type": p.get("type", ""),
-            "required": p.get("required", False),
-            "description": p.get("description", ""),
+            "name": field_name,
+            "type": field_def.get("type", "string") if isinstance(field_def, dict) else "string",
+            "required": field_name in required_set,
+            "description": field_def.get("description", "") if isinstance(field_def, dict) else "",
         }
-        for p in raw.get("properties", [])
+        for field_name, field_def in properties.items()
+        if field_name != "notice"
     ]
     return {
-        "type": raw.get("name", ""),
-        "displayName": raw.get("displayName", ""),
         "properties": props,
+        "required": sorted(required_set - {"notice"}),
     }
 
 
