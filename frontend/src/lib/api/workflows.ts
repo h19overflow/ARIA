@@ -1,10 +1,10 @@
 import type { CreateWorkflowResponse, JobStatusResponse } from '@/types/state'
 import { request } from './client'
 
-export function createWorkflow(prompt: string): Promise<CreateWorkflowResponse> {
+export function createWorkflow(description: string): Promise<CreateWorkflowResponse> {
   return request<CreateWorkflowResponse>('/workflows', {
     method: 'POST',
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ description }),
   })
 }
 
@@ -12,12 +12,13 @@ export function getJobStatus(jobId: string): Promise<JobStatusResponse> {
   return request<JobStatusResponse>(`/jobs/${jobId}`)
 }
 
-export function submitCredentials(
+export function submitResume(
   jobId: string,
-  credentials: Record<string, string>,
+  kind: 'clarify' | 'credential',
+  value: string | Record<string, string>,
 ): Promise<void> {
-  return request<void>(`/jobs/${jobId}/credentials`, {
+  return request<void>(`/jobs/${jobId}/resume`, {
     method: 'POST',
-    body: JSON.stringify({ credentials }),
+    body: JSON.stringify({ kind, value }),
   })
 }

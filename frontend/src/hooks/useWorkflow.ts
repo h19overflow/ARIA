@@ -1,6 +1,12 @@
 import { useState, useCallback, useRef } from 'react'
-import { createWorkflow, getJobStatus, submitCredentials } from '@/lib/api'
-import type { ARIAState, WorkflowStatus } from '@/types'
+import { createWorkflow, submitResume } from '@/lib/api'
+import { useEventFeed } from './useEventFeed'
+import type { ARIAState, WorkflowStatus, SSEInterruptEvent, FeedEvent } from '@/types'
+
+interface InterruptState {
+  kind: 'clarify' | 'credential'
+  payload: SSEInterruptEvent['payload']
+}
 
 interface WorkflowHookState {
   jobId: string | null
@@ -8,87 +14,84 @@ interface WorkflowHookState {
   ariaState: ARIAState | null
   error: string | null
   isLoading: boolean
+  interrupt: InterruptState | null
 }
 
-interface WorkflowHook extends WorkflowHookState {
-  submit: (prompt: string) => Promise<void>
-  sendCredentials: (creds: Record<string, string>) => Promise<void>
+export interface WorkflowHook extends WorkflowHookState {
+  events: FeedEvent[]
+  clearEvents: () => void
+  submit: (description: string) => Promise<void>
+  resume: (kind: 'clarify' | 'credential', value: string | Record<string, string>) => Promise<void>
   reset: () => void
 }
 
-const POLL_INTERVAL_MS = 2000
-const TERMINAL_STATUSES: WorkflowStatus[] = ['done', 'failed']
-
-const initialState: WorkflowHookState = {
+const INITIAL: WorkflowHookState = {
   jobId: null,
   status: 'idle',
   ariaState: null,
   error: null,
   isLoading: false,
+  interrupt: null,
 }
 
 export function useWorkflow(): WorkflowHook {
-  const [state, setState] = useState<WorkflowHookState>(initialState)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [state, setState] = useState<WorkflowHookState>(INITIAL)
+  const jobIdRef = useRef<string | null>(null)
 
-  const stopPolling = useCallback(() => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current)
-      pollRef.current = null
+  const onInterrupt = useCallback(
+    (kind: 'clarify' | 'credential', payload: SSEInterruptEvent['payload']) => {
+      setState((prev) => ({ ...prev, interrupt: { kind, payload }, isLoading: false }))
+    },
+    [],
+  )
+
+  const onDone = useCallback((ariaState: ARIAState) => {
+    setState((prev) => ({
+      ...prev,
+      ariaState,
+      status: 'done',
+      isLoading: false,
+      interrupt: null,
+    }))
+  }, [])
+
+  const onError = useCallback((message: string) => {
+    setState((prev) => ({ ...prev, error: message, status: 'failed', isLoading: false }))
+  }, [])
+
+  const { events, clearEvents } = useEventFeed(state.jobId, { onInterrupt, onDone, onError })
+
+  const submit = useCallback(async (description: string) => {
+    setState({ ...INITIAL, isLoading: true, status: 'planning' })
+    try {
+      const res = await createWorkflow(description)
+      jobIdRef.current = res.job_id
+      setState((prev) => ({ ...prev, jobId: res.job_id }))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Submission failed'
+      setState((prev) => ({ ...prev, error: message, isLoading: false, status: 'failed' }))
     }
   }, [])
 
-  const startPolling = useCallback(
-    (jobId: string) => {
-      stopPolling()
-      pollRef.current = setInterval(async () => {
-        try {
-          const job = await getJobStatus(jobId)
-          setState((prev) => ({
-            ...prev,
-            status: job.status,
-            ariaState: job.result ?? prev.ariaState,
-            error: job.error ?? null,
-            isLoading: !TERMINAL_STATUSES.includes(job.status),
-          }))
-          if (TERMINAL_STATUSES.includes(job.status)) stopPolling()
-        } catch (err) {
-          const message = err instanceof Error ? err.message : 'Poll failed'
-          setState((prev) => ({ ...prev, error: message, isLoading: false }))
-          stopPolling()
-        }
-      }, POLL_INTERVAL_MS)
-    },
-    [stopPolling],
-  )
-
-  const submit = useCallback(
-    async (prompt: string) => {
-      setState({ ...initialState, isLoading: true, status: 'planning' })
+  const resume = useCallback(
+    async (kind: 'clarify' | 'credential', value: string | Record<string, string>) => {
+      const jobId = jobIdRef.current ?? state.jobId
+      if (!jobId) return
+      setState((prev) => ({ ...prev, interrupt: null, isLoading: true }))
       try {
-        const res = await createWorkflow(prompt)
-        setState((prev) => ({ ...prev, jobId: res.job_id }))
-        startPolling(res.job_id)
+        await submitResume(jobId, kind, value)
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Submission failed'
-        setState((prev) => ({ ...prev, error: message, isLoading: false, status: 'failed' }))
+        const message = err instanceof Error ? err.message : 'Resume failed'
+        setState((prev) => ({ ...prev, error: message, isLoading: false }))
       }
-    },
-    [startPolling],
-  )
-
-  const sendCredentials = useCallback(
-    async (creds: Record<string, string>) => {
-      if (!state.jobId) return
-      await submitCredentials(state.jobId, creds)
     },
     [state.jobId],
   )
 
   const reset = useCallback(() => {
-    stopPolling()
-    setState(initialState)
-  }, [stopPolling])
+    jobIdRef.current = null
+    setState(INITIAL)
+  }, [])
 
-  return { ...state, submit, sendCredentials, reset }
+  return { ...state, events, clearEvents, submit, resume, reset }
 }

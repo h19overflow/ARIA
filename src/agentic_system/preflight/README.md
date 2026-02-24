@@ -8,27 +8,22 @@ Collects everything ARIA needs before building: **what the user wants** and **wh
 
 ```mermaid
 flowchart TD
-    U([👤 User types a request]) --> ORC
+    U([User request]) --> ORC
 
-    ORC["🤖 Orchestrator\n─────────────────\nReads intent\nMaps required nodes\nDecides next step"]
-
-    ORC -->|needs more info| HITL["⏸️ HITL Clarify\n─────────────────\nPAUSES\nAsks user a question"]
+    ORC[Orchestrator]
+    ORC -->|needs more info| HITL[HITL Clarify - PAUSES]
     HITL -->|user answers| ORC
-
     ORC -->|ready to proceed| SCAN
 
-    SCAN["🤖 Credential Scanner\n─────────────────\nLooks up n8n credentials\nMatches to required nodes"]
-
-    SCAN -->|two creds match, unsure which| AMB["⏸️ Interrupt\n─────────────────\nPAUSES\nUser picks which credential"]
+    SCAN[Credential Scanner]
+    SCAN -->|two creds match| AMB[Interrupt - user picks credential - PAUSES]
     AMB -->|user picks| SCAN
-
-    SCAN -->|credential missing| GUIDE["🤖 Credential Guide\n─────────────────\nResearches setup steps\nFormats instructions for UI"]
-    GUIDE --> SAVER["⏸️ Credential Saver\n─────────────────\nPAUSES\nUser enters API key / OAuth\nin n8n"]
+    SCAN -->|credential missing| GUIDE[Credential Guide]
+    GUIDE --> SAVER[Credential Saver - PAUSES]
     SAVER -->|saved| SCAN
+    SCAN -->|all resolved| HO[Handoff]
 
-    SCAN -->|all credentials resolved| HO["Handoff\n─────────────────\nPackages BuildBlueprint\nPasses to Build Cycle"]
-
-    HO --> BC([🏗️ Build Cycle])
+    HO --> BC([Build Cycle])
 
     style ORC fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
     style SCAN fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f

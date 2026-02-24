@@ -1,2 +1,2 @@
-export { createWorkflow, getJobStatus, submitCredentials } from './workflows'
+export { createWorkflow, getJobStatus, submitResume } from './workflows'
 export { ApiError } from './client'

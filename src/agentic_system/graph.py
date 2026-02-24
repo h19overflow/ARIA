@@ -7,6 +7,25 @@ compiled subgraphs nested inside a parent StateGraph.
 The fix: compile each subgraph independently with its own MemorySaver
 and execute them sequentially at the service level.  HITL interrupts
 work correctly because each graph is a top-level compiled graph.
+
+Unified resume schema
+---------------------
+All resume_* methods accept a dict with an ``action`` key.
+
+Preflight clarify:
+  {"action": "clarify", "value": "<user answer>"}
+
+Preflight credential_request:
+  {"action": "provide", "credentials": {"Gmail OAuth2": {...}}}   # user pastes creds
+  {"action": "resume"}                                             # already set up in n8n
+
+Preflight credential_ambiguity:
+  {"action": "select", "selections": {"Gmail OAuth2": "<id>"}}
+
+Build-cycle fix_exhausted:
+  {"action": "retry"}    # user fixed in n8n UI
+  {"action": "replan"}
+  {"action": "abort"}
 """
 from __future__ import annotations
 
@@ -63,14 +82,13 @@ class ARIAPipeline:
 
     async def resume_preflight(
         self,
-        resume_value: object,
+        resume_value: dict,
         config: dict,
     ) -> ARIAState:
         """Resume a preflight graph that is paused at an interrupt.
 
-        For clarify interrupts: pass the user's answer string.
-        For credential interrupts: pass {} (user already set up creds in n8n).
-        LangGraph resume uses Command(resume=value) via None input.
+        ``resume_value`` must follow the unified schema — see module docstring.
+        LangGraph feeds it to the interrupted node via Command(resume=...).
         """
         from langgraph.types import Command  # noqa: PLC0415
         result = await self._preflight.ainvoke(
@@ -81,10 +99,13 @@ class ARIAPipeline:
 
     async def resume_build_cycle(
         self,
-        resume_value: object,
+        resume_value: dict,
         config: dict,
     ) -> ARIAState:
-        """Resume a build cycle graph that is paused at HITL escalation."""
+        """Resume a build cycle graph that is paused at HITL escalation.
+
+        ``resume_value`` must follow the unified schema — see module docstring.
+        """
         from langgraph.types import Command  # noqa: PLC0415
         result = await self._build_cycle.ainvoke(
             Command(resume=resume_value),

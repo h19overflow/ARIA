@@ -52,6 +52,7 @@ async def credential_scanner_node(state: ARIAState) -> dict:
     return {
         "resolved_credential_ids": resolved,
         "pending_credential_types": pending,
+        "paused_for_input": False,
         "messages": [HumanMessage(content=status_msg)],
     }
 
@@ -60,16 +61,22 @@ def _apply_hitl_choices(
     resolved: dict[str, str],
     ambiguous: dict[str, list[dict]],
 ) -> dict[str, str]:
-    """Interrupt to let the user pick one credential per ambiguous type."""
-    choices: dict[str, str] = interrupt({
+    """Interrupt to let the user pick one credential per ambiguous type.
+
+    Unified resume schema:
+      {"action": "select", "selections": {"Gmail OAuth2": "<credential-id>"}}
+    """
+    response: dict = interrupt({
         "type": "credential_ambiguity",
+        "paused_for_input": True,
         "ambiguous": {
             cred_type: [{"id": c["id"], "name": c.get("name", c["id"])} for c in candidates]
             for cred_type, candidates in ambiguous.items()
         },
-        "message": "Multiple saved credentials found. Please choose one ID per type.",
+        "message": "Multiple saved credentials found. Select one ID per type.",
     })
-    return {**resolved, **choices}
+    selections: dict[str, str] = response.get("selections", {}) if isinstance(response, dict) else {}
+    return {**resolved, **selections}
 
 
 def _build_status_message(

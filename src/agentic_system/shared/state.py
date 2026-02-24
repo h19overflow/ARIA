@@ -95,3 +95,7 @@ class ARIAState(TypedDict):
     build_phase: int
     total_phases: int
     phase_node_map: list[PhaseEntry]
+
+    # HITL pause indicator — set True immediately before interrupt(), False after resume.
+    # Frontend can read this without inferring from SSE gaps.
+    paused_for_input: bool

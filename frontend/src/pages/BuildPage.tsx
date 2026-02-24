@@ -1,56 +1,62 @@
 import { PromptInput } from '@/components/build/PromptInput'
-import { PipelineStatus } from '@/components/build/PipelineStatus'
 import { NodeGraph } from '@/components/build/NodeGraph'
 import { EventFeed } from '@/components/build/EventFeed'
 import { CredentialDrawer } from '@/components/build/CredentialDrawer'
-import type { useWorkflow } from '@/hooks/useWorkflow'
-import type { useEventFeed } from '@/hooks/useEventFeed'
-
-type WorkflowState = ReturnType<typeof useWorkflow>
-type FeedState = ReturnType<typeof useEventFeed>
+import { ClarifyDrawer } from '@/components/build/ClarifyDrawer'
+import { GraphEmptyState } from '@/components/build/GraphEmptyState'
+import type { WorkflowHook } from '@/hooks/useWorkflow'
 
 interface BuildPageProps {
-  workflow: WorkflowState
-  feed: FeedState
+  workflow: WorkflowHook
 }
 
-export function BuildPage({ workflow, feed }: BuildPageProps) {
-  const { status, ariaState, isLoading, submit, reset, sendCredentials } = workflow
-  const { events, clearEvents } = feed
+export function BuildPage({ workflow }: BuildPageProps) {
+  const {
+    status, ariaState, isLoading, interrupt,
+    events, clearEvents,
+    submit, resume, reset,
+  } = workflow
+
+  const hasTopology = Boolean(ariaState?.topology?.nodes?.length)
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Top section */}
-      <div className="flex-none px-4 pt-4 pb-3 space-y-3">
-        <PromptInput onSubmit={submit} onReset={reset} isLoading={isLoading} />
-        <PipelineStatus
-          status={status}
-          buildPhase={ariaState?.build_phase}
-          totalPhases={ariaState?.total_phases}
-        />
+    <div className="flex h-full overflow-hidden">
+      {/* Graph canvas */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-hidden relative graph-canvas">
+          {hasTopology
+            ? <NodeGraph topology={ariaState!.topology!} status={status} />
+            : <GraphEmptyState status={status} />
+          }
+
+          {/* Clarify drawer — absolute over the graph */}
+          {interrupt?.kind === 'clarify' && (
+            <ClarifyDrawer
+              question={interrupt.payload.question ?? ''}
+              onSubmit={(answer) => resume('clarify', answer)}
+              isLoading={isLoading}
+            />
+          )}
+        </div>
+
+        <div className="flex-none p-4 border-t border-[var(--border-subtle)]">
+          <PromptInput onSubmit={submit} onReset={reset} isLoading={isLoading} />
+        </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 overflow-hidden flex gap-3 px-4 pb-3">
-        {/* Graph area */}
-        <div className="flex-1 glass rounded-xl overflow-hidden relative">
-          <div className="absolute inset-0 p-2">
-            <NodeGraph topology={ariaState?.topology} status={status} />
-          </div>
-        </div>
-
-        {/* Event feed sidebar */}
-        <div className="w-72 flex-none">
-          <EventFeed events={events} onClear={clearEvents} />
-        </div>
+      {/* Event feed */}
+      <div className="w-72 flex-none border-l border-[var(--border-subtle)]">
+        <EventFeed events={events} onClear={clearEvents} />
       </div>
 
       {/* Credential drawer */}
-      <CredentialDrawer
-        pendingTypes={ariaState?.pending_credential_types ?? []}
-        guide={ariaState?.credential_guide_payload}
-        onSubmit={sendCredentials}
-      />
+      {interrupt?.kind === 'credential' && (
+        <CredentialDrawer
+          pendingTypes={interrupt.payload.pending_types ?? []}
+          guide={ariaState?.credential_guide_payload}
+          onSubmit={(creds) => resume('credential', creds)}
+        />
+      )}
     </div>
   )
 }

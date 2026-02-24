@@ -8,21 +8,30 @@ from src.agentic_system.shared.state import ARIAState
 
 
 async def hitl_fix_escalation_node(state: ARIAState) -> dict:
-    """Escalate to user when fix budget is exhausted or error is unfixable."""
-    error = state.get("classified_error", {})
+    """Escalate to user when fix budget is exhausted or error is unfixable.
+
+    Unified resume schema:
+      {"action": "retry"}   — user fixed the node manually in the n8n UI and wants ARIA to retest
+      {"action": "replan"}  — start over through preflight
+      {"action": "abort"}   — give up
+    """
+    error = state.get("classified_error") or {}
     fix_attempts = state.get("fix_attempts", 0)
+    workflow_id = state.get("n8n_workflow_id")
+
+    n8n_url = f"http://localhost:5678/workflow/{workflow_id}" if workflow_id else "the n8n UI"
 
     user_decision: dict = interrupt({
         "type": "fix_exhausted",
+        "paused_for_input": True,
         "error": error,
         "fix_attempts": fix_attempts,
-        "workflow_id": state.get("n8n_workflow_id"),
-        "options": ["manual_fix", "replan", "abort"],
-        "message": (
-            f"Fix budget exhausted after {fix_attempts} attempts. "
-            f"Error in '{error.get('node_name', 'unknown')}': "
-            f"{error.get('message', 'unknown')}. "
-            f"Choose: manual_fix, replan, or abort."
+        "workflow_id": workflow_id,
+        "options": ["retry", "replan", "abort"],
+        "instructions": (
+            f"ARIA could not auto-fix the error after {fix_attempts} attempt(s). "
+            f"Please open {n8n_url}, fix the '{error.get('node_name', 'unknown')}' node manually, "
+            f"then choose 'retry' to let ARIA retest, 'replan' to start over, or 'abort' to cancel."
         ),
     })
 
@@ -33,40 +42,26 @@ def _handle_user_decision(decision: dict | str, state: ARIAState) -> dict:
     """Route user's HITL decision to appropriate state update."""
     if isinstance(decision, str):
         action = decision
-        decision = {"action": action}
     else:
         action = decision.get("action", "abort")
 
-    if action == "manual_fix":
-        return _apply_manual_fix(decision, state)
+    if action == "retry":
+        return _reset_for_retry(state)
     if action == "replan":
         return _reset_for_replan(state)
     return _abort(state)
 
 
-def _apply_manual_fix(decision: dict, state: ARIAState) -> dict:
-    """Apply user-provided patch to workflow and reset fix budget."""
-    workflow = dict(state.get("workflow_json") or {})
-    patch = decision.get("patch", {})
-    node_name = patch.get("node_name")
-    new_params = patch.get("parameters")
-
-    if node_name and new_params:
-        nodes = list(workflow.get("nodes", []))
-        for i, node in enumerate(nodes):
-            if node["name"] == node_name:
-                nodes[i] = {**node, "parameters": new_params}
-                break
-        workflow["nodes"] = nodes
-
+def _reset_for_retry(state: ARIAState) -> dict:
+    """User fixed the workflow in n8n — reset fix budget and retest."""
     return {
-        "workflow_json": workflow,
         "fix_attempts": 0,
         "classified_error": None,
         "execution_result": None,
-        "status": "building",
+        "paused_for_input": False,
+        "status": "testing",
         "messages": [HumanMessage(
-            content=f"[HITL] Manual fix applied to '{node_name}'.",
+            content="[HITL] Retesting after manual fix in n8n UI.",
         )],
     }
 
@@ -83,6 +78,7 @@ def _reset_for_replan(state: ARIAState) -> dict:
         "build_phase": 0,
         "total_phases": 0,
         "phase_node_map": [],
+        "paused_for_input": False,
         "status": "replanning",
         "messages": [HumanMessage(
             content="[HITL] Replanning -- returning to orchestrator.",
@@ -93,6 +89,7 @@ def _reset_for_replan(state: ARIAState) -> dict:
 def _abort(state: ARIAState) -> dict:
     """Mark pipeline as failed."""
     return {
+        "paused_for_input": False,
         "status": "failed",
         "messages": [HumanMessage(content="[HITL] User chose to abort.")],
     }

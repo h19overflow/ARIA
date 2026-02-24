@@ -8,45 +8,32 @@ Takes the `BuildBlueprint` from Preflight and incrementally builds, deploys, tes
 
 ```mermaid
 flowchart TD
-    IN([📋 BuildBlueprint from Preflight]) --> RAG
+    IN([BuildBlueprint from Preflight]) --> RAG
 
-    RAG["RAG Retriever\n─────────────────\nHybrid search ChromaDB\nFetches n8n node templates"]
-
-    RAG --> PLAN
-
-    PLAN["🤖 Phase Planner\n─────────────────\nReasons over topology + intent\nSplits into ordered build phases"]
-
+    RAG[RAG Retriever]
+    RAG --> PLAN[Phase Planner]
     PLAN --> ENG
 
-    subgraph LOOP ["🔁 Per-phase build loop"]
-        ENG["🤖 Engineer\n─────────────────\nBuilds workflow JSON\nfor current phase"]
-        DEP["Deploy\n─────────────────\nPOSTs / PUTs workflow\nto n8n API"]
-        TST["Test\n─────────────────\nActivates → triggers webhook\n→ polls execution result"]
-
+    subgraph LOOP [Per-phase build loop]
+        ENG[Engineer]
+        DEP[Deploy]
+        TST[Test]
         ENG --> DEP --> TST
     end
 
-    TST -->|✅ success, more phases| ADV["Advance Phase\n─────────────────\nIncrement phase counter\nReset fix state"]
+    TST -->|success - more phases| ADV[Advance Phase]
     ADV --> ENG
-
-    TST -->|✅ success, final phase| ACT["Activate\n─────────────────\nActivates workflow in n8n\nReturns webhook URL"]
-
-    TST -->|❌ error| DBG
-
-    DBG["🤖 Debugger\n─────────────────\nClassifies error type\nApplies fix to workflow JSON"]
+    TST -->|success - final phase| ACT[Activate]
+    TST -->|error| DBG[Debugger]
 
     DBG -->|rate limit| TST
     DBG -->|fixable + budget remaining| DEP
-    DBG -->|unfixable OR attempts exhausted| ESC
+    DBG -->|unfixable or attempts exhausted| ESC[HITL Escalation - PAUSES]
 
-    ESC["⏸️ HITL Escalation\n─────────────────\nPAUSES\nAsks user what to do"]
+    ESC -->|manual fix| DEP
+    ESC -->|replan or abort| FAIL([Failed])
 
-    ESC -->|manual_fix — user edited n8n directly| DEP
-    ESC -->|replan — restart from preflight| FAIL
-    ESC -->|abort| FAIL
-
-    ACT --> DONE([✅ Live workflow + webhook URL])
-    FAIL([❌ Failed])
+    ACT --> DONE([Live workflow and webhook URL])
 
     style RAG fill:#f0fdf4,stroke:#16a34a,color:#14532d
     style PLAN fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
@@ -87,13 +74,13 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    TST[Test] -->|error| DBG["🤖 Debugger\nclassify + fix"]
-    DBG -->|rate_limit| TST
-    DBG -->|schema or logic\nfix_attempts < 3| DEP[Deploy]
-    DBG -->|auth / unknown\nOR attempts = 3| ESC["⏸️ HITL Escalation"]
+    TST[Test] -->|error| DBG[Debugger]
+    DBG -->|rate limit| TST
+    DBG -->|fixable, attempts under 3| DEP[Deploy]
+    DBG -->|auth or unknown, or attempts at 3| ESC[HITL Escalation - PAUSES]
     DEP --> TST
-    ESC -->|manual_fix| DEP
-    ESC -->|replan / abort| FAIL[Fail]
+    ESC -->|manual fix| DEP
+    ESC -->|replan or abort| FAIL[Fail]
 
     style DBG fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
     style ESC fill:#fef9c3,stroke:#ca8a04,color:#713f12

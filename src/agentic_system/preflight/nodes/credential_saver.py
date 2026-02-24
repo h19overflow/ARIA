@@ -14,18 +14,28 @@ async def credential_saver_node(state: ARIAState) -> dict:
     resolved = dict(state.get("resolved_credential_ids", {}))
 
     if not pending:
-        return {"pending_credential_types": [], "resolved_credential_ids": resolved}
+        return {
+            "pending_credential_types": [],
+            "resolved_credential_ids": resolved,
+            "paused_for_input": False,
+        }
 
     guide = state.get("credential_guide_payload") or {}
-    user_creds: dict[str, dict] = interrupt({
+
+    # Unified resume schema:
+    #   {"action": "provide", "credentials": {"Gmail OAuth2": {...}}}  — user pastes creds
+    #   {"action": "resume"}                                           — user already set up in n8n
+    response: dict = interrupt({
         "type": "credential_request",
         "pending_types": pending,
+        "paused_for_input": True,
         **guide,
     })
 
-    # user_creds may be {} when the user manually set up credentials in n8n
-    # and just clicked Resume — in that case we skip saving and let scanner re-check.
-    if isinstance(user_creds, dict) and user_creds:
+    action = response.get("action", "resume") if isinstance(response, dict) else "resume"
+    user_creds: dict[str, dict] = response.get("credentials", {}) if action == "provide" else {}
+
+    if user_creds:
         client = N8nClient()
         await client.connect()
         try:
@@ -35,13 +45,14 @@ async def credential_saver_node(state: ARIAState) -> dict:
         finally:
             await client.disconnect()
 
-    saved_types = list(user_creds.keys()) if isinstance(user_creds, dict) else []
+    saved_types = list(user_creds.keys())
     remaining = [p for p in pending if p not in saved_types]
 
     return {
         "resolved_credential_ids": resolved,
         "pending_credential_types": remaining,
+        "paused_for_input": False,
         "messages": [HumanMessage(
-            content=f"[Saver] Saved credentials for: {', '.join(saved_types)}",
+            content=f"[Saver] Saved credentials for: {', '.join(saved_types) or 'none (resumed from n8n)'}",
         )],
     }
