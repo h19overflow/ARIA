@@ -1,0 +1,35 @@
+===== ARIA API ENDPOINT TESTS =====
+Date: Wed, Feb 25, 2026  2:46:28 AM
+Base: http://localhost:8000
+
+── 1. POST /workflows ──
+
+HTTP 000
+→ job_id: 
+
+── 2. POST /workflows (missing description) ──
+
+HTTP 000
+
+── 3. GET /jobs/ ──
+
+HTTP 000
+
+── 4. GET /jobs/nonexistent-job-id ──
+
+HTTP 000
+
+── 5. POST /jobs//resume (409 — not interrupted) ──
+
+HTTP 000
+
+── 6. POST /jobs/nonexistent/resume (404) ──
+
+HTTP 000
+
+── 7. GET /jobs//stream (SSE headers) ──
+
+── 8. GET /docs ──
+HTTP 000
+
+===== DONE =====

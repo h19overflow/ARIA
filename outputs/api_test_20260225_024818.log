@@ -1,0 +1,55 @@
+===== ARIA API ENDPOINT TESTS =====
+Date: Wed, Feb 25, 2026  2:48:18 AM
+Base: http://127.0.0.1:9000
+
+────────────────────────────────────────
+[1] POST /workflows — valid request
+Status: 202
+Body:   {"job_id":"3014a082-43a5-4690-8875-7d571cd35144","status":"planning"}
+→ job_id captured: 3014a082-43a5-4690-8875-7d571cd35144
+
+────────────────────────────────────────
+[2] POST /workflows — missing description (expect 422)
+Status: 422
+Body:   {"detail":[{"type":"missing","loc":["body","description"],"msg":"Field required","input":{}}]}
+
+────────────────────────────────────────
+[3] GET /jobs/3014a082-43a5-4690-8875-7d571cd35144 (expect 200)
+Status: 200
+Body:   {"job_id":"3014a082-43a5-4690-8875-7d571cd35144","status":"planning","result":null,"error":null}
+
+────────────────────────────────────────
+[4] GET /jobs/nonexistent-id (expect 404)
+Status: 404
+Body:   {"detail":"Job not found"}
+
+────────────────────────────────────────
+[5] POST /jobs/3014a082-43a5-4690-8875-7d571cd35144/resume — 409 (job is planning, not interrupted)
+Status: 409
+Body:   {"detail":"Job is not interrupted (status: planning)"}
+
+────────────────────────────────────────
+[6] POST /jobs/nonexistent/resume (expect 404)
+Status: 404
+Body:   {"detail":"Job not found"}
+
+────────────────────────────────────────
+[7] POST /jobs/3014a082-43a5-4690-8875-7d571cd35144/resume — invalid body (expect 422)
+Status: 422
+Body:   {"detail":[{"type":"missing","loc":["body","action"],"msg":"Field required","input":{"bad_field":123}}]}
+
+────────────────────────────────────────
+[8] GET /jobs/3014a082-43a5-4690-8875-7d571cd35144/stream — SSE headers (expect text/event-stream)
+HTTP/1.1 405 Method Not Allowed
+content-type: application/json
+
+────────────────────────────────────────
+[9] GET /docs (expect 200)
+Status: 200
+
+────────────────────────────────────────
+[10] GET /openapi.json (expect 200, check paths)
+Paths: ['/ingest/n8n/nodes', '/ingest/n8n/workflows', '/ingest/api-spec', '/workflows', '/jobs/{job_id}', '/jobs/{job_id}/stream', '/jobs/{job_id}/resume']
+
+────────────────────────────────────────
+===== TESTS COMPLETE =====

@@ -1,0 +1,5 @@
+[8-FIX] GET /jobs/3014a082-43a5-4690-8875-7d571cd35144/stream — SSE content-type via GET
+< HTTP/1.1 200 OK
+< cache-control: no-cache
+< x-accel-buffering: no
+< content-type: text/event-stream; charset=utf-8
