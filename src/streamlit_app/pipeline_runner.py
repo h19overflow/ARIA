@@ -45,6 +45,30 @@ def _run_async(coro: object) -> object:
     return result_box[0]
 
 
+_NODE_LABELS: dict[str, str] = {
+    "rag_retriever": "Retrieving node templates from ChromaDB...",
+    "phase_planner": "Planning build phases...",
+    "engineer": "Engineering workflow JSON...",
+    "deploy": "Deploying to n8n...",
+    "test": "Testing workflow...",
+    "debugger": "Debugging error...",
+    "activate": "Activating workflow...",
+    "hitl_fix_escalation": "Escalating to user...",
+    "advance_phase": "Advancing to next phase...",
+    "fail": "Build failed.",
+}
+
+
+def _node_progress_label(node_name: str, update: dict) -> str:
+    """Return a human-readable progress label for a node update."""
+    base = _NODE_LABELS.get(node_name, f"Running {node_name}...")
+    phase = update.get("build_phase")
+    total = update.get("total_phases")
+    if node_name == "engineer" and phase is not None and total:
+        return f"Engineering phase {phase + 1}/{total}..."
+    return base
+
+
 class PipelineRunner:
     """Async bridge between Streamlit (sync) and ARIAPipeline (async)."""
 
@@ -65,10 +89,23 @@ class PipelineRunner:
         self._log("runner", "INFO", f"Resuming preflight: {preview!r}")
         return _run_async(self._pipeline.resume_preflight(answer, config))
 
-    def run_build_cycle(self, state: ARIAState, config: dict) -> ARIAState:
+    def run_build_cycle(
+        self,
+        state: ARIAState,
+        config: dict,
+        progress_sink: list[str] | None = None,
+    ) -> ARIAState:
+        """Run build cycle, optionally collecting per-node progress labels."""
         start = time.monotonic()
         self._log("runner", "INFO", "Starting build cycle")
-        result = _run_async(self._pipeline.run_build_cycle(state, config))
+
+        def _on_node(node_name: str, update: dict) -> None:
+            label = _node_progress_label(node_name, update)
+            self._log(node_name, "INFO", label)
+            if progress_sink is not None:
+                progress_sink.append(label)
+
+        result = _run_async(self._pipeline.stream_build_cycle(state, config, _on_node))
         ms = int((time.monotonic() - start) * 1000)
         self._log("runner", "INFO", f"Build cycle complete in {ms}ms", duration_ms=ms)
         return result

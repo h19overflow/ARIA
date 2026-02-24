@@ -91,3 +91,20 @@ class ARIAPipeline:
             config=config,
         )
         return result
+
+    async def stream_build_cycle(
+        self,
+        state: ARIAState,
+        config: dict,
+        on_node: object = None,
+    ) -> ARIAState:
+        """Stream build cycle updates, calling on_node(node_name, update) per step.
+
+        Returns the final merged state from the checkpointer.
+        """
+        async for chunk in self._build_cycle.astream(state, config=config):
+            for node_name, update in chunk.items():
+                if on_node is not None:
+                    on_node(node_name, update)
+        snapshot = await self._build_cycle.aget_state(config)
+        return snapshot.values

@@ -1,8 +1,6 @@
 """ARIA Dev Console — Streamlit entry point."""
 from __future__ import annotations
 
-import uuid
-
 import streamlit as st
 
 from src.streamlit_app.state_manager import SessionState
@@ -36,7 +34,7 @@ def _handle_submit(prompt: str, session: SessionState) -> None:
         st.error(f"Preflight error: {exc}")
 
 
-def _handle_resume(answer: str, session: SessionState) -> None:
+def _handle_resume(answer: object, session: SessionState) -> None:
     phase = session.app_phase
     interrupt_type = session.interrupt_type
     # Credential resumes pass {} so saver skips saving; user already did it in n8n.
@@ -60,17 +58,31 @@ def _detect_interrupt(session: SessionState, phase: str) -> None:
     pending_creds = state.get("pending_credential_types", [])
     status = state.get("status", "")
     has_interrupt = bool(state.get("__interrupt__"))
+    interrupt_payload = _extract_interrupt_payload(state)
 
     if decision == "clarify" and phase == "preflight" and has_interrupt:
         session.at_interrupt = True
         session.interrupt_type = "clarify"
+    elif (
+        phase == "preflight"
+        and has_interrupt
+        and interrupt_payload.get("type") == "credential_ambiguity"
+    ):
+        session.at_interrupt = True
+        session.interrupt_type = "credential_ambiguity"
     elif pending_creds and phase == "preflight" and has_interrupt:
         session.at_interrupt = True
         session.interrupt_type = "credential"
     elif phase == "build_cycle" and has_interrupt:
-        # HITL escalation fires when fix budget is exhausted (status="fixing")
+        # HITL escalation fires when fix budget is exhausted
         session.at_interrupt = True
         session.interrupt_type = "hitl_escalation"
+    elif status == "replanning":
+        # Build cycle returned replan — restart preflight with same intent
+        session.app_phase = "preflight"
+        session.at_interrupt = False
+        session.interrupt_type = None
+        _handle_replan(session)
     elif phase == "preflight" and not has_interrupt and state.get("build_blueprint"):
         # Preflight finished cleanly — ready to start build
         session.at_interrupt = False
@@ -80,10 +92,41 @@ def _detect_interrupt(session: SessionState, phase: str) -> None:
         session.at_interrupt = False
 
 
+def _extract_interrupt_payload(state: dict) -> dict:
+    """Extract the interrupt payload dict if present, else empty dict."""
+    raw = state.get("__interrupt__")
+    if not raw:
+        return {}
+    if isinstance(raw, (list, tuple)) and raw:
+        raw = raw[0]
+    if hasattr(raw, "value"):
+        raw = raw.value
+    return raw if isinstance(raw, dict) else {}
+
+
+def _handle_replan(session: SessionState) -> None:
+    """Re-run preflight after a build cycle replan decision."""
+    try:
+        result = session.runner.run_preflight(session.aria_state, _config(session))
+        session.update_from_result(result)
+        _detect_interrupt(session, "preflight")
+    except Exception as exc:  # noqa: BLE001
+        st.error(f"Replan preflight error: {exc}")
+
+
 def _handle_start_build(session: SessionState) -> None:
     session.app_phase = "build_cycle"
+    progress_sink: list[str] = []
     try:
-        result = session.runner.run_build_cycle(session.aria_state, _config(session))
+        with st.status("Building workflow...", expanded=True) as status_widget:
+            # Run build; _on_node writes to progress_sink which we poll below.
+            # Because Streamlit can't truly stream from a blocking call, we log
+            # all node events into the sink and update the status label on finish.
+            result = session.runner.run_build_cycle(
+                session.aria_state, _config(session), progress_sink
+            )
+            last_label = progress_sink[-1] if progress_sink else "Build cycle complete."
+            status_widget.update(label=last_label, state="complete")
         session.update_from_result(result)
         _detect_interrupt(session, "build_cycle")
     except Exception as exc:  # noqa: BLE001

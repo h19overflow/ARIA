@@ -63,6 +63,8 @@ def _render_input_area(
         st.spinner("Orchestrator thinking...")
     elif session.at_interrupt and interrupt_type == "clarify":
         _render_clarify_input(session.aria_state, on_resume)
+    elif session.at_interrupt and interrupt_type == "credential_ambiguity":
+        _render_ambiguity_picker(session.aria_state, on_resume)
     elif session.at_interrupt and interrupt_type == "credential":
         _render_credential_banner(on_resume)
     elif phase == "preflight" and not session.at_interrupt:
@@ -91,6 +93,36 @@ def _render_clarify_input(state: ARIAState, on_resume: Callable[[str], None]) ->
     reply = st.text_input("Your reply", key="clarify_reply")
     if st.button("Send reply", key="btn_clarify") and reply:
         on_resume(reply)
+
+
+def _render_ambiguity_picker(
+    state: ARIAState, on_resume: Callable[[object], None]
+) -> None:
+    interrupt_payload = _extract_interrupt_payload(state)
+    ambiguous: dict = interrupt_payload.get("ambiguous", {})
+    st.warning("Multiple saved credentials found — please choose one per type.")
+    choices: dict[str, str] = {}
+    for cred_type, candidates in ambiguous.items():
+        options = {c["name"]: c["id"] for c in candidates}
+        chosen_name = st.selectbox(
+            f"Choose credential for **{cred_type}**",
+            list(options.keys()),
+            key=f"ambig_{cred_type}",
+        )
+        choices[cred_type] = options[chosen_name]
+    if st.button("Confirm selection", key="btn_ambig_confirm"):
+        on_resume(choices)
+
+
+def _extract_interrupt_payload(state: ARIAState) -> dict:
+    raw = state.get("__interrupt__")
+    if not raw:
+        return {}
+    if isinstance(raw, (list, tuple)) and raw:
+        raw = raw[0]
+    if hasattr(raw, "value"):
+        raw = raw.value
+    return raw if isinstance(raw, dict) else {}
 
 
 def _render_credential_banner(on_resume: Callable[[str], None]) -> None:

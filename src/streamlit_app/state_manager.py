@@ -52,7 +52,7 @@ def _empty_aria_state() -> ARIAState:
 
 
 AppPhase = Literal["idle", "preflight", "build_cycle", "done"]
-InterruptType = Literal["clarify", "credential", "hitl_escalation"]
+InterruptType = Literal["clarify", "credential", "credential_ambiguity", "hitl_escalation"]
 
 
 class SessionState:
