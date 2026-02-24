@@ -38,7 +38,7 @@ def _needs_credentials(state: ARIAState) -> str:
 def _build_blueprint(state: ARIAState) -> dict:
     """Emit a BuildBlueprint from the resolved preflight state."""
     blueprint: BuildBlueprint = {
-        "intent": state.get("intent", ""),
+        "intent": state.get("intent_summary") or state.get("intent", ""),
         "required_nodes": state.get("required_nodes", []),
         "credential_ids": state.get("resolved_credential_ids", {}),
         "topology": state.get("topology", {"nodes": [], "edges": [], "entry_node": "", "branch_nodes": []}),

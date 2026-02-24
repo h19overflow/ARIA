@@ -8,11 +8,13 @@ from src.agentic_system.shared.state import ARIAState, WorkflowTopology
 from src.agentic_system.preflight.schemas.orchestrator_decision import OrchestratorDecision
 from src.agentic_system.preflight.schemas.blueprint import OrchestratorOutput
 from src.agentic_system.preflight.prompts.orchestrator import ORCHESTRATOR_SYSTEM_PROMPT
+from src.agentic_system.preflight.tools import ORCHESTRATOR_TOOLS
 
 
 _agent = BaseAgent[OrchestratorDecision](
     prompt=ORCHESTRATOR_SYSTEM_PROMPT,
     schema=OrchestratorDecision,
+    tools=ORCHESTRATOR_TOOLS,
     name="PreflightOrchestrator",
 )
 
@@ -88,6 +90,7 @@ def _handle_commit(result: OrchestratorDecision) -> dict:
     fields = _extract_blueprint_fields(output)
     return {
         "orchestrator_decision": "commit",
+        "intent_summary": output.intent_summary,
         **fields,
         "messages": [HumanMessage(content=f"[Orchestrator] Plan: {output.intent_summary}")],
     }

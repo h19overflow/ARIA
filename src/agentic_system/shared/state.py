@@ -71,6 +71,9 @@ class ARIAState(TypedDict):
     topology: WorkflowTopology | None
     user_description: str
 
+    # Written by orchestrator on commit
+    intent_summary: str
+
     # Conversational orchestrator
     orchestrator_decision: str  # "clarify" | "commit"
     pending_question: str

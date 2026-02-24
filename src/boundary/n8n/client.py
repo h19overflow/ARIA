@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
 
 import httpx
 
 from src.api.settings import settings
+from src.boundary.n8n._internals import parse_credential_schema, parse_credentials
 
 
 class N8nClient:
@@ -56,13 +56,9 @@ class N8nClient:
         resp.raise_for_status()
         return resp.json()
 
-    async def update_workflow(
-        self, workflow_id: str, workflow_json: dict,
-    ) -> dict:
+    async def update_workflow(self, workflow_id: str, workflow_json: dict) -> dict:
         """PUT /api/v1/workflows/{id} -- update existing workflow."""
-        resp = await self._client.put(
-            f"/api/v1/workflows/{workflow_id}", json=workflow_json,
-        )
+        resp = await self._client.put(f"/api/v1/workflows/{workflow_id}", json=workflow_json)
         resp.raise_for_status()
         return resp.json()
 
@@ -76,19 +72,10 @@ class N8nClient:
     # -- Executions --
 
     async def trigger_webhook(
-        self, webhook_path: str, payload: dict | None = None,
-        *, test_mode: bool = False,
+        self, webhook_path: str, payload: dict | None = None, *, test_mode: bool = False,
     ) -> dict:
-        """POST to webhook trigger URL using the managed client connection.
-
-        Args:
-            webhook_path: The webhook path configured on the node.
-            payload: JSON body to send.
-            test_mode: Use /webhook-test/ (n8n UI test) vs /webhook/ (activated).
-        """
+        """POST /webhook[‑test]/{path} — use test_mode=True for n8n UI test runs."""
         prefix = "webhook-test" if test_mode else "webhook"
-        # Webhook URLs are relative to base — reuse the managed session
-        # so we don't bypass connection pooling or exhaust sockets.
         resp = await self._client.post(
             f"/{prefix}/{webhook_path}", json=payload or {}
         )
@@ -127,13 +114,37 @@ class N8nClient:
         """GET /api/v1/credentials -- list all saved credentials."""
         resp = await self._client.get("/api/v1/credentials")
         resp.raise_for_status()
+        return parse_credentials(resp.json().get("data", []))
+
+    async def get_credential_schema(self, credential_type: str) -> dict:
+        """GET /api/v1/credentials/schema/{credentialType}."""
+        resp = await self._client.get(f"/api/v1/credentials/schema/{credential_type}")
+        resp.raise_for_status()
+        return parse_credential_schema(resp.json())
+
+    async def list_credential_types(self) -> list[dict]:
+        """GET /api/v1/credentials/schema -- all available credential types."""
+        resp = await self._client.get("/api/v1/credentials/schema")
+        resp.raise_for_status()
         return resp.json().get("data", [])
 
-    async def save_credential(
-        self, credential_type: str, name: str, data: dict,
-    ) -> dict:
+    async def save_credential(self, credential_type: str, name: str, data: dict) -> dict:
         """POST /api/v1/credentials -- save a new credential."""
         payload = {"type": credential_type, "name": name, "data": data}
         resp = await self._client.post("/api/v1/credentials", json=payload)
         resp.raise_for_status()
         return resp.json()
+
+    # -- Workflows (read) --
+
+    async def get_workflow(self, workflow_id: str) -> dict:
+        """GET /api/v1/workflows/{id}."""
+        resp = await self._client.get(f"/api/v1/workflows/{workflow_id}")
+        resp.raise_for_status()
+        return resp.json()
+
+    async def list_workflows(self, limit: int = 50) -> list[dict]:
+        """GET /api/v1/workflows?limit=N."""
+        resp = await self._client.get("/api/v1/workflows", params={"limit": limit})
+        resp.raise_for_status()
+        return resp.json().get("data", [])

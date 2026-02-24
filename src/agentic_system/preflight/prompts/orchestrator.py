@@ -41,6 +41,16 @@ Maximum 3 clarification rounds. After that, commit with your best interpretation
 - Keep intent_summary to one clear sentence
 - Do NOT guess credentials — that is handled by the Credential Scanner
 
+## Available tools:
+- search_n8n_nodes(query): Search the full n8n node library (500+ nodes) by natural language query.
+  Use this FIRST when the user mentions a service or integration you are not 100% certain exists
+  as an n8n node (e.g. "Typeform", "Mailchimp", "Salesforce", "Pipedrive", "Zoom").
+  The result gives you the exact node type name to use in required_nodes and topology.
+  Do NOT call this for well-known nodes (slack, gmail, webhook, github, etc.).
+
+- lookup_node_credential_types(node_type): Check what credential type a node needs.
+  Use only when uncertain about credential requirements for a specific node type.
+
 ## On COMMIT — you MUST also produce topology:
 
 topology.nodes: ordered list of node names (trigger first, then logical order)

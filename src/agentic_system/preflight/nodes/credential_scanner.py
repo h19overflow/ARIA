@@ -1,117 +1,84 @@
-"""Pre-Flight Credential Scanner — diffs required vs saved credentials."""
+"""Pre-Flight Credential Scanner — agentic node backed by BaseAgent."""
 from __future__ import annotations
+
+import logging
 
 from langchain_core.messages import HumanMessage
 from langgraph.types import interrupt
 
+from src.agentic_system.preflight.prompts.credential_scanner import CREDENTIAL_SCANNER_SYSTEM_PROMPT
+from src.agentic_system.preflight.schemas.scanner_output import ScannerOutput
+from src.agentic_system.preflight.tools import SCANNER_TOOLS
+from src.agentic_system.shared.base_agent import BaseAgent
 from src.agentic_system.shared.state import ARIAState
-from src.agentic_system.shared.node_credential_map import get_credential_types
-from src.boundary.n8n.client import N8nClient
+
+logger = logging.getLogger(__name__)
+
+_scanner_agent: BaseAgent[ScannerOutput] = BaseAgent(
+    prompt=CREDENTIAL_SCANNER_SYSTEM_PROMPT,
+    schema=ScannerOutput,
+    tools=SCANNER_TOOLS,
+    name="CredentialScanner",
+)
 
 
 async def credential_scanner_node(state: ARIAState) -> dict:
-    """Diff required node credential types against saved n8n credentials.
+    """Scan required node types against saved n8n credentials via the agent.
 
-    Merges with already-resolved IDs from state so the saver loop terminates.
+    Calls the CredentialScanner agent, handles HITL for ambiguous credentials,
+    then returns resolved IDs, pending types, and a status message.
     """
-    required_nodes = state["required_nodes"]
-    already_resolved = dict(state.get("resolved_credential_ids", {}))
+    required_nodes: list[str] = state["required_nodes"]
+    already_resolved: dict[str, str] = dict(state.get("resolved_credential_ids", {}))
 
-    client = N8nClient()
-    await client.connect()
-    try:
-        saved = await client.list_credentials()
-    finally:
-        await client.disconnect()
+    logger.info("[CredentialScanner] Scanning %d node type(s)", len(required_nodes))
 
-    saved_by_type = _group_credentials_by_type(saved)
-    resolved, pending, ambiguous = _resolve_credentials(
-        required_nodes, saved_by_type, already_resolved,
+    user_message = HumanMessage(
+        content=f"Scan credentials for these node types: {required_nodes}"
     )
+    result: ScannerOutput = await _scanner_agent.invoke([user_message])
 
-    # HITL: ask user to pick when multiple credentials of the same type exist.
+    resolved = {**already_resolved, **result.resolved}
+    pending = result.pending
+    ambiguous = result.ambiguous
+
     if ambiguous:
-        choices: dict[str, str] = interrupt({
-            "type": "credential_ambiguity",
-            "ambiguous": {
-                cred_type: [{"id": c["id"], "name": c.get("name", c["id"])} for c in candidates]
-                for cred_type, candidates in ambiguous.items()
-            },
-            "message": (
-                "Multiple saved credentials found. "
-                "Please choose one ID per type."
-            ),
-        })
-        # choices: {cred_type: credential_id}
-        for cred_type, cred_id in choices.items():
-            resolved[cred_type] = cred_id
+        resolved = _apply_hitl_choices(resolved, ambiguous)
+        pending = [t for t in pending if t not in resolved]
 
-    messages = []
-    if pending:
-        messages.append(HumanMessage(
-            content=f"[Scanner] Missing credentials for: {', '.join(pending)}"
-        ))
-    elif ambiguous:
-        messages.append(HumanMessage(
-            content=f"[Scanner] Ambiguous credentials for: {', '.join(ambiguous)}"
-        ))
-    else:
-        messages.append(HumanMessage(content="[Scanner] All credentials resolved."))
+    status_msg = _build_status_message(pending, ambiguous, result.summary)
+    logger.info("[CredentialScanner] %s", result.summary)
 
     return {
         "resolved_credential_ids": resolved,
         "pending_credential_types": pending,
-        "messages": messages,
+        "messages": [HumanMessage(content=status_msg)],
     }
 
 
-def _group_credentials_by_type(credentials: list[dict]) -> dict[str, list[dict]]:
-    """Group saved credentials by their type field."""
-    grouped: dict[str, list[dict]] = {}
-    for cred in credentials:
-        cred_type = cred.get("type", "")
-        grouped.setdefault(cred_type, []).append(cred)
-    return grouped
+def _apply_hitl_choices(
+    resolved: dict[str, str],
+    ambiguous: dict[str, list[dict]],
+) -> dict[str, str]:
+    """Interrupt to let the user pick one credential per ambiguous type."""
+    choices: dict[str, str] = interrupt({
+        "type": "credential_ambiguity",
+        "ambiguous": {
+            cred_type: [{"id": c["id"], "name": c.get("name", c["id"])} for c in candidates]
+            for cred_type, candidates in ambiguous.items()
+        },
+        "message": "Multiple saved credentials found. Please choose one ID per type.",
+    })
+    return {**resolved, **choices}
 
 
-def _resolve_credentials(
-    required_nodes: list[str],
-    saved_by_type: dict[str, list[dict]],
-    already_resolved: dict[str, str],
-) -> tuple[dict[str, str], list[str], dict[str, list[dict]]]:
-    """Match required nodes to saved credentials.
-
-    Returns (resolved, pending, ambiguous):
-    - resolved: cred_type -> id (single match or already resolved)
-    - pending: cred_types with no saved credentials at all
-    - ambiguous: cred_type -> [candidate list] when >1 match exists
-    """
-    resolved: dict[str, str] = dict(already_resolved)
-    pending: list[str] = []
-    ambiguous: dict[str, list[dict]] = {}
-
-    for node_type in required_nodes:
-        cred_types = get_credential_types(node_type)
-        if not cred_types:
-            continue  # Node needs no credential
-
-        # Skip if any credential type for this node is already resolved
-        if any(ct in resolved for ct in cred_types):
-            continue
-
-        found = False
-        for cred_type in cred_types:
-            candidates = saved_by_type.get(cred_type, [])
-            if len(candidates) == 1:
-                resolved[cred_type] = candidates[0]["id"]
-                found = True
-                break
-            if len(candidates) > 1:
-                ambiguous[cred_type] = candidates
-                found = True
-                break
-
-        if not found:
-            pending.append(cred_types[0])  # Request first option
-
-    return resolved, pending, ambiguous
+def _build_status_message(
+    pending: list[str],
+    ambiguous: dict[str, list[dict]],
+    summary: str,
+) -> str:
+    if pending:
+        return f"[Scanner] Missing credentials for: {', '.join(pending)}"
+    if ambiguous:
+        return f"[Scanner] Ambiguous credentials for: {', '.join(ambiguous)}"
+    return f"[Scanner] All credentials resolved. {summary}"
