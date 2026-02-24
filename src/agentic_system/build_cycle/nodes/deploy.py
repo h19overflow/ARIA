@@ -12,13 +12,16 @@ async def deploy_node(state: ARIAState) -> dict:
     workflow_json = state["workflow_json"]
     existing_id = state.get("n8n_workflow_id")
 
+    # Strip read-only fields before sending to n8n API
+    payload = {k: v for k, v in workflow_json.items() if k != "id"}
+
     client = N8nClient()
     await client.connect()
     try:
         if existing_id:
-            result = await client.update_workflow(existing_id, workflow_json)
+            result = await client.update_workflow(existing_id, payload)
         else:
-            result = await client.deploy_workflow(workflow_json)
+            result = await client.deploy_workflow(payload)
     finally:
         await client.disconnect()
 

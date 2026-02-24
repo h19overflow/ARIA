@@ -1,0 +1,132 @@
+{
+  "results": [
+    {
+      "service": "n8n",
+      "tests": [
+        {
+          "name": "list_credentials",
+          "status": "pass",
+          "detail": "Found 1 credentials",
+          "data": [
+            {
+              "id": "KOKhJmSDx3917VQG",
+              "type": "httpBasicAuth",
+              "name": "test-basic-auth"
+            }
+          ]
+        },
+        {
+          "name": "deploy_workflow",
+          "status": "pass",
+          "detail": "Deployed workflow ID: BXLqB8rrwYfhGqXA"
+        },
+        {
+          "name": "activate_workflow",
+          "status": "pass",
+          "detail": "Activated: True"
+        },
+        {
+          "name": "trigger_webhook",
+          "status": "fail",
+          "detail": "Client error '404 Not Found' for url 'http://localhost:5678/webhook/aria-boundary-test'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+        },
+        {
+          "name": "poll_execution",
+          "status": "fail",
+          "detail": "Execution for workflow BXLqB8rrwYfhGqXA did not complete in 10.0s"
+        },
+        {
+          "name": "cleanup_workflow",
+          "status": "pass",
+          "detail": "Deactivated and deleted BXLqB8rrwYfhGqXA"
+        }
+      ]
+    },
+    {
+      "service": "chromadb",
+      "tests": [
+        {
+          "name": "semantic_search",
+          "status": "pass",
+          "detail": "Found 3 results for 'webhook trigger'",
+          "data": [
+            {
+              "score": 0.6458,
+              "doc_type": "node",
+              "preview": "Node: Webhook node. Use the Webhook node to createwebhooks, which can receive data from apps and ser"
+            },
+            {
+              "score": 0.5909,
+              "doc_type": "node",
+              "preview": "Node: LoneScale Trigger node. Use the LoneScale Trigger node to respond to workflow events inLoneSca"
+            },
+            {
+              "score": 0.583,
+              "doc_type": "node",
+              "preview": "Node: Facebook Trigger Application object. Use this object to receive updates sent to a specific app"
+            }
+          ]
+        },
+        {
+          "name": "filtered_search_node",
+          "status": "pass",
+          "detail": "Found 3 node docs for 'slack send message'",
+          "data": [
+            {
+              "score": 0.5731,
+              "preview": "Node: Twake node. Use the Twake node to automate work in Twake, and integrate Twake with other appli"
+            },
+            {
+              "score": 0.5727,
+              "preview": "Node: Telegram node Message operations. Use these operations to send, edit, and delete messages in a"
+            },
+            {
+              "score": 0.5724,
+              "preview": "Node: Slack node. Use the Slack node to automate work in Slack, and integrate Slack with other appli"
+            }
+          ]
+        },
+        {
+          "name": "hybrid_search",
+          "status": "pass",
+          "detail": "Found 3 hybrid results for 'gmail email send'",
+          "data": [
+            {
+              "score": 0.016261,
+              "preview": "Node: Send Email. The Send Email node sends emails using an SMTP email server."
+            },
+            {
+              "score": 0.016009,
+              "preview": "Node: Gmail Trigger node. Gmailis an email service developed by Google. The Gmail Trigger node can s"
+            },
+            {
+              "score": 0.015207,
+              "preview": "Node: Gmail node. Use the Gmail node to automate work in Gmail, and integrate Gmail with other appli"
+            }
+          ]
+        },
+        {
+          "name": "node_lookup_webhook",
+          "status": "pass",
+          "detail": "Found template for webhook"
+        },
+        {
+          "name": "node_lookup_slack",
+          "status": "pass",
+          "detail": "Found template for slack"
+        },
+        {
+          "name": "node_lookup_httpRequest",
+          "status": "pass",
+          "detail": "Found template for httpRequest"
+        },
+        {
+          "name": "node_lookup_telegram",
+          "status": "pass",
+          "detail": "Found template for telegram"
+        }
+      ]
+    }
+  ],
+  "timestamp": "20260224_115210"
+}

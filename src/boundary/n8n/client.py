@@ -77,13 +77,23 @@ class N8nClient:
 
     async def trigger_webhook(
         self, webhook_path: str, payload: dict | None = None,
+        *, test_mode: bool = False,
     ) -> dict:
-        """POST to webhook trigger URL. Returns n8n's immediate response."""
-        url = f"{self._base}/webhook-test/{webhook_path}"
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(url, json=payload or {})
-            resp.raise_for_status()
-            return resp.json()
+        """POST to webhook trigger URL using the managed client connection.
+
+        Args:
+            webhook_path: The webhook path configured on the node.
+            payload: JSON body to send.
+            test_mode: Use /webhook-test/ (n8n UI test) vs /webhook/ (activated).
+        """
+        prefix = "webhook-test" if test_mode else "webhook"
+        # Webhook URLs are relative to base — reuse the managed session
+        # so we don't bypass connection pooling or exhaust sockets.
+        resp = await self._client.post(
+            f"/{prefix}/{webhook_path}", json=payload or {}
+        )
+        resp.raise_for_status()
+        return resp.json()
 
     async def poll_execution(
         self,

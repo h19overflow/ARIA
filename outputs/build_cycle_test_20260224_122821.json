@@ -1,0 +1,84 @@
+{
+  "results": [
+    {
+      "scenario": "Simple Webhook Echo",
+      "elapsed_seconds": 37.0,
+      "status": "done",
+      "webhook_url": "http://localhost:5678/webhook/webhook",
+      "workflow_id": "n171tD3N1M8gzpa0",
+      "execution_id": "11",
+      "execution_result_status": "success",
+      "fix_attempts": 0,
+      "classified_error": null,
+      "workflow_json": {
+        "name": "Immediate Webhook Acknowledgment",
+        "nodes": [
+          {
+            "id": "0776e681-a844-4b83-b829-de1a52b61f92",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "parameters": {
+              "httpMethod": "POST",
+              "path": "webhook",
+              "responseMode": "onReceived",
+              "options": {}
+            },
+            "position": [
+              0,
+              300
+            ],
+            "typeVersion": 1,
+            "webhookId": "166cbb7f-8fa1-4e16-ab1e-3b9154ff939e"
+          }
+        ],
+        "connections": {},
+        "settings": {
+          "executionOrder": "v1"
+        }
+      },
+      "message_count": 1,
+      "cleanup": "Deleted workflow n171tD3N1M8gzpa0",
+      "test_status": "pass"
+    },
+    {
+      "scenario": "Webhook to HTTP Request",
+      "elapsed_seconds": 13.3,
+      "status": "done",
+      "webhook_url": "http://localhost:5678/webhook/webhook",
+      "workflow_id": "70lh1v0crrXW0lKT",
+      "execution_id": "12",
+      "execution_result_status": "success",
+      "fix_attempts": 0,
+      "classified_error": null,
+      "workflow_json": {
+        "name": "Webhook to HTTP POST",
+        "nodes": [
+          {
+            "id": "bd333563-358a-4c16-84f6-ca03d0e657ee",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "parameters": {
+              "httpMethod": "POST",
+              "path": "webhook",
+              "options": {}
+            },
+            "position": [
+              0,
+              300
+            ],
+            "typeVersion": 1,
+            "webhookId": "f214553f-e17a-483c-bb7b-18c6204aac56"
+          }
+        ],
+        "connections": {},
+        "settings": {
+          "executionOrder": "v1"
+        }
+      },
+      "message_count": 1,
+      "cleanup": "Deleted workflow 70lh1v0crrXW0lKT",
+      "test_status": "pass"
+    }
+  ],
+  "timestamp": "20260224_122821"
+}

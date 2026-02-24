@@ -1,0 +1,127 @@
+{
+  "runs": [
+    {
+      "scenario": "Slack Notifier",
+      "intent": "When I get a webhook, send a Slack message to #general",
+      "status": "done",
+      "webhook_url": "http://localhost:5678/webhook/aria-test",
+      "workflow_id": "wf_mock_12345",
+      "nodes_planned": [
+        "webhook",
+        "slack"
+      ],
+      "blueprint": {
+        "intent": "When I get a webhook, send a Slack message to #general",
+        "required_nodes": [
+          "webhook",
+          "slack"
+        ],
+        "credential_ids": {
+          "slack_cred": "cred_slack_001"
+        }
+      },
+      "error": null,
+      "message_count": 8
+    },
+    {
+      "scenario": "Telegram Bot",
+      "intent": "Forward incoming webhooks to my Telegram bot",
+      "status": "done",
+      "webhook_url": "http://localhost:5678/webhook/aria-test",
+      "workflow_id": "wf_mock_12345",
+      "nodes_planned": [
+        "webhook",
+        "telegram"
+      ],
+      "blueprint": {
+        "intent": "Forward incoming webhooks to my Telegram bot",
+        "required_nodes": [
+          "webhook",
+          "telegram"
+        ],
+        "credential_ids": {
+          "telegram_cred": "cred_telegram_001"
+        }
+      },
+      "error": null,
+      "message_count": 8
+    },
+    {
+      "scenario": "Email Alert",
+      "intent": "Send an email via Gmail when a webhook fires",
+      "status": "done",
+      "webhook_url": "http://localhost:5678/webhook/aria-test",
+      "workflow_id": "wf_mock_12345",
+      "nodes_planned": [
+        "webhook",
+        "gmail"
+      ],
+      "blueprint": {
+        "intent": "Send an email via Gmail when a webhook fires",
+        "required_nodes": [
+          "webhook",
+          "gmail"
+        ],
+        "credential_ids": {
+          "gmail_cred": "cred_gmail_001"
+        }
+      },
+      "error": null,
+      "message_count": 8
+    },
+    {
+      "scenario": "Sheet Logger",
+      "intent": "Log webhook data to a Google Sheets spreadsheet",
+      "status": "done",
+      "webhook_url": "http://localhost:5678/webhook/aria-test",
+      "workflow_id": "wf_mock_12345",
+      "nodes_planned": [
+        "webhook",
+        "googleSheets"
+      ],
+      "blueprint": {
+        "intent": "Log webhook data to a Google Sheets spreadsheet",
+        "required_nodes": [
+          "webhook",
+          "googleSheets"
+        ],
+        "credential_ids": {
+          "googleSheets_cred": "cred_googleSheets_001"
+        }
+      },
+      "error": null,
+      "message_count": 8
+    },
+    {
+      "scenario": "Slack Notifier (auth failure)",
+      "intent": "When I get a webhook, send a Slack message to #general",
+      "status": "failed",
+      "webhook_url": null,
+      "workflow_id": "wf_mock_12345",
+      "nodes_planned": [
+        "webhook",
+        "slack"
+      ],
+      "blueprint": {
+        "intent": "When I get a webhook, send a Slack message to #general",
+        "required_nodes": [
+          "webhook",
+          "slack"
+        ],
+        "credential_ids": {
+          "slack_cred": "cred_slack_001"
+        }
+      },
+      "error": {
+        "type": "auth",
+        "node_name": "Slack",
+        "message": "Invalid authentication token",
+        "description": "The Slack OAuth token has expired",
+        "line_number": null,
+        "stack": null
+      },
+      "message_count": 7
+    }
+  ],
+  "timestamp": "20260223_212900"
+}

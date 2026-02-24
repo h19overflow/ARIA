@@ -1,4 +1,4 @@
-"""Build Cycle Test — trigger webhook and poll execution result."""
+"""Build Cycle Test — activate, trigger webhook, poll, deactivate on failure."""
 from __future__ import annotations
 
 from langchain_core.messages import HumanMessage
@@ -8,7 +8,7 @@ from src.boundary.n8n.client import N8nClient
 
 
 async def test_node(state: ARIAState) -> dict:
-    """Fire webhook trigger, poll until execution completes."""
+    """Activate workflow, fire webhook, poll result, deactivate on failure."""
     workflow_id = state["n8n_workflow_id"]
     workflow_json = state["workflow_json"]
     webhook_path = _extract_webhook_path(workflow_json)
@@ -16,21 +16,52 @@ async def test_node(state: ARIAState) -> dict:
     client = N8nClient()
     await client.connect()
     try:
+        await client.activate_workflow(workflow_id)
         await client.trigger_webhook(webhook_path, payload={"test": True})
         execution = await client.poll_execution(workflow_id, timeout=30.0)
+        exec_result = _parse_execution(execution)
+        if exec_result["status"] != "success":
+            await _safe_deactivate(client, workflow_id)
+    except Exception as e:
+        await _safe_deactivate(client, workflow_id)
+        return _error_result(str(e))
     finally:
         await client.disconnect()
 
-    exec_result = _parse_execution(execution)
-    status = "done" if exec_result["status"] == "success" else "fixing"
-
+    is_success = exec_result["status"] == "success"
     return {
         "execution_result": exec_result,
         "n8n_execution_id": execution.get("id", ""),
-        "status": status,
+        "status": "done" if is_success else "fixing",
         "messages": [HumanMessage(
             content=f"[Test] Execution {exec_result['status']}: {execution.get('id', 'unknown')}"
         )],
+    }
+
+
+async def _safe_deactivate(client: N8nClient, workflow_id: str) -> None:
+    """Deactivate workflow, swallowing errors."""
+    try:
+        await client.deactivate_workflow(workflow_id)
+    except Exception:
+        pass
+
+
+def _error_result(error_msg: str) -> dict:
+    """Build a failure return dict from a caught exception.
+
+    Error type is left as None so the Debugger agent classifies it from
+    the raw message rather than inheriting a hardcoded assumption.
+    """
+    return {
+        "execution_result": ExecutionResult(
+            status="error", execution_id="", data=None,
+            error={"type": None, "node_name": "unknown",
+                   "message": error_msg, "description": None,
+                   "line_number": None, "stack": None},
+        ),
+        "status": "fixing",
+        "messages": [HumanMessage(content=f"[Test] Error: {error_msg}")],
     }
 
 
@@ -59,13 +90,17 @@ def _parse_execution(execution: dict) -> ExecutionResult:
 
 
 def _extract_error_from_rundata(run_data: dict) -> dict | None:
-    """Find the failing node in runData and extract error info."""
+    """Find the failing node in runData and extract raw error info.
+
+    Type is intentionally left as None — the Debugger agent classifies it
+    from the message and stack so routing reflects the actual error category.
+    """
     for node_name, entries in run_data.items():
         for entry in entries:
             if entry.get("executionStatus") == "error":
                 err = entry.get("error", {})
                 return {
-                    "type": "schema",
+                    "type": None,
                     "node_name": node_name,
                     "message": err.get("message", "Unknown error"),
                     "description": err.get("description"),

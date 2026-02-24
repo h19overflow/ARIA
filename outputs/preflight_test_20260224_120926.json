@@ -1,0 +1,148 @@
+{
+  "results": [
+    {
+      "intent": "When I get a webhook, send a Slack message to #general",
+      "status": "building",
+      "required_nodes": [
+        "webhook",
+        "slack"
+      ],
+      "resolved_credential_ids": {
+        "slackApi": "__MISSING__"
+      },
+      "pending_credential_types": [],
+      "build_blueprint": {
+        "intent": "When I get a webhook, send a Slack message to #general",
+        "required_nodes": [
+          "webhook",
+          "slack"
+        ],
+        "credential_ids": {
+          "slackApi": "__MISSING__"
+        }
+      },
+      "message_count": 4,
+      "messages_preview": [
+        "[Scanner] Missing credentials for: slackApi",
+        "[Saver] WARNING: Missing credentials for: slackApi. Proceeding without them (HITL not yet implemente",
+        "[Scanner] All credentials resolved."
+      ],
+      "test_status": "pass"
+    },
+    {
+      "intent": "Forward incoming webhooks to my Telegram bot",
+      "status": "building",
+      "required_nodes": [
+        "webhook",
+        "telegram"
+      ],
+      "resolved_credential_ids": {
+        "telegramApi": "cysAbsaVQGmyfiTK"
+      },
+      "pending_credential_types": [],
+      "build_blueprint": {
+        "intent": "Forward incoming webhooks to my Telegram bot",
+        "required_nodes": [
+          "webhook",
+          "telegram"
+        ],
+        "credential_ids": {
+          "telegramApi": "cysAbsaVQGmyfiTK"
+        }
+      },
+      "message_count": 2,
+      "messages_preview": [
+        "[Orchestrator] Plan: Forward incoming webhooks to a Telegram bot",
+        "[Scanner] All credentials resolved."
+      ],
+      "test_status": "pass"
+    },
+    {
+      "intent": "Send an email via Gmail when a webhook fires",
+      "status": "building",
+      "required_nodes": [
+        "webhook",
+        "gmail"
+      ],
+      "resolved_credential_ids": {
+        "googleApi": "__MISSING__"
+      },
+      "pending_credential_types": [],
+      "build_blueprint": {
+        "intent": "Send an email via Gmail when a webhook fires",
+        "required_nodes": [
+          "webhook",
+          "gmail"
+        ],
+        "credential_ids": {
+          "googleApi": "__MISSING__"
+        }
+      },
+      "message_count": 4,
+      "messages_preview": [
+        "[Scanner] Missing credentials for: googleApi",
+        "[Saver] WARNING: Missing credentials for: googleApi. Proceeding without them (HITL not yet implement",
+        "[Scanner] All credentials resolved."
+      ],
+      "test_status": "pass"
+    },
+    {
+      "intent": "Log webhook data to a Google Sheets spreadsheet",
+      "status": "building",
+      "required_nodes": [
+        "webhook",
+        "googleSheets"
+      ],
+      "resolved_credential_ids": {
+        "googleApi": "__MISSING__"
+      },
+      "pending_credential_types": [],
+      "build_blueprint": {
+        "intent": "Log webhook data to a Google Sheets spreadsheet",
+        "required_nodes": [
+          "webhook",
+          "googleSheets"
+        ],
+        "credential_ids": {
+          "googleApi": "__MISSING__"
+        }
+      },
+      "message_count": 4,
+      "messages_preview": [
+        "[Scanner] Missing credentials for: googleApi",
+        "[Saver] WARNING: Missing credentials for: googleApi. Proceeding without them (HITL not yet implement",
+        "[Scanner] All credentials resolved."
+      ],
+      "test_status": "pass"
+    },
+    {
+      "intent": "When I receive a webhook, make an HTTP request to an external API",
+      "status": "building",
+      "required_nodes": [
+        "webhook",
+        "httpRequest"
+      ],
+      "resolved_credential_ids": {
+        "httpBasicAuth": "KOKhJmSDx3917VQG"
+      },
+      "pending_credential_types": [],
+      "build_blueprint": {
+        "intent": "When I receive a webhook, make an HTTP request to an external API",
+        "required_nodes": [
+          "webhook",
+          "httpRequest"
+        ],
+        "credential_ids": {
+          "httpBasicAuth": "KOKhJmSDx3917VQG"
+        }
+      },
+      "message_count": 2,
+      "messages_preview": [
+        "[Orchestrator] Plan: Trigger a workflow via webhook to make an HTTP request to an external API.",
+        "[Scanner] All credentials resolved."
+      ],
+      "test_status": "pass"
+    }
+  ],
+  "timestamp": "20260224_120926"
+}

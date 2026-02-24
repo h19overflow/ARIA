@@ -1,0 +1,59 @@
+{
+  "results": [
+    {
+      "intent": "When I receive a webhook, respond with a JSON success message",
+      "elapsed_seconds": 75.8,
+      "status": "done",
+      "required_nodes": [
+        "webhook"
+      ],
+      "build_blueprint": {
+        "intent": "When I receive a webhook, respond with a JSON success message",
+        "required_nodes": [
+          "webhook"
+        ],
+        "credential_ids": {}
+      },
+      "webhook_url": "http://localhost:5678/webhook/webhook",
+      "workflow_id": "To08w7bZCnK4rEaE",
+      "execution_status": "success",
+      "fix_attempts": 0,
+      "classified_error": null,
+      "workflow_json": {
+        "name": "Webhook to JSON Response Workflow",
+        "nodes": [
+          {
+            "id": "3b0b1a4e-47f6-42f3-8079-a63abab993aa",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "parameters": {
+              "path": "webhook",
+              "httpMethod": "POST",
+              "responseMode": "lastNode",
+              "options": {}
+            },
+            "position": [
+              0,
+              300
+            ],
+            "typeVersion": 1,
+            "webhookId": "05fac475-c025-4268-a99c-25698cb62614"
+          }
+        ],
+        "connections": {},
+        "settings": {
+          "executionOrder": "v1"
+        }
+      },
+      "cleanup": "Deleted To08w7bZCnK4rEaE",
+      "test_status": "pass"
+    },
+    {
+      "intent": "When I get a webhook, forward the data as an HTTP POST to httpbin.org/post",
+      "test_status": "fail",
+      "error": "Client error '400 Bad Request' for url 'http://localhost:5678/api/v1/workflows/jIxg2GB704ZMXQd8'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\User\\Projects\\ARIA\\scripts\\test_e2e_real.py\", line 129, in main\n    result = await run_e2e(intent)\n             ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\User\\Projects\\ARIA\\scripts\\test_e2e_real.py\", line 85, in run_e2e\n    async for event in graph.astream(state, config=config, stream_mode=\"updates\"):\n    ...<4 lines>...\n            final_state.update(update)\n  File \"C:\\Users\\User\\Projects\\ARIA\\.venv\\Lib\\site-packages\\langgraph\\pregel\\main.py\", line 2974, in astream\n    async for _ in runner.atick(\n    ...<13 lines>...\n            yield o\n  File \"C:\\Users\\User\\Projects\\ARIA\\.venv\\Lib\\site-packages\\langgraph\\pregel\\_runner.py\", line 304, in atick\n    await arun_with_retry(\n    ...<15 lines>...\n    )\n  File \"C:\\Users\\User\\Projects\\ARIA\\.venv\\Lib\\site-packages\\langgraph\\pregel\\_retry.py\", line 138, in arun_with_retry\n    return await task.proc.ainvoke(task.input, config)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\User\\Projects\\ARIA\\.venv\\Lib\\site-packages\\langgraph\\_internal\\_runnable.py\", line 705, in ainvoke\n    input = await asyncio.create_task(\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^\n        step.ainvoke(input, config, **kwargs), context=context\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"C:\\Users\\User\\Projects\\ARIA\\.venv\\Lib\\site-packages\\langgraph\\pregel\\main.py\", line 3161, in ainvoke\n    async for chunk in self.astream(\n    ...<29 lines>...\n            chunks.append(chunk)\n  File \"C:\\Users\\User\\Projects\\ARIA\\.venv\\Lib\\site-packages\\langgraph\\pregel\\main.py\", line 2974, in astream\n    async for _ in runner.atick(\n    ...<13 lines>...\n            yield o\n  File \"C:\\Users\\User\\Projects\\ARIA\\.venv\\Lib\\site-packages\\langgraph\\pregel\\_runner.py\", line 304, in atick\n    await arun_with_retry(\n    ...<15 lines>...\n    )\n  File \"C:\\Users\\User\\Projects\\ARIA\\.venv\\Lib\\site-packages\\langgraph\\pregel\\_retry.py\", line 138, in arun_with_retry\n    return await task.proc.ainvoke(task.input, config)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\User\\Projects\\ARIA\\.venv\\Lib\\site-packages\\langgraph\\_internal\\_runnable.py\", line 705, in ainvoke\n    input = await asyncio.create_task(\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^\n        step.ainvoke(input, config, **kwargs), context=context\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"C:\\Users\\User\\Projects\\ARIA\\.venv\\Lib\\site-packages\\langgraph\\_internal\\_runnable.py\", line 473, in ainvoke\n    ret = await self.afunc(*args, **kwargs)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\User\\Projects\\ARIA\\src\\agentic_system\\build_cycle\\nodes\\deploy.py\", line 19, in deploy_node\n    result = await client.update_workflow(existing_id, workflow_json)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\User\\Projects\\ARIA\\src\\boundary\\n8n\\client.py\", line 66, in update_workflow\n    resp.raise_for_status()\n    ~~~~~~~~~~~~~~~~~~~~~^^\n  File \"C:\\Users\\User\\Projects\\ARIA\\.venv\\Lib\\site-packages\\httpx\\_models.py\", line 829, in raise_for_status\n    raise HTTPStatusError(message, request=request, response=self)\nhttpx.HTTPStatusError: Client error '400 Bad Request' for url 'http://localhost:5678/api/v1/workflows/jIxg2GB704ZMXQd8'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400\nDuring task with name 'deploy' and id '5acea354-ec8b-7169-d0af-9e395f43dd11'\nDuring task with name 'build_cycle' and id '830ca2fb-1aa4-12f4-4acc-ad9b3c3fa888'\n"
+    }
+  ],
+  "timestamp": "20260224_123450"
+}

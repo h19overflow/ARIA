@@ -1,0 +1,38 @@
+{
+  "demo": "ARIA HITL + Conversational Orchestrator + Incremental Build",
+  "timestamp": "20260224_123202",
+  "result": {
+    "intent": "Send a notification to Slack when I get a webhook",
+    "final_status": "planning",
+    "webhook_url": null,
+    "total_phases": 0,
+    "phase_node_map": [],
+    "workflow_nodes": 0,
+    "message_count": 7,
+    "events": [
+      {
+        "step": "initial_invoke",
+        "interrupts": 1,
+        "interrupt_payload": {
+          "type": "orchestrator_clarification",
+          "question": "Which Slack channel should messages go to?"
+        }
+      },
+      {
+        "step": "clarify_resume",
+        "interrupts": 1,
+        "interrupt_payload": {
+          "type": "credential_request",
+          "pending_types": [
+            "slackApi"
+          ],
+          "message": "Please provide credentials for: slackApi"
+        }
+      },
+      {
+        "step": "credential_resume",
+        "status": "planning"
+      }
+    ]
+  }
+}

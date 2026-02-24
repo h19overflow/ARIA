@@ -1,0 +1,51 @@
+{
+  "results": [
+    {
+      "scenario": "Simple Webhook Echo",
+      "status": "done",
+      "webhook_url": "http://localhost:5678/webhook/webhook",
+      "workflow_id": "TfCNkbkNOtJyaZas",
+      "execution_id": "6",
+      "execution_result_status": "success",
+      "fix_attempts": 0,
+      "classified_error": null,
+      "workflow_json": {
+        "name": "Webhook JSON Acknowledgment Workflow",
+        "nodes": [
+          {
+            "id": "a1bddd51-1239-49b2-a446-f0c994efecd3",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "parameters": {
+              "httpMethod": "POST",
+              "path": "webhook",
+              "responseMode": "lastNode",
+              "options": {}
+            },
+            "position": [
+              0,
+              300
+            ],
+            "typeVersion": 1,
+            "webhookId": "f05b1f87-5952-4f6f-898d-157148a2b6ba"
+          }
+        ],
+        "connections": {},
+        "settings": {
+          "executionOrder": "v1"
+        }
+      },
+      "message_count": 5,
+      "messages_preview": [
+        "[RAG] Retrieved 1 templates for 1 nodes.",
+        "[Engineer] Built workflow 'Webhook JSON Acknowledgment Workflow' with 1 nodes.",
+        "[Deploy] Workflow deployed: TfCNkbkNOtJyaZas",
+        "[Test] Execution success: 6",
+        "[Activate] Workflow live! Webhook: http://localhost:5678/webhook/webhook"
+      ],
+      "cleanup": "Deleted workflow TfCNkbkNOtJyaZas",
+      "test_status": "pass"
+    }
+  ],
+  "timestamp": "20260224_121134"
+}

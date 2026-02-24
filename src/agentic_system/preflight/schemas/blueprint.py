@@ -1,5 +1,6 @@
 """Pydantic models for the Orchestrator's structured output."""
 from pydantic import BaseModel, Field
+from src.agentic_system.shared.state import WorkflowTopology
 
 
 class OrchestratorOutput(BaseModel):
@@ -23,4 +24,10 @@ class OrchestratorOutput(BaseModel):
     )
     workflow_name: str = Field(
         description="Suggested name for the n8n workflow"
+    )
+    topology: WorkflowTopology = Field(
+        description="Directed graph of nodes and their connections"
+    )
+    user_description: str = Field(
+        description="Single sentence describing the workflow in the user's own words"
     )

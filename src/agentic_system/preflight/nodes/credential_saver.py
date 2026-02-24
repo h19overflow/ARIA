@@ -1,37 +1,43 @@
-"""Pre-Flight Credential Saver — saves user-provided credentials to n8n."""
+"""Pre-Flight Credential Saver -- interrupts for user credentials, saves to n8n."""
 from __future__ import annotations
 
 from langchain_core.messages import HumanMessage
+from langgraph.types import interrupt
 
 from src.agentic_system.shared.state import ARIAState
 from src.boundary.n8n.client import N8nClient
 
 
 async def credential_saver_node(state: ARIAState) -> dict:
-    """Save pending credentials to n8n and return opaque IDs."""
+    """Interrupt for credentials, save them to n8n, update resolved IDs."""
     pending = state.get("pending_credential_types", [])
     resolved = dict(state.get("resolved_credential_ids", {}))
 
     if not pending:
         return {"pending_credential_types": [], "resolved_credential_ids": resolved}
 
+    user_creds: dict[str, dict] = interrupt({
+        "type": "credential_request",
+        "pending_types": pending,
+        "message": f"Please provide credentials for: {', '.join(pending)}",
+    })
+
     client = N8nClient()
     await client.connect()
     try:
-        for cred_type in pending:
-            # In production, user data comes from HITL interrupt
-            # Here we create a placeholder that the demo can mock
-            result = await client.save_credential(
-                credential_type=cred_type,
-                name=f"aria-{cred_type}",
-                data={},
-            )
+        for cred_type, cred_data in user_creds.items():
+            result = await client.save_credential(cred_type, cred_type, cred_data)
             resolved[cred_type] = result["id"]
     finally:
         await client.disconnect()
 
+    saved_types = list(user_creds.keys())
+    remaining = [p for p in pending if p not in saved_types]
+
     return {
         "resolved_credential_ids": resolved,
-        "pending_credential_types": [],
-        "messages": [HumanMessage(content=f"[Saver] Saved {len(pending)} credentials.")],
+        "pending_credential_types": remaining,
+        "messages": [HumanMessage(
+            content=f"[Saver] Saved credentials for: {', '.join(saved_types)}",
+        )],
     }

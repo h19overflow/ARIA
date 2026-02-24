@@ -1,0 +1,17 @@
+{
+  "results": [
+    {
+      "intent": "When I receive a webhook, respond with a JSON success message",
+      "test_status": "fail",
+      "error": "Checkpointer requires one or more of the following 'configurable' keys: thread_id, checkpoint_ns, checkpoint_id",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\User\\Projects\\ARIA\\scripts\\test_e2e_real.py\", line 126, in main\n    result = await run_e2e(intent)\n             ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\User\\Projects\\ARIA\\scripts\\test_e2e_real.py\", line 82, in run_e2e\n    async for event in graph.astream(state, stream_mode=\"updates\"):\n    ...<4 lines>...\n            final_state.update(update)\n  File \"C:\\Users\\User\\Projects\\ARIA\\.venv\\Lib\\site-packages\\langgraph\\pregel\\main.py\", line 2811, in astream\n    ) = self._defaults(\n        ~~~~~~~~~~~~~~^\n        config,\n        ^^^^^^^\n    ...<5 lines>...\n        durability=durability,\n        ^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"C:\\Users\\User\\Projects\\ARIA\\.venv\\Lib\\site-packages\\langgraph\\pregel\\main.py\", line 2382, in _defaults\n    raise ValueError(\n    ...<2 lines>...\n    )\nValueError: Checkpointer requires one or more of the following 'configurable' keys: thread_id, checkpoint_ns, checkpoint_id\n"
+    },
+    {
+      "intent": "When I get a webhook, forward the data as an HTTP POST to httpbin.org/post",
+      "test_status": "fail",
+      "error": "Checkpointer requires one or more of the following 'configurable' keys: thread_id, checkpoint_ns, checkpoint_id",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\User\\Projects\\ARIA\\scripts\\test_e2e_real.py\", line 126, in main\n    result = await run_e2e(intent)\n             ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\User\\Projects\\ARIA\\scripts\\test_e2e_real.py\", line 82, in run_e2e\n    async for event in graph.astream(state, stream_mode=\"updates\"):\n    ...<4 lines>...\n            final_state.update(update)\n  File \"C:\\Users\\User\\Projects\\ARIA\\.venv\\Lib\\site-packages\\langgraph\\pregel\\main.py\", line 2811, in astream\n    ) = self._defaults(\n        ~~~~~~~~~~~~~~^\n        config,\n        ^^^^^^^\n    ...<5 lines>...\n        durability=durability,\n        ^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"C:\\Users\\User\\Projects\\ARIA\\.venv\\Lib\\site-packages\\langgraph\\pregel\\main.py\", line 2382, in _defaults\n    raise ValueError(\n    ...<2 lines>...\n    )\nValueError: Checkpointer requires one or more of the following 'configurable' keys: thread_id, checkpoint_ns, checkpoint_id\n"
+    }
+  ],
+  "timestamp": "20260224_123050"
+}

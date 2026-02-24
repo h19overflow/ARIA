@@ -26,4 +26,16 @@ dependencies = [
     "google-genai>=1.0.0",
     "rank-bm25>=0.2.2",
     "langchain-community>=0.4.1",
+    # Streamlit Dev Console
+    "streamlit>=1.32",
+    "graphviz>=0.20",
+    "nest-asyncio>=1.6",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+markers = [
+    "unit: pure unit tests (no external calls)",
+    "integration: tests that cross module boundaries",
+    "e2e: end-to-end workflow tests",
 ]
