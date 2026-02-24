@@ -1,39 +1,43 @@
 from __future__ import annotations
 
-from typing import Any, AsyncIterator, Type, TypeVar
+from typing import Any, AsyncIterator, Generic, Type, TypeVar, Union
 
 from langchain.agents import create_agent
-from langchain_core.messages import AIMessageChunk, BaseMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from src.api.settings import settings
 
 S = TypeVar("S", bound=BaseModel)
 
+# Transient errors worth retrying on Gemini
+_RETRYABLE = (TimeoutError, ConnectionError, OSError)
 
-class BaseAgent:
+
+class BaseAgent(Generic[S]):
     """
     Wrapper around langchain.agents.create_agent backed by ChatGoogleGenerativeAI.
 
-    Hides model construction, tool binding, and structured-output wiring.
+    Hides model construction, tool binding, structured-output wiring, and retries.
     Every agent in preflight/ and build_cycle/ inherits from this.
 
     Usage
     -----
+    Plain invoke (returns AIMessage or parsed schema instance):
+        msg = await agent.invoke(messages)
+
     Streaming tokens:
         async for token in agent.stream(messages): ...
 
-    Streaming all events (tool calls, sub-chain steps, etc.):
+    Streaming all graph events (tool calls, sub-chain steps, etc.):
         async for event in agent.stream_events(messages): ...
 
-    Structured response:
-        result: MySchema = await agent.structured(messages, MySchema)
-
-    Plain invoke:
-        msg = await agent.invoke(messages)
+    Passing extra state keys:
+        override _build_input() in subclass to inject workflow_id etc.
     """
 
     def __init__(
@@ -45,9 +49,13 @@ class BaseAgent:
         thinking_budget: int | None = None,
         max_tokens: int | None = None,
         temperature: float = 1.0,
+        name: str | None = None,
+        max_retries: int = 3,
     ) -> None:
         self._system_prompt = prompt
         self._output_schema = schema
+        self._max_retries = max_retries
+        self.name = name or self.__class__.__name__
 
         model = ChatGoogleGenerativeAI(
             model=settings.gemini_model,
@@ -62,12 +70,29 @@ class BaseAgent:
             tools=tools or [],
             system_prompt=prompt,
             response_format=schema,
+            name=self.name,
         )
 
     # ── Internal ──────────────────────────────────────────────────────────
 
-    def _wrap_input(self, messages: list[BaseMessage]) -> dict[str, Any]:
-        return {"messages": messages}
+    def _build_input(
+        self, messages: list[BaseMessage], **kwargs: Any
+    ) -> dict[str, Any]:
+        """
+        Build the graph input dict.
+
+        Override in subclasses to inject extra state keys
+        (e.g. workflow_id, run_context) alongside messages.
+        """
+        return {"messages": messages, **kwargs}
+
+    def _make_retry(self) -> Any:
+        return retry(
+            retry=retry_if_exception_type(_RETRYABLE),
+            wait=wait_exponential(multiplier=1, min=1, max=10),
+            stop=stop_after_attempt(self._max_retries),
+            reraise=True,
+        )
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -75,33 +100,58 @@ class BaseAgent:
         self,
         messages: list[BaseMessage],
         config: RunnableConfig | None = None,
-    ) -> Any:
-        """Single call. Returns last AIMessage or structured_response if schema set."""
-        result = await self._agent.ainvoke(self._wrap_input(messages), config=config)
-        if self._output_schema:
-            return result.get("structured_response")
-        return result["messages"][-1]
+        **kwargs: Any,
+    ) -> Union[S, AIMessage]:
+        """
+        Single call.
+
+        Returns the parsed schema instance (S) if a schema was set at
+        construction, otherwise the last AIMessage.
+        """
+
+        @self._make_retry()
+        async def _call() -> Union[S, AIMessage]:
+            result = await self._agent.ainvoke(
+                self._build_input(messages, **kwargs), config=config
+            )
+            if self._output_schema:
+                return result.get("structured_response")
+            return result["messages"][-1]
+
+        return await _call()
 
     async def stream(
         self,
         messages: list[BaseMessage],
         config: RunnableConfig | None = None,
-    ) -> AsyncIterator[str]:
-        """Yield raw text tokens as they arrive."""
+        include_tool_events: bool = False,
+        **kwargs: Any,
+    ) -> AsyncIterator[str | dict[str, Any]]:
+        """
+        Yield content tokens as they arrive.
+
+        By default yields only text strings (str).
+        Set include_tool_events=True to also yield tool-call dicts:
+            {"type": "tool_start", "name": ..., "args": ...}
+            {"type": "tool_chunk", "chunks": [...]}
+        """
         async for _, data in self._agent.astream(
-            self._wrap_input(messages),
+            self._build_input(messages, **kwargs),
             config=config,
             stream_mode="messages",
         ):
             token: AIMessageChunk = data[0]
             if token.content:
                 yield token.content
+            elif include_tool_events and token.tool_call_chunks:
+                yield {"type": "tool_chunk", "chunks": token.tool_call_chunks}
 
     async def stream_events(
         self,
         messages: list[BaseMessage],
         config: RunnableConfig | None = None,
         include_types: list[str] | None = None,
+        **kwargs: Any,
     ) -> AsyncIterator[dict[str, Any]]:
         """
         Yield LangChain stream events (v2) from the agent graph.
@@ -112,12 +162,12 @@ class BaseAgent:
           on_tool_end           → data["output"]         (tool result)
           on_chat_model_end     → data["output"]         (full message)
         """
-        kwargs: dict[str, Any] = {"version": "v2"}
+        stream_kwargs: dict[str, Any] = {"version": "v2"}
         if include_types:
-            kwargs["include_types"] = include_types
+            stream_kwargs["include_types"] = include_types
 
         async for event in self._agent.astream_events(
-            self._wrap_input(messages), config=config, **kwargs
+            self._build_input(messages, **kwargs), config=config, **stream_kwargs
         ):
             yield event
 
