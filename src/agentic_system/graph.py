@@ -63,24 +63,31 @@ class ARIAPipeline:
 
     async def resume_preflight(
         self,
-        resume_value: str,
+        resume_value: object,
         config: dict,
     ) -> ARIAState:
-        """Resume a preflight graph that is paused at an interrupt."""
+        """Resume a preflight graph that is paused at an interrupt.
+
+        For clarify interrupts: pass the user's answer string.
+        For credential interrupts: pass {} (user already set up creds in n8n).
+        LangGraph resume uses Command(resume=value) via None input.
+        """
+        from langgraph.types import Command  # noqa: PLC0415
         result = await self._preflight.ainvoke(
-            {"messages": [("human", resume_value)]},
+            Command(resume=resume_value),
             config=config,
         )
         return result
 
     async def resume_build_cycle(
         self,
-        resume_value: str,
+        resume_value: object,
         config: dict,
     ) -> ARIAState:
         """Resume a build cycle graph that is paused at HITL escalation."""
+        from langgraph.types import Command  # noqa: PLC0415
         result = await self._build_cycle.ainvoke(
-            {"messages": [("human", resume_value)]},
+            Command(resume=resume_value),
             config=config,
         )
         return result

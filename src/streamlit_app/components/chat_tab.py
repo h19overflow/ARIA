@@ -104,11 +104,14 @@ def _render_preflight_done_banner() -> None:
 
 
 def _render_escalation_banner(on_resume: Callable[[str], None]) -> None:
-    st.error("Build escalated — manual review required.")
-    col1, col2 = st.columns(2)
+    st.error("Build escalated — fix budget exhausted. Choose an action:")
+    col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("Retry Build", key="btn_retry"):
-            on_resume("retry")
+        if st.button("🔧 Manual Fix", key="btn_manual_fix"):
+            on_resume("manual_fix")
     with col2:
-        if st.button("Abandon", key="btn_abandon"):
-            on_resume("abandon")
+        if st.button("🔄 Replan", key="btn_replan"):
+            on_resume("replan")
+    with col3:
+        if st.button("✖ Abort", key="btn_abort"):
+            on_resume("abort")

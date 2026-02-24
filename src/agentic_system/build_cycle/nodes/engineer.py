@@ -76,7 +76,7 @@ def _build_phase_prompt(
     """Build the human message for the engineer, phase-aware."""
     phase_nodes = phase_entry["nodes"]
     base = (
-        f"Intent: {blueprint['intent']}\n"
+        f"Intent: {blueprint.get('intent', '')}\n"
         f"Phase: {phase}\n"
         f"Nodes to add in this phase: {phase_nodes}\n"
         f"Credential IDs: {json.dumps(cred_ids)}\n"
@@ -95,6 +95,9 @@ def _build_topology_block(phase: int, phase_entry: PhaseEntry) -> str:
     """Build the topology section appended to the engineer prompt."""
     internal_edges = phase_entry["internal_edges"]
     entry_edges = phase_entry["entry_edges"]
+
+    if not internal_edges and not entry_edges:
+        return ""
 
     lines = [f"\n\n## Phase {phase} Connection Map", f"Nodes to build: {phase_entry['nodes']}"]
 

@@ -22,16 +22,19 @@ async def credential_saver_node(state: ARIAState) -> dict:
         "message": f"Please provide credentials for: {', '.join(pending)}",
     })
 
-    client = N8nClient()
-    await client.connect()
-    try:
-        for cred_type, cred_data in user_creds.items():
-            result = await client.save_credential(cred_type, cred_type, cred_data)
-            resolved[cred_type] = result["id"]
-    finally:
-        await client.disconnect()
+    # user_creds may be {} when the user manually set up credentials in n8n
+    # and just clicked Resume — in that case we skip saving and let scanner re-check.
+    if isinstance(user_creds, dict) and user_creds:
+        client = N8nClient()
+        await client.connect()
+        try:
+            for cred_type, cred_data in user_creds.items():
+                result = await client.save_credential(cred_type, cred_type, cred_data)
+                resolved[cred_type] = result["id"]
+        finally:
+            await client.disconnect()
 
-    saved_types = list(user_creds.keys())
+    saved_types = list(user_creds.keys()) if isinstance(user_creds, dict) else []
     remaining = [p for p in pending if p not in saved_types]
 
     return {

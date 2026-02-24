@@ -29,9 +29,13 @@ async def hitl_fix_escalation_node(state: ARIAState) -> dict:
     return _handle_user_decision(user_decision, state)
 
 
-def _handle_user_decision(decision: dict, state: ARIAState) -> dict:
+def _handle_user_decision(decision: dict | str, state: ARIAState) -> dict:
     """Route user's HITL decision to appropriate state update."""
-    action = decision.get("action", "abort")
+    if isinstance(decision, str):
+        action = decision
+        decision = {"action": action}
+    else:
+        action = decision.get("action", "abort")
 
     if action == "manual_fix":
         return _apply_manual_fix(decision, state)

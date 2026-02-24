@@ -60,8 +60,9 @@ class PipelineRunner:
         self._log("runner", "INFO", f"Preflight complete in {ms}ms", duration_ms=ms)
         return result
 
-    def resume_preflight(self, answer: str, config: dict) -> ARIAState:
-        self._log("runner", "INFO", f"Resuming preflight: {answer[:60]!r}")
+    def resume_preflight(self, answer: object, config: dict) -> ARIAState:
+        preview = str(answer)[:60]
+        self._log("runner", "INFO", f"Resuming preflight: {preview!r}")
         return _run_async(self._pipeline.resume_preflight(answer, config))
 
     def run_build_cycle(self, state: ARIAState, config: dict) -> ARIAState:
@@ -72,8 +73,9 @@ class PipelineRunner:
         self._log("runner", "INFO", f"Build cycle complete in {ms}ms", duration_ms=ms)
         return result
 
-    def resume_build_cycle(self, answer: str, config: dict) -> ARIAState:
-        self._log("runner", "INFO", f"Resuming build cycle: {answer[:60]!r}")
+    def resume_build_cycle(self, answer: object, config: dict) -> ARIAState:
+        preview = str(answer)[:60]
+        self._log("runner", "INFO", f"Resuming build cycle: {preview!r}")
         return _run_async(self._pipeline.resume_build_cycle(answer, config))
 
     def _capture_logs(self, node_name: str, event: dict) -> None:

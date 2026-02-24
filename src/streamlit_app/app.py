@@ -38,11 +38,14 @@ def _handle_submit(prompt: str, session: SessionState) -> None:
 
 def _handle_resume(answer: str, session: SessionState) -> None:
     phase = session.app_phase
+    interrupt_type = session.interrupt_type
+    # Credential resumes pass {} so saver skips saving; user already did it in n8n.
+    resume_value: object = {} if interrupt_type == "credential" else answer
     try:
         if phase == "preflight":
-            result = session.runner.resume_preflight(answer, _config(session))
+            result = session.runner.resume_preflight(resume_value, _config(session))
         else:
-            result = session.runner.resume_build_cycle(answer, _config(session))
+            result = session.runner.resume_build_cycle(resume_value, _config(session))
         session.update_from_result(result)
         session.at_interrupt = False
         session.interrupt_type = None
@@ -56,18 +59,25 @@ def _detect_interrupt(session: SessionState, phase: str) -> None:
     decision = state.get("orchestrator_decision", "")
     pending_creds = state.get("pending_credential_types", [])
     status = state.get("status", "")
+    has_interrupt = bool(state.get("__interrupt__"))
 
-    if decision == "clarify" and phase == "preflight":
+    if decision == "clarify" and phase == "preflight" and has_interrupt:
         session.at_interrupt = True
         session.interrupt_type = "clarify"
-    elif pending_creds and phase == "preflight":
+    elif pending_creds and phase == "preflight" and has_interrupt:
         session.at_interrupt = True
         session.interrupt_type = "credential"
-    elif status == "failed" and phase == "build_cycle":
+    elif phase == "build_cycle" and has_interrupt:
+        # HITL escalation fires when fix budget is exhausted (status="fixing")
         session.at_interrupt = True
         session.interrupt_type = "hitl_escalation"
-    elif status == "done":
+    elif phase == "preflight" and not has_interrupt and state.get("build_blueprint"):
+        # Preflight finished cleanly — ready to start build
+        session.at_interrupt = False
+        session.interrupt_type = None
+    elif status in ("done", "failed"):
         session.app_phase = "done"
+        session.at_interrupt = False
 
 
 def _handle_start_build(session: SessionState) -> None:
