@@ -59,7 +59,11 @@ export function useWorkflow(): WorkflowHook {
     setState((prev) => ({ ...prev, error: message, status: 'failed', isLoading: false }))
   }, [])
 
-  const { events, clearEvents } = useEventFeed(state.jobId, { onInterrupt, onDone, onError })
+  const onStateUpdate = useCallback((ariaState: ARIAState) => {
+    setState((prev) => ({ ...prev, ariaState, status: (ariaState.status as WorkflowStatus) ?? prev.status }))
+  }, [])
+
+  const { events, clearEvents } = useEventFeed(state.jobId, { onInterrupt, onDone, onError, onStateUpdate })
 
   const submit = useCallback(async (description: string) => {
     setState({ ...INITIAL, isLoading: true, status: 'planning' })

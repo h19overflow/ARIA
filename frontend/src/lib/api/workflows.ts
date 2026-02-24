@@ -17,8 +17,12 @@ export function submitResume(
   kind: 'clarify' | 'credential',
   value: string | Record<string, string>,
 ): Promise<void> {
+  const body =
+    kind === 'clarify'
+      ? { action: 'clarify', value }
+      : { action: 'provide', credentials: value }
   return request<void>(`/jobs/${jobId}/resume`, {
     method: 'POST',
-    body: JSON.stringify({ kind, value }),
+    body: JSON.stringify(body),
   })
 }

@@ -1,8 +1,16 @@
 """ARIA FastAPI application entry point."""
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+    datefmt="%H:%M:%S",
+)
+logging.getLogger("aria").setLevel(logging.DEBUG)
 
 from src.api.lifespan import chroma as chroma_lifespan
 from src.api.lifespan import redis as redis_lifespan

@@ -19,6 +19,7 @@ export interface SSENodeEvent {
   node_name: string
   message?: string
   status: EventStatus
+  aria_state?: Record<string, unknown>
 }
 
 export interface SSEInterruptEvent {

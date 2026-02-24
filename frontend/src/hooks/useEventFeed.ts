@@ -7,6 +7,7 @@ interface EventFeedCallbacks {
   onInterrupt: (kind: 'clarify' | 'credential', payload: SSEInterruptEvent['payload']) => void
   onDone: (ariaState: ARIAState) => void
   onError: (message: string) => void
+  onStateUpdate?: (ariaState: ARIAState) => void
 }
 
 interface EventFeedHook {
@@ -42,6 +43,9 @@ export function useEventFeed(
       onMessage: (envelope) => {
         if (envelope.type === 'node') {
           setEvents((prev) => [nodeEventToFeed(envelope), ...prev].slice(0, 200))
+          if (envelope.aria_state) {
+            callbacks.onStateUpdate?.(envelope.aria_state as ARIAState)
+          }
         } else if (envelope.type === 'interrupt') {
           callbacks.onInterrupt(envelope.kind, envelope.payload)
         } else if (envelope.type === 'done') {
