@@ -1,10 +1,10 @@
 import type { CreateWorkflowResponse, JobStatusResponse } from '@/types/state'
 import { request } from './client'
 
-export function createWorkflow(description: string): Promise<CreateWorkflowResponse> {
+export function createWorkflow(description?: string, conversationId?: string): Promise<CreateWorkflowResponse> {
   return request<CreateWorkflowResponse>('/workflows', {
     method: 'POST',
-    body: JSON.stringify({ description }),
+    body: JSON.stringify({ description, conversation_id: conversationId }),
   })
 }
 

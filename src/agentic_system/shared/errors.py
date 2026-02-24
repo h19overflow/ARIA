@@ -9,6 +9,11 @@ class AgentError(Exception):
         super().__init__(f"[{agent}] {message}")
 
 
+class ExtractionError(AgentError):
+    """Orchestrator failed to map ConversationNotes to valid n8n nodes."""
+    pass
+
+
 class CredentialError(AgentError):
     """Missing or invalid credential."""
     pass

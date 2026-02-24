@@ -21,6 +21,7 @@ export interface WorkflowHook extends WorkflowHookState {
   events: FeedEvent[]
   clearEvents: () => void
   submit: (description: string) => Promise<void>
+  startFromConversation: (conversationId: string) => Promise<void>
   resume: (kind: 'clarify' | 'credential', value: string | Record<string, string>) => Promise<void>
   reset: () => void
 }
@@ -77,6 +78,18 @@ export function useWorkflow(): WorkflowHook {
     }
   }, [])
 
+  const startFromConversation = useCallback(async (conversationId: string) => {
+    setState({ ...INITIAL, isLoading: true, status: 'planning' })
+    try {
+      const res = await createWorkflow(undefined, conversationId)
+      jobIdRef.current = res.job_id
+      setState((prev) => ({ ...prev, jobId: res.job_id }))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to start from conversation'
+      setState((prev) => ({ ...prev, error: message, isLoading: false, status: 'failed' }))
+    }
+  }, [])
+
   const resume = useCallback(
     async (kind: 'clarify' | 'credential', value: string | Record<string, string>) => {
       const jobId = jobIdRef.current ?? state.jobId
@@ -97,5 +110,5 @@ export function useWorkflow(): WorkflowHook {
     setState(INITIAL)
   }, [])
 
-  return { ...state, events, clearEvents, submit, resume, reset }
+  return { ...state, events, clearEvents, submit, startFromConversation, resume, reset }
 }

@@ -5,10 +5,6 @@ from langgraph.graph import StateGraph, END
 
 from src.agentic_system.shared.state import ARIAState, BuildBlueprint
 from src.agentic_system.preflight.nodes.orchestrator import orchestrator_node
-from src.agentic_system.preflight.nodes.hitl_clarify import (
-    hitl_clarify_node,
-    MAX_ORCHESTRATOR_TURNS,
-)
 from src.agentic_system.preflight.nodes.credential_scanner import (
     credential_scanner_node,
 )
@@ -18,15 +14,6 @@ from src.agentic_system.preflight.nodes.credential_saver import (
 )
 
 MAX_CRED_RETRIES = 3
-
-
-def _route_orchestrator_decision(state: ARIAState) -> str:
-    """Route based on orchestrator's clarify/commit decision."""
-    decision = state.get("orchestrator_decision", "commit")
-    turns = state.get("orchestrator_turns", 0)
-    if decision == "clarify" and turns < MAX_ORCHESTRATOR_TURNS:
-        return "hitl_clarify"
-    return "credential_scanner"
 
 
 def _needs_credentials(state: ARIAState) -> str:
@@ -42,7 +29,7 @@ def _build_blueprint(state: ARIAState) -> dict:
         "intent": state.get("intent_summary") or state.get("intent", ""),
         "required_nodes": state.get("required_nodes", []),
         "credential_ids": state.get("resolved_credential_ids", {}),
-        "topology": state.get("topology", {"nodes": [], "edges": [], "entry_node": "", "branch_nodes": []}),
+        "topology": state.get("topology") or {"nodes": [], "edges": [], "entry_node": "", "branch_nodes": []},
         "user_description": state.get("user_description", ""),
     }
     return {"build_blueprint": blueprint, "status": "building"}
@@ -53,7 +40,6 @@ def build_preflight_graph() -> StateGraph:
     graph = StateGraph(ARIAState)
 
     graph.add_node("orchestrator", orchestrator_node)
-    graph.add_node("hitl_clarify", hitl_clarify_node)
     graph.add_node("credential_scanner", credential_scanner_node)
     graph.add_node("credential_guide", credential_guide_node)
     graph.add_node("credential_saver", credential_saver_node)
@@ -61,16 +47,7 @@ def build_preflight_graph() -> StateGraph:
 
     graph.set_entry_point("orchestrator")
 
-    graph.add_conditional_edges(
-        "orchestrator",
-        _route_orchestrator_decision,
-        {
-            "hitl_clarify": "hitl_clarify",
-            "credential_scanner": "credential_scanner",
-        },
-    )
-
-    graph.add_edge("hitl_clarify", "orchestrator")
+    graph.add_edge("orchestrator", "credential_scanner")
 
     graph.add_conditional_edges(
         "credential_scanner",

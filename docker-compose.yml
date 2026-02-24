@@ -1,4 +1,11 @@
 services:
+  redis:
+    image: redis:alpine
+    container_name: aria-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
   chromadb:
     image: chromadb/chroma:1.5.1
     container_name: aria-chromadb
@@ -27,6 +34,39 @@ services:
       - GENERIC_TIMEZONE=UTC
       - N8N_USER_MANAGEMENT_DISABLED=true
       - N8N_DIAGNOSTICS_ENABLED=false
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: aria-backend
+    ports:
+      - "8002:8002"
+    env_file: .env
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - N8N_BASE_URL=http://n8n:5678
+    volumes:
+      - ./src:/app/src        # hot-reload: changes reflect without rebuild
+      - ./chroma:/app/chroma
+    depends_on:
+      - redis
+      - chromadb
+      - n8n
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: aria-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
     restart: unless-stopped
 
 volumes:

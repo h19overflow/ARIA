@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import weave
-from typing import Any, AsyncIterator, Generic, Type, TypeVar, Union
+from typing import Any, AsyncIterator, Generic, Type, TypeVar, Union, cast, AsyncGenerator
 
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
@@ -117,11 +117,11 @@ class BaseAgent(Generic[S]):
         @self._make_retry()
         async def _call() -> Union[S, AIMessage]:
             result = await self._agent.ainvoke(
-                self._build_input(messages, **kwargs), config=config
+                cast(Any, self._build_input(messages, **kwargs)), config=config
             )
             if self._output_schema:
-                return result.get("structured_response")
-            return result["messages"][-1]
+                return cast(S, result.get("structured_response"))
+            return cast(AIMessage, result["messages"][-1])
 
         return await _call()
 
@@ -131,7 +131,7 @@ class BaseAgent(Generic[S]):
         config: RunnableConfig | None = None,
         include_tool_events: bool = False,
         **kwargs: Any,
-    ) -> AsyncIterator[str | dict[str, Any]]:
+    ) -> AsyncGenerator[Any, None]:
         """
         Yield content tokens as they arrive.
 
@@ -141,11 +141,11 @@ class BaseAgent(Generic[S]):
             {"type": "tool_chunk", "chunks": [...]}
         """
         async for _, data in self._agent.astream(
-            self._build_input(messages, **kwargs),
+            cast(Any, self._build_input(messages, **kwargs)),
             config=config,
             stream_mode="messages",
         ):
-            token: AIMessageChunk = data[0]
+            token = cast(AIMessageChunk, data[0])
             if token.content:
                 yield token.content
             elif include_tool_events and token.tool_call_chunks:
@@ -157,7 +157,7 @@ class BaseAgent(Generic[S]):
         config: RunnableConfig | None = None,
         include_types: list[str] | None = None,
         **kwargs: Any,
-    ) -> AsyncIterator[dict[str, Any]]:
+    ) -> AsyncGenerator[dict[str, Any], None]:
         """
         Yield LangChain stream events (v2) from the agent graph.
 
@@ -172,18 +172,28 @@ class BaseAgent(Generic[S]):
             stream_kwargs["include_types"] = include_types
 
         async for event in self._agent.astream_events(
-            self._build_input(messages, **kwargs), config=config, **stream_kwargs
+            cast(Any, self._build_input(messages, **kwargs)), config=config, **stream_kwargs
         ):
-            yield event
+            yield cast(dict[str, Any], event)
 
     # ── Convenience helpers ───────────────────────────────────────────────
 
     @staticmethod
     def token_delta(event: dict[str, Any]) -> str | None:
         """Extract text token from an on_chat_model_stream event."""
-        if event.get("event") == "on_chat_model_stream":
-            return event["data"]["chunk"].content or None
-        return None
+        if event.get("event") != "on_chat_model_stream":
+            return None
+        content = event["data"]["chunk"].content
+        if not content:
+            return None
+        # Gemini returns content as a list of blocks, not a plain string
+        if isinstance(content, list):
+            text = "".join(
+                block.get("text", "") if isinstance(block, dict) else str(block)
+                for block in content
+            )
+            return text or None
+        return str(content)
 
     @staticmethod
     def tool_start(event: dict[str, Any]) -> tuple[str, dict] | None:

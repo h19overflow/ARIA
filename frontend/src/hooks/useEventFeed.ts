@@ -44,7 +44,7 @@ export function useEventFeed(
         if (envelope.type === 'node') {
           setEvents((prev) => [nodeEventToFeed(envelope), ...prev].slice(0, 200))
           if (envelope.aria_state) {
-            callbacks.onStateUpdate?.(envelope.aria_state as ARIAState)
+            callbacks.onStateUpdate?.(envelope.aria_state as unknown as ARIAState)
           }
         } else if (envelope.type === 'interrupt') {
           callbacks.onInterrupt(envelope.kind, envelope.payload)

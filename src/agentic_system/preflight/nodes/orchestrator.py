@@ -1,46 +1,56 @@
-"""Pre-Flight Orchestrator — parses user intent with optional clarification rounds."""
+"""Pre-Flight Orchestrator — parses ConversationNotes into a BuildBlueprint."""
 from __future__ import annotations
 
+import json
 from langchain_core.messages import HumanMessage
 
 from src.agentic_system.shared.base_agent import BaseAgent
-from src.agentic_system.shared.state import ARIAState, WorkflowTopology
-from src.agentic_system.preflight.schemas.orchestrator_decision import OrchestratorDecision
+from src.agentic_system.shared.state import ARIAState, WorkflowTopology, WorkflowEdge
+from src.agentic_system.shared.errors import ExtractionError
 from src.agentic_system.preflight.schemas.blueprint import OrchestratorOutput
 from src.agentic_system.preflight.prompts.orchestrator import ORCHESTRATOR_SYSTEM_PROMPT
 from src.agentic_system.preflight.tools import ORCHESTRATOR_TOOLS
 
 
-_agent = BaseAgent[OrchestratorDecision](
+_agent = BaseAgent[OrchestratorOutput](
     prompt=ORCHESTRATOR_SYSTEM_PROMPT,
-    schema=OrchestratorDecision,
+    schema=OrchestratorOutput,
     tools=ORCHESTRATOR_TOOLS,
     name="PreflightOrchestrator",
 )
 
 
 async def orchestrator_node(state: ARIAState) -> dict:
-    """Parse user intent, decide whether to clarify or commit."""
-    messages = list(state.get("messages", []))
-    if not messages:
-        messages = [HumanMessage(content=state["intent"])]
+    """Parse ConversationNotes into OrchestratorOutput."""
+    notes = state.get("conversation_notes")
+    if not notes:
+        # Fallback if no notes provided
+        notes = {"summary": state.get("intent", "Unknown intent")}
 
-    result: OrchestratorDecision = await _agent.invoke(messages)
+    # Convert notes to a formatted string for the LLM
+    notes_str = json.dumps(notes, indent=2)
+    messages = [HumanMessage(content=f"Here are the ConversationNotes:\n{notes_str}")]
 
-    if result.decision == "clarify" and result.clarification:
-        return _handle_clarify(result)
-    return _handle_commit(result)
+    try:
+        output: OrchestratorOutput = await _agent.invoke(messages)
+    except Exception as e:
+        # If the LLM fails to map to the schema (e.g., invalid n8n nodes)
+        raise ExtractionError(
+            f"Failed to extract blueprint from notes: {str(e)}",
+            agent="PreflightOrchestrator"
+        ) from e
 
+    if output.extraction_error:
+        raise ExtractionError(
+            output.extraction_error,
+            agent="PreflightOrchestrator"
+        )
 
-def _handle_clarify(result: OrchestratorDecision) -> dict:
-    """Return clarification request to state for HITL node."""
-    question = result.clarification.question
+    fields = _extract_blueprint_fields(output)
     return {
-        "orchestrator_decision": "clarify",
-        "pending_question": question,
-        "messages": [HumanMessage(
-            content=f"[Orchestrator] Clarifying: {question}",
-        )],
+        "intent_summary": output.intent_summary,
+        **fields,
+        "messages": [HumanMessage(content=f"[Orchestrator] Extracted Plan: {output.intent_summary}")],
     }
 
 
@@ -51,7 +61,7 @@ def _extract_topology(output: OrchestratorOutput) -> WorkflowTopology:
     nodes = list(output.required_nodes)
     if output.trigger_node not in nodes:
         nodes.insert(0, output.trigger_node)
-    edges = [
+    edges: list[WorkflowEdge] = [
         {"from_node": nodes[i], "to_node": nodes[i + 1], "branch": None}
         for i in range(len(nodes) - 1)
     ]
@@ -73,24 +83,4 @@ def _extract_blueprint_fields(output: OrchestratorOutput) -> dict:
         "topology": _extract_topology(output),
         "user_description": output.user_description,
         "status": "planning",
-    }
-
-
-def _handle_commit(result: OrchestratorDecision) -> dict:
-    """Extract final plan from OrchestratorDecision and commit."""
-    output = result.output
-    if not output:
-        return {
-            "orchestrator_decision": "commit",
-            "required_nodes": ["webhook"],
-            "status": "planning",
-            "messages": [HumanMessage(content="[Orchestrator] Committed with default plan.")],
-        }
-
-    fields = _extract_blueprint_fields(output)
-    return {
-        "orchestrator_decision": "commit",
-        "intent_summary": output.intent_summary,
-        **fields,
-        "messages": [HumanMessage(content=f"[Orchestrator] Plan: {output.intent_summary}")],
     }

@@ -76,9 +76,7 @@ class ARIAState(TypedDict):
     intent_summary: str
 
     # Conversational orchestrator
-    orchestrator_decision: str  # "clarify" | "commit"
-    pending_question: str
-    orchestrator_turns: int
+    conversation_notes: dict | None
 
     # Build Cycle owned
     node_templates: list[dict]

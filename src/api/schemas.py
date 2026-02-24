@@ -28,7 +28,8 @@ class IngestApiSpecResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 class WorkflowRequest(BaseModel):
-    description: str
+    description: str | None = None
+    conversation_id: str | None = None
 
 
 class WorkflowResponse(BaseModel):
@@ -80,3 +81,25 @@ class SSEEvent(BaseModel):
     kind: str | None = None
     payload: dict | None = None
     aria_state: dict | None = None
+
+
+# ---------------------------------------------------------------------------
+# Conversation
+# ---------------------------------------------------------------------------
+
+from pydantic import Field
+from typing import Dict, Any
+
+class StartConversationResponse(BaseModel):
+    conversation_id: str = Field(..., description="Unique identifier for the new conversation")
+
+class MessageRequest(BaseModel):
+    message: str = Field(..., description="User input message")
+
+class ErrorDetail(BaseModel):
+    code: str
+    message: str
+    details: Dict[str, Any]
+
+class ErrorResponse(BaseModel):
+    error: ErrorDetail

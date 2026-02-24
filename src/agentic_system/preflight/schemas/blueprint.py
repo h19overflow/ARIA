@@ -10,9 +10,11 @@ class OrchestratorOutput(BaseModel):
     It does NOT identify credential types — that is the scanner's job.
     """
     intent_summary: str = Field(
+        default="",
         description="One-line summary of what the user wants to build"
     )
     required_nodes: list[str] = Field(
+        default_factory=list,
         description=(
             "List of n8n node type names needed "
             "(e.g. 'slack', 'telegram', 'webhook')"
@@ -23,11 +25,18 @@ class OrchestratorOutput(BaseModel):
         description="The entry-point trigger node type (usually 'webhook')",
     )
     workflow_name: str = Field(
+        default="",
         description="Suggested name for the n8n workflow"
     )
-    topology: WorkflowTopology = Field(
+    topology: WorkflowTopology | None = Field(
+        default=None,
         description="Directed graph of nodes and their connections"
     )
     user_description: str = Field(
+        default="",
         description="Single sentence describing the workflow in the user's own words"
+    )
+    extraction_error: str | None = Field(
+        default=None,
+        description="If you cannot find a valid n8n node for a required integration, put the error message here (e.g., 'I couldn't find an n8n node for X, please ask the user for an alternative.')"
     )

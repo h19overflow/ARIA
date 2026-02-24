@@ -5,6 +5,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.api.lifespan import chroma as chroma_lifespan
+from src.api.lifespan import redis as redis_lifespan
+from src.api.routers import ingestion, workflows, jobs, conversation
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
@@ -12,9 +16,6 @@ logging.basicConfig(
 )
 logging.getLogger("aria").setLevel(logging.DEBUG)
 
-from src.api.lifespan import chroma as chroma_lifespan
-from src.api.lifespan import redis as redis_lifespan
-from src.api.routers import ingestion, workflows, jobs
 
 
 @asynccontextmanager
@@ -44,3 +45,4 @@ app.add_middleware(
 app.include_router(ingestion.router)
 app.include_router(workflows.router)
 app.include_router(jobs.router)
+app.include_router(conversation.router)
