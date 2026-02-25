@@ -16,7 +16,7 @@ from redis.asyncio import Redis
 from src.agentic_system.graph import ARIAPipeline  # noqa: TC002
 from src.agentic_system.shared.state import ARIAState
 from src.api.schemas import JobState, SSEEvent
-from src.services._sse_helpers import (
+from src.services.pipeline._sse_helpers import (
     apply_build_chunk, coerce_state, detect_interrupt,
     publish, serialize, wait_resume, write_job,
 )

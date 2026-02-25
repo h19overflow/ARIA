@@ -13,7 +13,7 @@ interface PreflightPageProps {
 }
 
 export function PreflightPage({ conversationId, onStartBuild }: PreflightPageProps) {
-  const { state, start, resume, reset } = usePreflight()
+  const { state, start, resume, patchState, reset } = usePreflight()
   const [connectingType, setConnectingType] = useState<string | null>(null)
 
   useEffect(() => {
@@ -39,25 +39,17 @@ export function PreflightPage({ conversationId, onStartBuild }: PreflightPagePro
       // BUG FIX #1: Wrap credentials under the credential type key
       resume('credential', { [connectingType]: credentials })
     } else {
-      // BUG FIX #2: Use direct API when not in interrupted state
       try {
         const result = await saveCredential(connectingType, connectingType, credentials)
-        
-        // Update local state to reflect the saved credential
-        if (state.ariaState) {
-          const updatedState: ARIAState = {
-            ...state.ariaState,
-            pending_credential_types: state.ariaState.pending_credential_types?.filter(
-              (t) => t !== connectingType
-            ),
-            resolved_credential_ids: {
-              ...state.ariaState.resolved_credential_ids,
-              [connectingType]: result.credential_id,
-            },
-          }
-          // Note: The usePreflight hook doesn't expose setState directly,
-          // but the credential will be available on next refresh
-        }
+        patchState({
+          pending_credential_types: state.ariaState?.pending_credential_types?.filter(
+            (t) => t !== connectingType,
+          ),
+          resolved_credential_ids: {
+            ...state.ariaState?.resolved_credential_ids,
+            [connectingType]: result.credential_id,
+          },
+        })
       } catch (error) {
         console.error('Failed to save credential:', error)
         return

@@ -6,7 +6,7 @@ import json
 from langchain_core.tools import tool
 
 from src.boundary.chroma.store import ChromaStore
-from src.services.retrieval_service import hybrid_retrieve_n8n_nodes
+from src.services.rag.retrieval import hybrid_retrieve_n8n_nodes
 
 
 @tool

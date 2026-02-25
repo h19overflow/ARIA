@@ -1,7 +1,5 @@
-"""Services barrel — backward-compat re-exports."""
+"""RAG services — ingestion and retrieval."""
 
-from src.services.pipeline.build import load_preflight_state, run_build
-from src.services.pipeline.preflight import run_preflight
 from src.services.rag.ingestion import (
     ingest_api_spec,
     ingest_n8n_nodes,
@@ -17,9 +15,6 @@ from src.services.rag.retrieval import (
 )
 
 __all__ = [
-    "run_preflight",
-    "run_build",
-    "load_preflight_state",
     "ingest_n8n_nodes",
     "ingest_n8n_workflow_templates",
     "ingest_api_spec",

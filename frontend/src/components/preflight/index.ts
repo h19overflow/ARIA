@@ -1,6 +1,6 @@
 export { StepsPanel } from './StepsPanel'
 export { BlueprintPanel } from './BlueprintPanel'
-export { CredentialModal } from './CredentialModal'
+export { CredentialCard } from './CredentialCard'
 export { PreflightHeader } from './PreflightHeader'
 export { IntentCard } from './IntentCard'
 export { CredentialChecklist } from './CredentialChecklist'

@@ -7,7 +7,7 @@ from src.api.schemas import (
     IngestApiSpecResponse,
 )
 from src.boundary.chroma.store import ChromaStore
-from src.services import ingestion_service
+from src.services.rag import ingestion
 
 router = APIRouter(prefix="/ingest", tags=["ingestion"])
 
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/ingest", tags=["ingestion"])
 async def ingest_n8n_nodes(
     store: ChromaStore = Depends(get_chroma),
 ) -> IngestN8nResponse:
-    result = await ingestion_service.ingest_n8n_nodes(store)
+    result = await ingestion.ingest_n8n_nodes(store)
     return IngestN8nResponse(**result)
 
 
@@ -25,7 +25,7 @@ async def ingest_n8n_workflow_templates(
     limit: int = 200,
     store: ChromaStore = Depends(get_chroma),
 ) -> IngestN8nResponse:
-    result = await ingestion_service.ingest_n8n_workflow_templates(store, limit=limit)
+    result = await ingestion.ingest_n8n_workflow_templates(store, limit=limit)
     return IngestN8nResponse(**result)
 
 
@@ -34,5 +34,5 @@ async def ingest_api_spec(
     body: IngestApiSpecRequest,
     store: ChromaStore = Depends(get_chroma),
 ) -> IngestApiSpecResponse:
-    result = await ingestion_service.ingest_api_spec(store, body.spec, body.source_name)
+    result = await ingestion.ingest_api_spec(store, body.spec, body.source_name)
     return IngestApiSpecResponse(**result)

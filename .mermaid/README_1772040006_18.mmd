@@ -1,0 +1,12 @@
+flowchart TD
+    U([User Message]) --> CA[Conversation Agent]
+    CA -->|Needs Details| Q[Ask Probing Question]
+    Q --> U
+    CA -->|take_note| N[Update ConversationNotes]
+    N --> CA
+    CA -->|commit_notes| C([Notes Committed — Ready for Preflight])
+
+    style CA fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
+    style Q fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
+    style N fill:#bae6fd,stroke:#0284c7,stroke-width:2px,color:#0f172a
+    style C fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#0f172a

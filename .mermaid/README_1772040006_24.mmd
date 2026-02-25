@@ -1,0 +1,44 @@
+sequenceDiagram
+    participant U as User
+    participant API as FastAPI
+    participant SVC as BuildService
+    participant BC as Build Cycle Graph
+    participant R as Redis
+    participant CH as ChromaDB
+    participant N8N as n8n
+
+    U->>API: POST /build { preflight_job_id }
+    API->>R: GET job:{preflight_id} → validate done
+    API->>R: SET job:{id} status=building
+    API->>SVC: create_task(run_build)
+    API-->>U: 202 { job_id }
+
+    SVC->>BC: astream(preflight_state)
+    BC->>CH: hybrid_query per node type
+    BC->>BC: rag_retriever → node_templates
+    BC->>BC: phase_planner → PhasePlan
+
+    loop Each Phase
+        BC->>BC: engineer → workflow JSON
+        BC->>N8N: deploy_workflow / update_workflow
+        BC->>N8N: activate → trigger webhook → poll
+
+        alt Test Passes
+            BC->>BC: advance_phase (or activate if last)
+        else Test Fails (fix budget remaining)
+            BC->>BC: debugger → classify + patch
+            BC->>N8N: re-deploy patched workflow
+        else Fix Budget Exhausted
+            BC->>BC: hitl_fix_escalation → interrupt()
+            SVC->>R: PUBLISH sse:{id} (interrupt)
+            U->>API: POST /jobs/{id}/resume { action: "retry" }
+            API->>R: PUBLISH resume:{id}
+        end
+
+        SVC->>R: PUBLISH sse:{id} (node events)
+    end
+
+    SVC->>R: PUBLISH sse:{id} (done)
+    SVC->>R: SET job:{id} status=done
+    R-->>API: SSE done + webhook_url
+    API-->>U: workflow live!

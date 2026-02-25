@@ -14,7 +14,7 @@ from src.agentic_system.graph import ARIAPipeline
 from src.api.lifespan.pipeline import get_pipeline
 from src.api.lifespan.redis import get_redis
 from src.api.schemas import JobState, PreflightRequest, PreflightResponse
-from src.services import preflight_service
+from src.services.pipeline import preflight
 
 log = logging.getLogger("aria.api.preflight")
 router = APIRouter(prefix="/preflight", tags=["Phase 1 — Preflight"])
@@ -34,7 +34,7 @@ async def start_preflight(
     log.info("POST /preflight | job_id=%s | description=%r", job_id, description[:80])
     initial = JobState(job_id=job_id, status="planning")
     await redis.set(f"job:{job_id}", initial.model_dump_json(), ex=86_400)
-    asyncio.create_task(preflight_service.run_preflight(job_id, description, redis, pipeline, conversation_notes))
+    asyncio.create_task(preflight.run_preflight(job_id, description, redis, pipeline, conversation_notes))
     log.info("Preflight background task created | job_id=%s", job_id)
     return PreflightResponse(preflight_job_id=job_id, status="planning")
 

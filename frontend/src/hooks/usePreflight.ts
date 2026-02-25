@@ -16,6 +16,7 @@ export interface UsePreflight {
   state: PreflightState
   start: (conversationId: string) => Promise<void>
   resume: (kind: string, value: unknown) => Promise<void>
+  patchState: (partial: Partial<ARIAState>) => void
   reset: () => void
 }
 
@@ -119,5 +120,12 @@ export function usePreflight(): UsePreflight {
     setState(INITIAL)
   }, [])
 
-  return { state, start, resume, reset }
+  const patchState = useCallback((partial: Partial<ARIAState>) => {
+    setState((prev) => ({
+      ...prev,
+      ariaState: prev.ariaState ? { ...prev.ariaState, ...partial } : null,
+    }))
+  }, [])
+
+  return { state, start, resume, patchState, reset }
 }

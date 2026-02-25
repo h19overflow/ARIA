@@ -1,0 +1,43 @@
+sequenceDiagram
+    participant U as User
+    participant API as FastAPI
+    participant SVC as PreflightService
+    participant PF as Preflight Graph
+    participant R as Redis
+    participant N8N as n8n API
+
+    U->>API: POST /preflight { description }
+    API->>R: SET job:{id} status=planning
+    API->>SVC: create_task(run_preflight)
+    API-->>U: 202 { job_id }
+
+    U->>API: GET /preflight/{id}/stream
+    API->>R: SUBSCRIBE sse:{id}
+
+    SVC->>PF: astream(state)
+    PF->>PF: orchestrator → extract intent
+    SVC->>R: PUBLISH sse:{id} (node event)
+
+    PF->>PF: credential_scanner → check n8n creds
+    PF->>N8N: list_credentials()
+
+    alt Missing Credentials
+        PF->>PF: credential_guide → generate instructions
+        PF->>PF: credential_saver → interrupt()
+        SVC->>R: PUBLISH sse:{id} (interrupt event)
+        SVC->>R: SET job:{id} status=interrupted
+        R-->>API: SSE interrupt event
+        API-->>U: interrupt: provide credentials
+
+        U->>API: POST /jobs/{id}/resume { action: "provide", credentials }
+        API->>R: PUBLISH resume:{id}
+        SVC->>R: SUBSCRIBE resume:{id} → unblocks
+        SVC->>PF: Command(resume=credentials)
+        PF->>N8N: save_credential() for each
+    end
+
+    PF->>PF: handoff → BuildBlueprint
+    SVC->>R: PUBLISH sse:{id} (done event)
+    SVC->>R: SET job:{id} status=done, aria_state
+    R-->>API: SSE done
+    API-->>U: done + full aria_state

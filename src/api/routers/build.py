@@ -14,7 +14,7 @@ from src.agentic_system.graph import ARIAPipeline
 from src.api.lifespan.pipeline import get_pipeline
 from src.api.lifespan.redis import get_redis
 from src.api.schemas import BuildRequest, BuildResponse, JobState
-from src.services import build_service
+from src.services.pipeline import build
 
 log = logging.getLogger("aria.api.build")
 router = APIRouter(prefix="/build", tags=["Phase 2 — Build"])
@@ -29,12 +29,12 @@ async def start_build(
     redis: Redis = Depends(get_redis),
     pipeline: ARIAPipeline = Depends(get_pipeline),
 ) -> BuildResponse:
-    await build_service.load_preflight_state(body.preflight_job_id, redis)
+    await build.load_preflight_state(body.preflight_job_id, redis)
     job_id = str(uuid4())
     log.info("POST /build | job_id=%s | preflight_job_id=%s", job_id, body.preflight_job_id)
     initial = JobState(job_id=job_id, status="building")
     await redis.set(f"job:{job_id}", initial.model_dump_json(), ex=86_400)
-    asyncio.create_task(build_service.run_build(job_id, body.preflight_job_id, redis, pipeline))
+    asyncio.create_task(build.run_build(job_id, body.preflight_job_id, redis, pipeline))
     log.info("Build background task created | job_id=%s", job_id)
     return BuildResponse(build_job_id=job_id, status="building")
 

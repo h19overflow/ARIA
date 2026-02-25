@@ -130,3 +130,19 @@ class BuildRequest(BaseModel):
 class BuildResponse(BaseModel):
     build_job_id: str
     status: str  # "building"
+
+
+# ---------------------------------------------------------------------------
+# Credentials
+# ---------------------------------------------------------------------------
+
+class SaveCredentialRequest(BaseModel):
+    credential_type: str
+    name: str
+    data: dict[str, str]
+
+
+class SaveCredentialResponse(BaseModel):
+    credential_id: str
+    credential_type: str
+    name: str

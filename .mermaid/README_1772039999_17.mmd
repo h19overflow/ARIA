@@ -1,0 +1,24 @@
+flowchart TD
+    Start([User Request]) --> O[Orchestrator Agent]
+
+    O -->|Needs Info| HC[HITL Clarify]
+    HC -->|User Answer| O
+
+    O -->|Intent Clear| CS[Credential Scanner]
+
+    CS -->|Missing Creds| CG[Credential Guide]
+    CG --> CSV[Credential Saver]
+    CSV -->|Interrupts User| CS
+
+    CS -->|Ambiguous Creds| AMB[Ambiguity Resolver]
+    AMB -->|User Selects| CS
+
+    CS -->|All Resolved| HO([Handoff → BuildBlueprint])
+
+    style O fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
+    style HC fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
+    style CS fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
+    style CG fill:#bae6fd,stroke:#0284c7,stroke-width:2px,color:#0f172a
+    style CSV fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
+    style AMB fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
+    style HO fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#0f172a
