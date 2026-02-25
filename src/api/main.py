@@ -6,6 +6,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.lifespan import chroma as chroma_lifespan
+from src.api.lifespan import conversation as conversation_lifespan
+from src.api.lifespan import pipeline as pipeline_lifespan
 from src.api.lifespan import redis as redis_lifespan
 from src.api.routers import ingestion, workflows, jobs, conversation
 
@@ -22,9 +24,13 @@ logging.getLogger("aria").setLevel(logging.DEBUG)
 async def lifespan(app: FastAPI):  # noqa: ARG001
     await chroma_lifespan.startup()
     await redis_lifespan.startup()
+    await conversation_lifespan.startup()
+    await pipeline_lifespan.startup()
     yield
+    await pipeline_lifespan.shutdown()
     await redis_lifespan.shutdown()
     await chroma_lifespan.shutdown()
+    await conversation_lifespan.shutdown()
 
 
 app = FastAPI(

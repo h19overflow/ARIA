@@ -9,6 +9,8 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, status
 from redis.asyncio import Redis
 
+from src.agentic_system.graph import ARIAPipeline
+from src.api.lifespan.pipeline import get_pipeline
 from src.api.lifespan.redis import get_redis
 from src.api.schemas import WorkflowRequest, WorkflowResponse, JobState
 from src.services import pipeline_service

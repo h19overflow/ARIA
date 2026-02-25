@@ -1,3 +1,3 @@
-from src.api.lifespan import chroma, redis
+from src.api.lifespan import chroma, conversation, pipeline, redis
 
-__all__ = ["chroma", "redis"]
+__all__ = ["chroma", "conversation", "pipeline", "redis"]

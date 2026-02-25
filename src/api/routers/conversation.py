@@ -1,13 +1,13 @@
 import asyncio
 import json
 import uuid
-from typing import AsyncGenerator, Dict, Any
+from typing import AsyncGenerator
 
 from fastapi import APIRouter, Depends, Request, Response, HTTPException, status
 from fastapi.responses import StreamingResponse
-from fastapi.exceptions import RequestValidationError
 
 from src.agentic_system.conversation.agent import ConversationAgent
+from src.api.lifespan.conversation import get_conversation_agent
 from src.api.schemas import StartConversationResponse, MessageRequest, ErrorResponse
 
 router = APIRouter(
@@ -23,12 +23,6 @@ async def get_current_user(request: Request) -> dict:
     if not auth_header:
         return {"user_id": "anonymous"}
     return {"user_id": "authenticated_user"}
-
-def get_conversation_agent(request: Request) -> ConversationAgent:
-    """Retrieve the ConversationAgent from app state."""
-    if not hasattr(request.app.state, "conversation_agent"):
-        request.app.state.conversation_agent = ConversationAgent()
-    return request.app.state.conversation_agent
 
 def get_request_id(request: Request) -> str:
     """Extract correlation ID from request state or headers."""

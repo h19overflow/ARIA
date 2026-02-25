@@ -8,26 +8,25 @@ from langgraph.errors import GraphInterrupt
 from langgraph.types import Command
 from redis.asyncio import Redis
 
-from src.agentic_system.graph import ARIAPipeline
+from src.agentic_system.graph import ARIAPipeline  # noqa: TC002 — used in signatures
 from src.agentic_system.shared.state import ARIAState
 from src.api.schemas import JobState, SSEEvent
 
 log = logging.getLogger("aria.pipeline")
 
-_pipeline = ARIAPipeline()
 _JOB_TTL = 86_400  # 24 hours
 
 
-async def run_job(job_id: str, description: str, redis: Redis) -> None:
+async def run_job(job_id: str, description: str, redis: Redis, pipeline: ARIAPipeline) -> None:
     """Entry point — called as asyncio.create_task from the workflows router."""
     config = {"configurable": {"thread_id": job_id}}
     initial_state = _build_initial_state(description)
     log.info("[%s] Job started | description=%r", job_id, description[:80])
     try:
         await _write_job(redis, job_id, JobState(job_id=job_id, status="planning"))
-        state = await _stream_preflight(job_id, initial_state, config, redis)
+        state = await _stream_preflight(job_id, initial_state, config, redis, pipeline)
         log.info("[%s] Preflight complete | build_blueprint=%s", job_id, bool(state.get("build_blueprint")))
-        state = await _stream_build(job_id, state, config, redis)
+        state = await _stream_build(job_id, state, config, redis, pipeline)
         log.info("[%s] Build complete | status=%s", job_id, state.get("status"))
         await _publish(redis, job_id, SSEEvent(type="done", aria_state=_serialize(state)))
         await _write_job(redis, job_id, JobState(job_id=job_id, status="done", aria_state=_serialize(state)))
@@ -53,7 +52,9 @@ def _build_initial_state(description: str) -> ARIAState:
     }
 
 
-async def _stream_preflight(job_id: str, state: ARIAState, config: dict, redis: Redis) -> ARIAState:
+async def _stream_preflight(
+    job_id: str, state: ARIAState, config: dict, redis: Redis, pipeline: ARIAPipeline,
+) -> ARIAState:
     """Stream preflight graph, resuming through HITL interrupts until END."""
     log.info("[%s] Preflight starting", job_id)
     current_input: ARIAState | Command = state  # type: ignore[type-arg]
@@ -61,13 +62,13 @@ async def _stream_preflight(job_id: str, state: ARIAState, config: dict, redis: 
     while True:
         interrupted = False
         try:
-            async for chunk in _pipeline._preflight.astream(current_input, config=config):
+            async for chunk in pipeline._preflight.astream(current_input, config=config):
                 current_input = await _apply_chunk(redis, job_id, chunk, _coerce_state(current_input), "preflight")
         except GraphInterrupt:
             interrupted = True
 
         if interrupted:
-            snapshot = await _pipeline._preflight.aget_state(config)
+            snapshot = await pipeline._preflight.aget_state(config)
             snap_state: ARIAState = snapshot.values  # type: ignore[assignment]
             kind, payload = _detect_interrupt(snap_state)
             log.info("[%s] Preflight interrupted | kind=%s | question=%r", job_id, kind, payload.get("question", ""))
@@ -80,7 +81,7 @@ async def _stream_preflight(job_id: str, state: ARIAState, config: dict, redis: 
             current_input = Command(resume=resume_value)
         else:
             # Graph ran to END — pull final state from checkpointer
-            snapshot = await _pipeline._preflight.aget_state(config)
+            snapshot = await pipeline._preflight.aget_state(config)
             final: ARIAState = snapshot.values  # type: ignore[assignment]
             log.info("[%s] Preflight ended | build_blueprint=%s | topology_nodes=%s",
                      job_id, bool(final.get("build_blueprint")),
@@ -116,7 +117,9 @@ async def _apply_chunk(
     return current_state
 
 
-async def _stream_build(job_id: str, state: ARIAState, config: dict, redis: Redis) -> ARIAState:
+async def _stream_build(
+    job_id: str, state: ARIAState, config: dict, redis: Redis, pipeline: ARIAPipeline,
+) -> ARIAState:
     """Stream build cycle graph, resuming through HITL escalation interrupts."""
     log.info("[%s] Build cycle starting | blueprint_intent=%r",
              job_id, (state.get("build_blueprint") or {}).get("intent", "")[:60])
@@ -125,13 +128,13 @@ async def _stream_build(job_id: str, state: ARIAState, config: dict, redis: Redi
     while True:
         interrupted = False
         try:
-            async for chunk in _pipeline._build_cycle.astream(current_input, config=config):
+            async for chunk in pipeline._build_cycle.astream(current_input, config=config):
                 current_input = await _apply_build_chunk(redis, job_id, chunk, _coerce_state(current_input))
         except GraphInterrupt:
             interrupted = True
 
         if interrupted:
-            snapshot = await _pipeline._build_cycle.aget_state(config)
+            snapshot = await pipeline._build_cycle.aget_state(config)
             snap_state: ARIAState = snapshot.values  # type: ignore[assignment]
             kind, payload = _detect_interrupt(snap_state)
             log.info("[%s] Build interrupted | kind=%s", job_id, kind)
@@ -143,7 +146,7 @@ async def _stream_build(job_id: str, state: ARIAState, config: dict, redis: Redi
             log.info("[%s] Build resume received | value=%r", job_id, str(resume_value)[:80])
             current_input = Command(resume=resume_value)
         else:
-            snapshot = await _pipeline._build_cycle.aget_state(config)
+            snapshot = await pipeline._build_cycle.aget_state(config)
             final: ARIAState = snapshot.values  # type: ignore[assignment]
             log.info("[%s] Build cycle ended | status=%s", job_id, final.get("status"))
             return final
