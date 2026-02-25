@@ -7,8 +7,8 @@ from .state import get_state, save_state, ConversationState
 from .schemas import ConversationNotes
 from .prompts import PHASE_0_SYSTEM_PROMPT
 from .tools import batch_notes, take_note, commit_notes
+from .message_builders import build_lc_messages
 from .event_handlers import (
-    build_lc_messages,
     handle_tool_end_state,
     capture_ai_message,
     capture_tool_message,

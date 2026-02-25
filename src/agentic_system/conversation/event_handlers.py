@@ -6,9 +6,7 @@ owns message construction, tool-state updates, and result extraction.
 """
 from typing import Any, AsyncGenerator, Dict, List
 
-from langchain_core.messages import (
-    HumanMessage, AIMessage, ToolMessage, BaseMessage,
-)
+from langchain_core.messages import AIMessage, ToolMessage
 
 from pydantic import BaseModel
 
@@ -23,37 +21,6 @@ def _to_dict(obj: Any) -> Dict[str, Any]:
     if isinstance(obj, dict):
         return obj
     return {"key": str(obj)}
-
-
-def build_lc_messages(
-    messages: List[Dict[str, Any]],
-) -> List[BaseMessage]:
-    """Convert stored message dicts into LangChain message objects."""
-    lc_messages: List[BaseMessage] = []
-    for msg in messages:
-        role = msg["role"]
-        if role == "user":
-            lc_messages.append(HumanMessage(content=msg["content"]))
-        elif role == "assistant":
-            lc_messages.append(_build_ai_message(msg))
-        elif role == "tool":
-            lc_messages.append(
-                ToolMessage(
-                    content=msg.get("content", ""),
-                    tool_call_id=msg.get("tool_call_id", ""),
-                )
-            )
-    return lc_messages
-
-
-def _build_ai_message(msg: Dict[str, Any]) -> AIMessage:
-    """Build an AIMessage from a stored assistant dict."""
-    kwargs: Dict[str, Any] = {"content": msg.get("content", "")}
-    if msg.get("tool_calls"):
-        kwargs["tool_calls"] = msg["tool_calls"]
-    if msg.get("invalid_tool_calls"):
-        kwargs["invalid_tool_calls"] = msg["invalid_tool_calls"]
-    return AIMessage(**kwargs)
 
 
 def extract_result_string(tool_result: Any) -> str:
@@ -90,9 +57,20 @@ async def handle_tool_end_state(
             "data": {"count": len(raw_notes), "keys": keys},
         }
     elif tool_name == "commit_notes":
-        state.notes.summary = tool_args.get("summary", "")
-        state.committed = True
-        yield {"type": "tool_event", "tool": "commit_notes", "data": tool_args}
+        if state.committed:
+            yield {
+                "type": "tool_event",
+                "tool": "commit_notes",
+                "data": {"skipped": True, "reason": "already_committed"},
+            }
+        else:
+            state.notes.summary = tool_args.get("summary", "")
+            state.committed = True
+            yield {
+                "type": "tool_event",
+                "tool": "commit_notes",
+                "data": tool_args,
+            }
 
 
 def capture_ai_message(
