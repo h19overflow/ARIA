@@ -103,3 +103,30 @@ class ErrorDetail(BaseModel):
 
 class ErrorResponse(BaseModel):
     error: ErrorDetail
+
+
+# ---------------------------------------------------------------------------
+# Phase 1 — Preflight
+# ---------------------------------------------------------------------------
+
+class PreflightRequest(BaseModel):
+    description: str | None = None
+    conversation_id: str | None = None
+
+
+class PreflightResponse(BaseModel):
+    preflight_job_id: str
+    status: str  # "planning"
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — Build
+# ---------------------------------------------------------------------------
+
+class BuildRequest(BaseModel):
+    preflight_job_id: str
+
+
+class BuildResponse(BaseModel):
+    build_job_id: str
+    status: str  # "building"
