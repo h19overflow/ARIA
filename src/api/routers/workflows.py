@@ -49,12 +49,13 @@ async def _resolve_description(body: WorkflowRequest, redis: Redis) -> str:
 async def create_workflow(
     body: WorkflowRequest,
     redis: Redis = Depends(get_redis),
+    pipeline: ARIAPipeline = Depends(get_pipeline),
 ) -> WorkflowResponse:
     description = await _resolve_description(body, redis)
     job_id = str(uuid4())
     log.info("POST /workflows | job_id=%s | description=%r", job_id, description[:80])
     initial = JobState(job_id=job_id, status="planning")
     await redis.set(f"job:{job_id}", initial.model_dump_json(), ex=86_400)
-    asyncio.create_task(pipeline_service.run_job(job_id, description, redis))
+    asyncio.create_task(pipeline_service.run_job(job_id, description, redis, pipeline))
     log.info("Background task created | job_id=%s", job_id)
     return WorkflowResponse(job_id=job_id, status="planning")
