@@ -9,7 +9,7 @@ from src.api.lifespan import chroma as chroma_lifespan
 from src.api.lifespan import conversation as conversation_lifespan
 from src.api.lifespan import pipeline as pipeline_lifespan
 from src.api.lifespan import redis as redis_lifespan
-from src.api.routers import ingestion, workflows, jobs, conversation
+from src.api.routers import ingestion, preflight, build, jobs, conversation
 
 logging.basicConfig(
     level=logging.INFO,
@@ -49,6 +49,7 @@ app.add_middleware(
 )
 
 app.include_router(ingestion.router)
-app.include_router(workflows.router)
-app.include_router(jobs.router)
 app.include_router(conversation.router)
+app.include_router(preflight.router)
+app.include_router(build.router)
+app.include_router(jobs.router)
