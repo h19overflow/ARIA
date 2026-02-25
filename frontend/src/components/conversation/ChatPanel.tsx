@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, KeyboardEvent } from 'react';
-import { Send, Loader2, Play, Bot, Zap, RefreshCw, BookOpen } from 'lucide-react';
-import type { Message } from '../../hooks/useConversation';
+import { Send, Loader2, Zap, RefreshCw, BookOpen, CheckCircle2 } from 'lucide-react';
+import { clsx } from 'clsx';
+import type { Message } from '@/hooks/useConversation';
 
 interface ChatPanelProps {
   messages: Message[];
@@ -10,68 +11,66 @@ interface ChatPanelProps {
   workflowError?: string | null;
   isStarting?: boolean;
   onSendMessage: (content: string) => Promise<void>;
-  onStartBuilding: () => Promise<void>;
 }
 
+const COL = '680px';
+
 const SUGGESTIONS = [
-  { icon: <Zap size={13} />, label: 'Monitor GitHub PRs' },
-  { icon: <RefreshCw size={13} />, label: 'Sync Slack → Notion' },
-  { icon: <BookOpen size={13} />, label: 'Send daily digest' },
+  { icon: Zap,        label: 'Monitor GitHub PRs', sub: 'Get Slack alerts on new pull requests' },
+  { icon: RefreshCw,  label: 'Sync two apps',      sub: 'Keep Notion and Slack in sync automatically' },
+  { icon: BookOpen,   label: 'Send a daily digest', sub: 'Email a summary every morning' },
 ];
 
-// Max width of the content column — same feel as Claude web
-const COL = '720px';
-
-function TypingIndicator() {
+function TypingDots() {
   return (
-    <div style={{ display: 'flex', gap: '4px', padding: '4px 0', alignItems: 'center' }}>
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          style={{
-            width: '6px', height: '6px', borderRadius: '50%',
-            background: 'var(--accent-indigo)', display: 'inline-block',
-            animation: `typingBounce 1.2s ease-in-out ${i * 0.2}s infinite`,
-          }}
-        />
+    <div style={{ display: 'flex', gap: '4px', padding: '2px 0', alignItems: 'center' }}>
+      {[0, 1, 2].map(i => (
+        <span key={i} style={{
+          width: '6px', height: '6px', borderRadius: '50%',
+          background: 'var(--accent-orange)', display: 'inline-block',
+          animation: `typingBounce 1.2s ease-in-out ${i * 0.2}s infinite`,
+        }} />
       ))}
     </div>
   );
 }
 
-function MessageBubble({ msg }: { msg: Message }) {
-  const isUser = msg.role === 'user';
+function UserBubble({ content }: { content: string }) {
   return (
-    <div style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
-      {isUser ? (
-        <div style={{
-          maxWidth: '80%', padding: '10px 15px',
-          borderRadius: '18px 18px 4px 18px',
-          background: 'linear-gradient(135deg, var(--accent-indigo), var(--accent-violet))',
-          color: '#fff', fontSize: '0.9rem', lineHeight: 1.6, whiteSpace: 'pre-wrap',
-        }}>
-          {msg.content}
-        </div>
-      ) : (
-        <div style={{
-          maxWidth: '100%', fontSize: '0.9rem', lineHeight: 1.7,
-          color: 'var(--text-primary)', whiteSpace: 'pre-wrap',
-        }}>
-          {msg.content}
-        </div>
-      )}
+    <div style={{ display: 'flex', justifyContent: 'flex-end' }} className="msg-enter">
+      <div style={{
+        maxWidth: '78%', padding: '10px 15px',
+        borderRadius: '18px 18px 4px 18px',
+        background: 'linear-gradient(135deg, #ee4f27, #c93d1b)',
+        color: '#fff', fontSize: '0.875rem', lineHeight: 1.6, whiteSpace: 'pre-wrap',
+        boxShadow: '0 2px 12px rgba(238,79,39,0.3)',
+      }}>
+        {content}
+      </div>
     </div>
   );
 }
 
-export function ChatPanel({ messages, isStreaming, isCommitted, error, workflowError, isStarting, onSendMessage, onStartBuilding }: ChatPanelProps) {
+function AiBubble({ content }: { content: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'flex-start' }} className="msg-enter">
+      <div style={{
+        maxWidth: '92%', fontSize: '0.875rem', lineHeight: 1.75,
+        color: 'var(--text-primary)', whiteSpace: 'pre-wrap',
+        borderLeft: '2px solid rgba(238,79,39,0.3)', paddingLeft: '14px',
+      }}>
+        {content}
+      </div>
+    </div>
+  );
+}
+
+export function ChatPanel({ messages, isStreaming, isCommitted, error, workflowError, isStarting: _isStarting, onSendMessage }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isStreaming]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isStreaming]);
 
   const resizeTextarea = () => {
     const el = textareaRef.current;
@@ -96,113 +95,92 @@ export function ChatPanel({ messages, isStreaming, isCommitted, error, workflowE
   const hasMessages = messages.length > 0 || isStreaming;
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, position: 'relative' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
 
-      {/* Top bar — only "Start Building" when committed */}
-      {isCommitted && (
-        <div style={{ position: 'absolute', top: 16, right: 20, zIndex: 10 }}>
-          <button
-            onClick={onStartBuilding}
-            disabled={isStarting}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '8px 16px',
-              background: isStarting ? 'var(--bg-elevated)' : 'linear-gradient(135deg, var(--accent-indigo), var(--accent-violet))',
-              border: 'none', borderRadius: '8px', color: '#fff',
-              fontWeight: 600, fontSize: '0.82rem',
-              cursor: isStarting ? 'not-allowed' : 'pointer',
-              boxShadow: isStarting ? 'none' : '0 0 20px rgba(99,102,241,0.45)',
-              transition: 'all 150ms ease',
-              opacity: isStarting ? 0.6 : 1,
-            }}
-          >
-            {isStarting ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-            Start Building
-          </button>
-        </div>
-      )}
-
-      {/* Scrollable message area */}
+      {/* Scrollable messages */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
-        {/* Empty / welcome state — vertically centered */}
+        {/* Empty state */}
         {!hasMessages && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px', gap: '24px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-              <Bot size={36} style={{ color: 'var(--accent-indigo)', opacity: 0.7 }} />
-              <p style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>What would you like to automate?</p>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>Describe a workflow and ARIA will build it for you.</p>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px', gap: '32px' }}>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '1.35rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                What would you like to automate?
+              </p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                Describe it in plain language — I'll ask a few questions, then build it.
+              </p>
             </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s.label}
-                  onClick={() => { setInput(s.label); textareaRef.current?.focus(); }}
-                  className="glass"
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '6px',
-                    padding: '8px 14px', borderRadius: '8px',
-                    fontSize: '0.8rem', color: 'var(--text-secondary)',
-                    cursor: 'pointer', border: '1px solid var(--border-muted)',
-                    background: 'var(--bg-elevated)',
-                    transition: 'transform 150ms ease, border-color 150ms ease',
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent-indigo)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'none'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-muted)'; }}
-                >
-                  <span style={{ color: 'var(--accent-indigo)' }}>{s.icon}</span>
-                  {s.label}
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '560px' }}>
+              {SUGGESTIONS.map(s => (
+                <button key={s.label} className="suggestion-card"
+                  style={{ width: '160px' }}
+                  onClick={() => { setInput(s.label); textareaRef.current?.focus(); }}>
+                  <s.icon size={15} style={{ color: 'var(--accent-orange)' }} />
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{s.label}</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{s.sub}</span>
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Message thread */}
+        {/* Messages */}
         {hasMessages && (
-          <div style={{ flex: 1, padding: '32px 24px 16px', display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: COL, width: '100%', marginInline: 'auto', boxSizing: 'border-box' }}>
-            {messages.map((msg) => <MessageBubble key={msg.id} msg={msg} />)}
-            {isStreaming && messages[messages.length - 1]?.role !== 'assistant' && <TypingIndicator />}
+          <div style={{ flex: 1, padding: '28px 24px 16px', display: 'flex', flexDirection: 'column', gap: '18px', maxWidth: COL, width: '100%', marginInline: 'auto', boxSizing: 'border-box' }}>
+            {messages.map(msg =>
+              msg.role === 'user'
+                ? <UserBubble key={msg.id} content={msg.content} />
+                : <AiBubble key={msg.id} content={msg.content} />
+            )}
+            {isStreaming && messages[messages.length - 1]?.role !== 'assistant' && (
+              <div style={{ paddingLeft: '16px' }}><TypingDots /></div>
+            )}
+            {isCommitted && (
+              <div className="committed-banner" style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '10px 14px', borderRadius: '10px',
+                background: 'rgba(238,79,39,0.08)', border: '1px solid rgba(238,79,39,0.25)',
+              }}>
+                <CheckCircle2 size={15} style={{ color: 'var(--accent-orange)', flexShrink: 0 }} />
+                <span style={{ fontSize: '0.82rem', color: 'var(--accent-orange)', fontWeight: 500 }}>
+                  Requirements captured — click "Run Preflight" in the sidebar to continue.
+                </span>
+              </div>
+            )}
             <div ref={bottomRef} />
           </div>
         )}
         {!hasMessages && <div ref={bottomRef} />}
       </div>
 
-      {/* Input area — centered column with padding, floats above bottom */}
-      <div style={{ flexShrink: 0, padding: '12px 24px 28px', maxWidth: COL, width: '100%', marginInline: 'auto', boxSizing: 'border-box' }}>
+      {/* Input area */}
+      <div style={{ flexShrink: 0, padding: '10px 24px 24px', maxWidth: COL, width: '100%', marginInline: 'auto', boxSizing: 'border-box' }}>
         {(error || workflowError) && (
           <p style={{ fontSize: '0.75rem', color: 'var(--color-error)', marginBottom: '8px' }}>
             {error || workflowError}
           </p>
         )}
-        <div
-          style={{
-            display: 'flex', alignItems: 'flex-end', gap: '10px',
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border-muted)',
-            borderRadius: '14px',
-            padding: '12px 14px',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
-            transition: 'border-color 150ms ease',
-          }}
-          onFocusCapture={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(99,102,241,0.5)'}
-          onBlurCapture={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-muted)'}
-        >
+        <div className={clsx('input-focus-orange')} style={{
+          display: 'flex', alignItems: 'flex-end', gap: '10px',
+          background: 'var(--bg-elevated)', border: '1px solid var(--border-muted)',
+          borderRadius: '14px', padding: '12px 14px',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
+          transition: 'border-color 150ms ease',
+        }}>
           <textarea
             ref={textareaRef}
             value={input}
             rows={1}
             disabled={isStreaming}
-            onChange={(e) => { setInput(e.target.value); resizeTextarea(); }}
+            onChange={e => { setInput(e.target.value); resizeTextarea(); }}
             onKeyDown={handleKeyDown}
-            placeholder="Describe your workflow..."
+            placeholder="Tell me what you want to automate..."
             style={{
               flex: 1, resize: 'none', background: 'transparent',
               border: 'none', outline: 'none',
               fontSize: '0.9rem', color: 'var(--text-primary)',
               lineHeight: 1.6, overflow: 'hidden', maxHeight: '160px',
-              fontFamily: 'Inter, sans-serif',
             }}
           />
           <button
@@ -212,21 +190,19 @@ export function ChatPanel({ messages, isStreaming, isCommitted, error, workflowE
             style={{
               flexShrink: 0, width: '34px', height: '34px', borderRadius: '8px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: input.trim() && !isStreaming ? 'var(--accent-indigo)' : 'rgba(255,255,255,0.06)',
+              background: input.trim() && !isStreaming ? 'var(--accent-orange)' : 'rgba(255,255,255,0.06)',
               color: input.trim() && !isStreaming ? '#fff' : 'var(--text-muted)',
-              border: 'none',
-              cursor: input.trim() && !isStreaming ? 'pointer' : 'default',
+              border: 'none', cursor: input.trim() && !isStreaming ? 'pointer' : 'default',
               transition: 'background 150ms ease, color 150ms ease',
             }}
           >
             {isStreaming ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
           </button>
         </div>
-        <p style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '8px', margin: '8px 0 0' }}>
+        <p style={{ textAlign: 'center', fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '8px' }}>
           Enter to send · Shift+Enter for newline
         </p>
       </div>
-
     </div>
   );
 }

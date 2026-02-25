@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { startConversation } from '@/lib/api';
 
 export interface ConversationNotes {
   summary?: string;
@@ -42,7 +43,8 @@ function applyNoteTaken(prev: ConversationNotes, key: string, value: unknown): C
   return next;
 }
 
-export function useConversation(conversationId: string | null) {
+export function useConversation() {
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [notes, setNotes] = useState<ConversationNotes>({
     constraints: [],
@@ -56,10 +58,13 @@ export function useConversation(conversationId: string | null) {
   const assistantMsgIdRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  useEffect(() => {
+    startConversation().then(res => setConversationId(res.conversation_id));
+  }, []);
+
   const sendMessage = useCallback(async (content: string) => {
     if (!conversationId) return;
 
-    // Optimistic user message
     setMessages(prev => [
       ...prev,
       { id: crypto.randomUUID(), role: 'user', content, timestamp: new Date() },
@@ -68,7 +73,6 @@ export function useConversation(conversationId: string | null) {
     setError(null);
     assistantMsgIdRef.current = null;
 
-    // Cancel any in-flight stream
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -81,9 +85,7 @@ export function useConversation(conversationId: string | null) {
         signal: controller.signal,
       });
 
-      if (!res.ok || !res.body) {
-        throw new Error(`Request failed: ${res.status}`);
-      }
+      if (!res.ok || !res.body) throw new Error(`Request failed: ${res.status}`);
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -116,29 +118,22 @@ export function useConversation(conversationId: string | null) {
                 assistantMsgIdRef.current = newId;
                 return [...prev, { id: newId, role: 'assistant', content: chunk, timestamp: new Date() }];
               });
-            } else if (data.type === 'note_taken' || data.type === 'tool_event') {
-              // note_taken: { payload: {key, value} }
-              // tool_event from take_note: { tool: "take_note", data: {key, value} }
-              // tool_event from commit_notes: { tool: "commit_notes", data: {summary} }
-              if (data.type === 'tool_event') {
-                const tool = data.tool as string | undefined;
-                const toolData = data.data as Record<string, unknown> | undefined;
-                if (tool === 'take_note' && toolData) {
-                  setNotes(prev => applyNoteTaken(prev, String(toolData.key ?? ''), toolData.value));
-                } else if (tool === 'commit_notes' && toolData) {
-                  setIsCommitted(true);
-                  if (toolData.summary) setNotes(prev => ({ ...prev, summary: String(toolData.summary) }));
-                }
-              } else {
-                const payload = data.payload as { key: string; value: unknown } | undefined;
-                if (payload) setNotes(prev => applyNoteTaken(prev, payload.key, payload.value));
+            } else if (data.type === 'tool_event') {
+              const tool = data.tool as string | undefined;
+              const toolData = data.data as Record<string, unknown> | undefined;
+              if (tool === 'take_note' && toolData) {
+                setNotes(prev => applyNoteTaken(prev, String(toolData.key ?? ''), toolData.value));
+              } else if (tool === 'commit_notes' && toolData) {
+                setIsCommitted(true);
+                if (toolData.summary) setNotes(prev => ({ ...prev, summary: String(toolData.summary) }));
               }
+            } else if (data.type === 'note_taken') {
+              const payload = data.payload as { key: string; value: unknown } | undefined;
+              if (payload) setNotes(prev => applyNoteTaken(prev, payload.key, payload.value));
             } else if (data.type === 'committed') {
               setIsCommitted(true);
               const payload = data.payload as { summary?: string } | undefined;
-              if (payload?.summary) {
-                setNotes(prev => ({ ...prev, summary: payload.summary }));
-              }
+              if (payload?.summary) setNotes(prev => ({ ...prev, summary: payload.summary }));
             } else if (data.type === 'done') {
               setIsStreaming(false);
               assistantMsgIdRef.current = null;
@@ -148,7 +143,7 @@ export function useConversation(conversationId: string | null) {
               setIsStreaming(false);
             }
           } catch {
-            // ignore malformed line
+            // ignore malformed lines
           }
         }
       }
@@ -162,7 +157,6 @@ export function useConversation(conversationId: string | null) {
 
   const updateNote = useCallback((key: string, value: string | null) => {
     setNotes(prev => applyNoteTaken(prev, key, value));
-
     if (conversationId) {
       fetch(`/api/conversation/${conversationId}/note`, {
         method: 'POST',
@@ -172,5 +166,5 @@ export function useConversation(conversationId: string | null) {
     }
   }, [conversationId]);
 
-  return { messages, notes, isStreaming, isCommitted, error, sendMessage, updateNote };
+  return { conversationId, messages, notes, isStreaming, isCommitted, error, sendMessage, updateNote };
 }

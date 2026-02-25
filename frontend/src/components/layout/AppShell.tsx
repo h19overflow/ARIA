@@ -1,55 +1,88 @@
-import { useState, useEffect } from 'react'
-import { Sidebar, type TabId } from './Sidebar'
-import { BuildPage } from '@/pages/BuildPage'
-import { ConsolePage } from '@/pages/ConsolePage'
-import { useWorkflow } from '@/hooks/useWorkflow'
-import { ConversationView } from '@/views/ConversationView'
+import { lazy, Suspense } from 'react';
+import { useAppState } from '@/hooks/useAppState';
+import PhaseHeader from './PhaseHeader';
+import type { ARIAState } from '@/types';
 
-export type ViewMode = 'conversation' | 'studio'
+const ConversationView = lazy(() =>
+  import('@/views/ConversationView').then((m) => ({ default: m.ConversationView }))
+);
+const PreflightPage = lazy(() =>
+  import('@/pages/PreflightPage').then((m) => ({ default: m.PreflightPage }))
+);
+const BuildPage = lazy(() =>
+  import('@/pages/BuildPage').then((m) => ({ default: m.BuildPage }))
+);
+
+function PhaseFallback() {
+  return (
+    <div style={{
+      flex: 1,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'var(--bg-canvas)',
+    }}>
+      <div style={{
+        width: 6,
+        height: 6,
+        borderRadius: '50%',
+        background: 'var(--text-muted)',
+      }} />
+    </div>
+  );
+}
+
+function BuildPhaseWrapper({ preflightJobId, preflightAriaState }: { preflightJobId: string; preflightAriaState: ARIAState | null }) {
+  return <BuildPage preflightJobId={preflightJobId} preflightAriaState={preflightAriaState} />;
+}
 
 export function AppShell() {
-  const [viewMode, setViewMode] = useState<ViewMode>('conversation')
-  const [activeTab, setActiveTab] = useState<TabId>('build')
-  const workflow = useWorkflow()
+  const app = useAppState();
 
-  // Handle view transitions based on workflow state
-  useEffect(() => {
-    if (workflow.jobId && viewMode === 'conversation') {
-      setViewMode('studio')
-    } else if (workflow.status === 'idle' && viewMode === 'studio') {
-      setViewMode('conversation')
-    }
-  }, [workflow.jobId, workflow.status, viewMode])
+  const completedPhases = new Set<number>([
+    ...(app.phase > 0 ? [0] : []),
+    ...(app.phase > 1 ? [1] : []),
+  ]);
 
-  const handleStartBuilding = async (conversationId: string) => {
-    await workflow.startFromConversation(conversationId)
-  }
-
-  if (viewMode === 'conversation') {
-    return (
-      <div className="flex h-screen overflow-hidden bg-[var(--bg-base)]">
-        <ConversationView 
-          onStartBuilding={handleStartBuilding}
-          isStarting={workflow.isLoading}
-          workflowError={workflow.error}
-        />
-      </div>
-    )
-  }
+  const handleStartBuild = (pJobId: string, pState: ARIAState) => {
+    app.goToPhase2(pJobId, pState);
+  };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--bg-base)]">
-      <Sidebar
-        active={activeTab}
-        onChange={setActiveTab}
-        status={workflow.status}
-        buildPhase={workflow.ariaState?.build_phase}
-        totalPhases={workflow.ariaState?.total_phases}
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100vh',
+      background: 'var(--bg-canvas)',
+      overflow: 'hidden',
+    }}>
+      <PhaseHeader
+        activePhase={app.phase}
+        completedPhases={completedPhases}
+        onReset={app.reset}
       />
-      <main className="flex-1 overflow-hidden">
-        {activeTab === 'build' && <BuildPage workflow={workflow} />}
-        {activeTab === 'console' && <ConsolePage ariaState={workflow.ariaState} />}
+
+      <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <Suspense fallback={<PhaseFallback />}>
+          {app.phase === 0 && (
+            <ConversationView
+              onStartPreflight={app.goToPhase1}
+            />
+          )}
+          {app.phase === 1 && app.conversationId && (
+            <PreflightPage
+              conversationId={app.conversationId}
+              onStartBuild={handleStartBuild}
+            />
+          )}
+          {app.phase === 2 && app.preflightJobId && (
+            <BuildPhaseWrapper
+              preflightJobId={app.preflightJobId}
+              preflightAriaState={app.preflightAriaState}
+            />
+          )}
+        </Suspense>
       </main>
     </div>
-  )
+  );
 }

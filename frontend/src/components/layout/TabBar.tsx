@@ -1,2 +1,2 @@
-// TabBar is now part of Sidebar — kept for backward compatibility
-export type { TabId } from './Sidebar'
+// TabBar removed — navigation is now handled by PhaseHeader
+export type TabId = 'build' | 'console';

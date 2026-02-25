@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
-import { createWorkflow, submitResume } from '@/lib/api'
+import { startPreflight, submitResume } from '@/lib/api'
 import { useEventFeed } from './useEventFeed'
 import type { ARIAState, WorkflowStatus, SSEInterruptEvent, FeedEvent } from '@/types'
 
@@ -69,9 +69,9 @@ export function useWorkflow(): WorkflowHook {
   const submit = useCallback(async (description: string) => {
     setState({ ...INITIAL, isLoading: true, status: 'planning' })
     try {
-      const res = await createWorkflow(description)
-      jobIdRef.current = res.job_id
-      setState((prev) => ({ ...prev, jobId: res.job_id }))
+      const res = await startPreflight({ description })
+      jobIdRef.current = res.preflight_job_id
+      setState((prev) => ({ ...prev, jobId: res.preflight_job_id }))
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Submission failed'
       setState((prev) => ({ ...prev, error: message, isLoading: false, status: 'failed' }))
@@ -81,9 +81,9 @@ export function useWorkflow(): WorkflowHook {
   const startFromConversation = useCallback(async (conversationId: string) => {
     setState({ ...INITIAL, isLoading: true, status: 'planning' })
     try {
-      const res = await createWorkflow(undefined, conversationId)
-      jobIdRef.current = res.job_id
-      setState((prev) => ({ ...prev, jobId: res.job_id }))
+      const res = await startPreflight({ conversation_id: conversationId })
+      jobIdRef.current = res.preflight_job_id
+      setState((prev) => ({ ...prev, jobId: res.preflight_job_id }))
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to start from conversation'
       setState((prev) => ({ ...prev, error: message, isLoading: false, status: 'failed' }))
@@ -96,7 +96,9 @@ export function useWorkflow(): WorkflowHook {
       if (!jobId) return
       setState((prev) => ({ ...prev, interrupt: null, isLoading: true }))
       try {
-        await submitResume(jobId, kind, value)
+        // Map interrupt kind ('credential') to resume action ('provide')
+        const action = kind === 'credential' ? 'provide' : kind
+        await submitResume(jobId, action as 'clarify' | 'provide', value)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Resume failed'
         setState((prev) => ({ ...prev, error: message, isLoading: false }))
