@@ -80,6 +80,17 @@ async def _resolve_description(body: PreflightRequest, redis: Redis) -> tuple[st
 
 
 async def _sse_generator(job_id: str, redis: Redis):
+    # Replay current job state so late-connecting clients don't miss events
+    raw = await redis.get(f"job:{job_id}")
+    if raw:
+        job = json.loads(raw)
+        if job.get("status") in _TERMINAL or job.get("status") == "failed":
+            event_type = "error" if job.get("status") == "failed" else "done"
+            replay = json.dumps({"type": event_type, "aria_state": job.get("aria_state"),
+                                 "message": job.get("error", "")})
+            yield f"data: {replay}\n\n"
+            return
+
     pubsub = redis.pubsub()
     await pubsub.subscribe(f"sse:{job_id}")
     try:

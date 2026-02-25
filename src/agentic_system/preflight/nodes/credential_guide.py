@@ -30,6 +30,7 @@ _guide_agent: BaseAgent[CredentialGuideOutput] = BaseAgent(
     schema=CredentialGuideOutput,
     tools=[search_n8n_nodes],
     name="CredentialGuide",
+    model_name="gemini-3-flash-preview",
 )
 
 

@@ -30,7 +30,8 @@ class ChromaStore:
         self._n8n_store: Chroma | None = None
         self._api_store: Chroma | None = None
         # BM25 indexes built lazily on first hybrid query
-        self._n8n_bm25: BM25Index | None = None
+        self._n8n_bm25_cache: dict[str | None, BM25Index] = {}
+        self._all_n8n_docs: list[Document] | None = None
         self._api_bm25: BM25Index | None = None
 
     async def connect(self) -> None:
@@ -50,7 +51,8 @@ class ChromaStore:
     async def disconnect(self) -> None:
         self._n8n_store = None
         self._api_store = None
-        self._n8n_bm25 = None
+        self._n8n_bm25_cache = {}
+        self._all_n8n_docs = None
         self._api_bm25 = None
 
     # ------------------------------------------------------------------
@@ -61,7 +63,8 @@ class ChromaStore:
         pairs = {doc.id: n8n_doc_to_langchain(doc) for doc in documents}  # dedup by id
         docs, ids = zip(*pairs.values())
         self._n8n_store.add_documents(documents=list(docs), ids=list(ids))
-        self._n8n_bm25 = None  # invalidate index after upsert
+        self._n8n_bm25_cache = {}  # invalidate BM25 indexes after upsert
+        self._all_n8n_docs = None
 
     async def query_n8n_documents(
         self,
@@ -93,25 +96,24 @@ class ChromaStore:
 
     def _get_n8n_bm25(self, doc_type: str | None) -> BM25Index:
         """Build (or return cached) BM25 index for the n8n collection."""
-        if self._n8n_bm25 is None:
-            all_docs = self._n8n_store.get(include=["documents", "metadatas"])
-            docs = [
+        if doc_type in self._n8n_bm25_cache:
+            return self._n8n_bm25_cache[doc_type]
+
+        # Single fetch from ChromaDB — cached for all subsequent filters
+        if self._all_n8n_docs is None:
+            raw = self._n8n_store.get(include=["documents", "metadatas"])
+            self._all_n8n_docs = [
                 Document(page_content=text, metadata=meta)
-                for text, meta in zip(all_docs["documents"], all_docs["metadatas"])
+                for text, meta in zip(raw["documents"], raw["metadatas"])
             ]
-            self._n8n_bm25 = BM25Index(docs, k=20)
 
-        if doc_type is None:
-            return self._n8n_bm25
+        docs = self._all_n8n_docs
+        if doc_type is not None:
+            docs = [d for d in docs if d.metadata.get("doc_type") == doc_type]
 
-        # Filter in-memory for doc_type — BM25Index wraps the filtered subset
-        all_docs = self._n8n_store.get(include=["documents", "metadatas"])
-        filtered = [
-            Document(page_content=text, metadata=meta)
-            for text, meta in zip(all_docs["documents"], all_docs["metadatas"])
-            if meta.get("doc_type") == doc_type
-        ]
-        return BM25Index(filtered, k=20)
+        index = BM25Index(docs, k=20)
+        self._n8n_bm25_cache[doc_type] = index
+        return index
 
     # ------------------------------------------------------------------
     # User API spec endpoints

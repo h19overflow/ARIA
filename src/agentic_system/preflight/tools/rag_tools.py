@@ -2,11 +2,29 @@
 from __future__ import annotations
 
 import json
+import logging
 
 from langchain_core.tools import tool
 
 from src.boundary.chroma.store import ChromaStore
 from src.services.rag.retrieval import hybrid_retrieve_n8n_nodes
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Module-level singleton — connected once, reused across all tool calls
+# ---------------------------------------------------------------------------
+_store: ChromaStore | None = None
+
+
+async def _get_store() -> ChromaStore:
+    """Return the shared ChromaStore, connecting on first use."""
+    global _store
+    if _store is None:
+        _store = ChromaStore()
+        await _store.connect()
+        logger.info("ChromaStore singleton connected (rag_tools)")
+    return _store
 
 
 @tool
@@ -17,14 +35,12 @@ async def search_n8n_nodes(query: str) -> str:
     Returns the top 3 matches with exact node_type names you can use directly.
     Returns JSON: {"query": ..., "results": [{"node_type", "title", "description"}, ...]}.
     """
-    store = ChromaStore()
-    await store.connect()
     try:
+        store = await _get_store()
         raw = await hybrid_retrieve_n8n_nodes(store, query, n=5)
     except Exception as e:
+        logger.error("search_n8n_nodes failed: %s", e)
         return json.dumps({"error": str(e)})
-    finally:
-        await store.disconnect()
 
     results = [_map_result(r) for r in raw]
     return json.dumps({"query": query, "results": results})

@@ -23,7 +23,7 @@ _agent = BaseAgent[OrchestratorOutput](
     name="PreflightOrchestrator",
     model_name="gemini-3-flash-preview",
     temperature=0.2,
-    recursion_limit=10,
+    recursion_limit=16,
 )
 
 
@@ -31,8 +31,9 @@ async def orchestrator_node(state: ARIAState) -> dict:
     """Parse ConversationNotes into OrchestratorOutput."""
     notes = state.get("conversation_notes")
     if not notes:
-        # Fallback if no notes provided
-        notes = {"summary": state.get("intent", "Unknown intent")}
+        # Fallback: use user_description when no conversation_notes (direct description POST)
+        desc = state.get("user_description") or state.get("intent") or "Unknown intent"
+        notes = {"summary": desc}
 
     # Convert notes to a formatted string for the LLM
     notes_str = json.dumps(notes, indent=2)
