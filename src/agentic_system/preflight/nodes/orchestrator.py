@@ -9,15 +9,20 @@ from src.agentic_system.shared.state import ARIAState, WorkflowTopology, Workflo
 from src.agentic_system.shared.errors import ExtractionError
 from src.agentic_system.preflight.schemas.blueprint import OrchestratorOutput
 from src.agentic_system.preflight.prompts.orchestrator import ORCHESTRATOR_SYSTEM_PROMPT
-from src.agentic_system.preflight.tools import ORCHESTRATOR_TOOLS
+from src.agentic_system.preflight.tools.rag_tools import search_n8n_nodes
 
+# Only give the orchestrator the RAG search tool — credential lookup is
+# handled downstream by the Credential Scanner, so exposing it here just
+# wastes tool-call rounds.
+_ORCHESTRATOR_TOOLS_SLIM = [search_n8n_nodes]
 
 _agent = BaseAgent[OrchestratorOutput](
     prompt=ORCHESTRATOR_SYSTEM_PROMPT,
     schema=OrchestratorOutput,
-    tools=ORCHESTRATOR_TOOLS,
+    tools=_ORCHESTRATOR_TOOLS_SLIM,
     name="PreflightOrchestrator",
     model_name="gemini-3-flash-preview",
+    temperature=0.2,
     recursion_limit=10,
 )
 

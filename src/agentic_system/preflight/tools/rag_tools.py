@@ -11,17 +11,16 @@ from src.services.retrieval_service import hybrid_retrieve_n8n_nodes
 
 @tool
 async def search_n8n_nodes(query: str) -> str:
-    """Search the n8n node library (500+ nodes) using semantic + keyword hybrid search.
+    """Search the n8n node library (500+ nodes) for a service or integration.
 
-    Use this when you need to find the exact n8n node type name for a service or action
-    the user mentioned, or when you are unsure whether a node exists for a given integration.
-    Returns the top 5 matching nodes with their type name and description.
-    Returns JSON: {"query": ..., "results": [{"node_type", "title", "description", "doc_type"}, ...]}.
+    Call ONLY for services NOT in the system prompt reference list.
+    Returns the top 3 matches with exact node_type names you can use directly.
+    Returns JSON: {"query": ..., "results": [{"node_type", "title", "description"}, ...]}.
     """
     store = ChromaStore()
     await store.connect()
     try:
-        raw = await hybrid_retrieve_n8n_nodes(store, query, n=5)
+        raw = await hybrid_retrieve_n8n_nodes(store, query, n=3)
     except Exception as e:
         return json.dumps({"error": str(e)})
     finally:
