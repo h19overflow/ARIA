@@ -7,6 +7,8 @@ import { SuccessBanner } from '@/components/build/SuccessBanner'
 import { ClarifyDrawer } from '@/components/build/ClarifyDrawer'
 import { CredentialDrawer } from '@/components/build/CredentialDrawer'
 import { useBuild } from '@/hooks/useBuild'
+import { PageGuide } from '@/components/shared/PageGuide'
+import { BUILD_GUIDE } from '@/components/shared/guide-content'
 import type { ARIAState } from '@/types'
 
 interface BuildPageProps {
@@ -43,6 +45,9 @@ export function BuildPage({ preflightJobId, preflightAriaState: _ }: BuildPagePr
       <div className="flex flex-1 overflow-hidden">
         {/* Main canvas */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
+          <div className="absolute top-3 left-3 right-3 z-10">
+            <PageGuide title="How the build works" steps={BUILD_GUIDE} storageKey="guide-phase2" />
+          </div>
           <div className="flex-1 overflow-hidden graph-canvas relative">
             {hasTopology ? (
               <NodeGraph

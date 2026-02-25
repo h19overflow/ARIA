@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 import { startPreflight, submitResume } from '@/lib/api'
 import { subscribeSSE } from '@/lib/sse'
 import type { ARIAState, WorkflowStatus, SSEEnvelope, FeedEvent } from '@/types'
+import { processEnvelope, makeFeedEvent } from './preflight-handlers'
 
 export interface PreflightState {
   jobId: string | null
@@ -10,6 +11,7 @@ export interface PreflightState {
   interrupt: { kind: string; payload: Record<string, unknown> } | null
   events: FeedEvent[]
   error: string | null
+  activeNode: string | null
 }
 
 export interface UsePreflight {
@@ -27,14 +29,7 @@ const INITIAL: PreflightState = {
   interrupt: null,
   events: [],
   error: null,
-}
-
-function makeId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-}
-
-function makeFeedEvent(message: string, status: FeedEvent['status']): FeedEvent {
-  return { id: makeId(), stage: 'preflight', message, timestamp: new Date(), status }
+  activeNode: null,
 }
 
 export function usePreflight(): UsePreflight {
@@ -46,42 +41,33 @@ export function usePreflight(): UsePreflight {
     setState((prev) => ({ ...prev, events: [event, ...prev.events].slice(0, 100) }))
   }, [])
 
+  const handleEnvelope = useCallback((envelope: SSEEnvelope) => {
+    const result = processEnvelope(envelope)
+    if (!result) return
+
+    appendEvent(result.event)
+    setState((prev) => {
+      const next = { ...prev }
+      if (result.status) next.status = result.status
+      if (result.activeNode !== undefined) next.activeNode = result.activeNode
+      if (result.ariaState) next.ariaState = { ...prev.ariaState, ...result.ariaState }
+      if (result.interrupt) next.interrupt = result.interrupt
+      if (result.error) next.error = result.error
+      if (result.status === 'done') next.interrupt = null
+      return next
+    })
+  }, [appendEvent])
+
   const subscribeToStream = useCallback(
     (jobId: string) => {
       unsubRef.current?.()
       const unsub = subscribeSSE<SSEEnvelope>(`/api/preflight/${jobId}/stream`, {
-        onMessage: (envelope) => {
-          if (envelope.type === 'node') {
-            appendEvent(makeFeedEvent(envelope.message ?? `${envelope.node_name} complete`, envelope.status))
-            if (envelope.aria_state) {
-              setState((prev) => ({
-                ...prev,
-                ariaState: { ...prev.ariaState, ...(envelope.aria_state as ARIAState) },
-                status: 'planning',
-              }))
-            }
-          } else if (envelope.type === 'interrupt') {
-            appendEvent(makeFeedEvent('Waiting for your input', 'warning'))
-            setState((prev) => ({
-              ...prev,
-              interrupt: { kind: envelope.kind, payload: envelope.payload as Record<string, unknown> },
-              status: 'interrupted',
-            }))
-          } else if (envelope.type === 'done') {
-            appendEvent(makeFeedEvent('Analysis complete', 'success'))
-            setState((prev) => ({ ...prev, ariaState: envelope.aria_state, status: 'done', interrupt: null }))
-          } else if (envelope.type === 'error') {
-            appendEvent(makeFeedEvent(envelope.message, 'error'))
-            setState((prev) => ({ ...prev, error: envelope.message, status: 'failed' }))
-          }
-        },
-        onError: () => {
-          appendEvent(makeFeedEvent('Stream disconnected', 'warning'))
-        },
+        onMessage: handleEnvelope,
+        onError: () => appendEvent(makeFeedEvent('Stream disconnected', 'warning', { eventType: 'error' })),
       })
       unsubRef.current = unsub
     },
-    [appendEvent],
+    [handleEnvelope, appendEvent],
   )
 
   const start = useCallback(

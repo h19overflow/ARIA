@@ -62,22 +62,19 @@ async def write_job(redis: Redis, job_id: str, job: JobState) -> None:
 
 async def apply_chunk(
     redis: Redis, job_id: str, chunk: dict, current_state: ARIAState, stage: str,
+    node_index: int = 0, total_nodes: int = 0,
 ) -> ARIAState:
-    """Merge a streaming chunk into state and publish node SSE events."""
+    """Merge a streaming chunk into state and publish node SSE events with timing."""
+    from src.services.pipeline._node_events import emit_node_events
+
     for node_name, update in chunk.items():
         if not isinstance(update, dict):
             log.debug("[%s] Skipping non-dict chunk from node=%s type=%s", job_id, node_name, type(update).__name__)
             continue
-        current_state = {**current_state, **update}  # type: ignore[assignment]
-        log.debug("[%s] Node completed | stage=%s node=%s", job_id, stage, node_name)
-        await publish(redis, job_id, SSEEvent(
-            type="node", stage=stage, node_name=node_name, status="running",
-            message=f"{node_name} completed",
-            aria_state=serialize(current_state),
-        ))
-        await write_job(redis, job_id, JobState(
-            job_id=job_id, status="planning", aria_state=serialize(current_state),
-        ))
+        node_index += 1
+        current_state = await emit_node_events(
+            redis, job_id, node_name, update, current_state, stage, node_index, total_nodes,
+        )
     return current_state
 
 

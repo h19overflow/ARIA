@@ -1,13 +1,13 @@
-import clsx from 'clsx'
 import { Activity } from 'lucide-react'
 import type { ARIAState, WorkflowStatus, FeedEvent } from '@/types'
 import { StepItem, type StepStatus } from './StepItem'
-import { MiniFeed } from './MiniFeed'
+import { ActivityTimeline } from './ActivityTimeline'
 
 interface StepsPanelProps {
   ariaState: ARIAState | null
   status: WorkflowStatus
   events: FeedEvent[]
+  activeNode?: string | null
 }
 
 interface StepDef {
@@ -72,13 +72,13 @@ function deriveStepStatuses(ariaState: ARIAState | null, status: WorkflowStatus)
   return [s1, s2, s3]
 }
 
-export function StepsPanel({ ariaState, status, events }: StepsPanelProps) {
+export function StepsPanel({ ariaState, status, events, activeNode = null }: StepsPanelProps) {
   const stepStatuses = deriveStepStatuses(ariaState, status)
   const activeCount = stepStatuses.filter((s) => s === 'done').length
 
   return (
     <div className="flex flex-col h-full w-72 flex-shrink-0 border-r border-white/6">
-      {/* Header */}
+      {/* High-level steps header */}
       <div className="px-4 pt-5 pb-4 border-b border-white/6">
         <div className="flex items-center gap-2 mb-1">
           <Activity size={14} className="text-orange" />
@@ -87,8 +87,8 @@ export function StepsPanel({ ariaState, status, events }: StepsPanelProps) {
         <p className="text-[11px] text-white/30 font-mono">{activeCount} of 3 complete</p>
       </div>
 
-      {/* Steps */}
-      <div className="flex-1 overflow-y-auto px-4 py-5">
+      {/* Compact step indicators */}
+      <div className="px-4 py-4 border-b border-white/6">
         {STEPS.map((step, i) => (
           <StepItem
             key={i}
@@ -102,12 +102,9 @@ export function StepsPanel({ ariaState, status, events }: StepsPanelProps) {
         ))}
       </div>
 
-      {/* Mini feed */}
-      <div className={clsx('border-t border-white/6 py-2', events.length === 0 && 'opacity-50')}>
-        <div className="px-4 py-1.5 flex items-center gap-2">
-          <span className="text-[10px] font-mono font-semibold text-white/25 uppercase tracking-widest">Log</span>
-        </div>
-        <MiniFeed events={events} />
+      {/* Activity Timeline — takes remaining space */}
+      <div className="flex-1 overflow-hidden">
+        <ActivityTimeline events={events} activeNode={activeNode} status={status} />
       </div>
     </div>
   )

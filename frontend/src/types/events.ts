@@ -2,6 +2,7 @@ import type { ARIAState } from './state'
 
 export type EventStage = 'preflight' | 'build' | 'test' | 'fix' | 'system'
 export type EventStatus = 'running' | 'success' | 'error' | 'warning'
+export type FeedEventType = 'node_start' | 'node_done' | 'interrupt' | 'done' | 'error' | 'info'
 
 export interface FeedEvent {
   id: string
@@ -9,9 +10,26 @@ export interface FeedEvent {
   message: string
   timestamp: Date
   status: EventStatus
+  nodeName?: string
+  tools?: string[]
+  durationMs?: number
+  progress?: string
+  eventType?: FeedEventType
 }
 
 // ─── SSE Envelope ─────────────────────────────────────────────────────────────
+
+export interface SSENodeStartEvent {
+  type: 'node_start'
+  stage: EventStage
+  node_name: string
+  message?: string
+  status: 'running'
+  event_id?: string
+  tools?: string[]
+  timestamp?: string
+  progress?: string
+}
 
 export interface SSENodeEvent {
   type: 'node'
@@ -20,6 +38,11 @@ export interface SSENodeEvent {
   message?: string
   status: EventStatus
   aria_state?: Record<string, unknown>
+  event_id?: string
+  tools?: string[]
+  duration_ms?: number
+  timestamp?: string
+  progress?: string
 }
 
 export interface SSEInterruptEvent {
@@ -47,6 +70,7 @@ export interface SSEPingEvent {
 }
 
 export type SSEEnvelope =
+  | SSENodeStartEvent
   | SSENodeEvent
   | SSEInterruptEvent
   | SSEDoneEvent

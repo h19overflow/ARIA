@@ -6,6 +6,8 @@ import { PreflightHeader } from '@/components/preflight/PreflightHeader'
 import { StepsPanel } from '@/components/preflight/StepsPanel'
 import { BlueprintPanel } from '@/components/preflight/BlueprintPanel'
 import { CredentialCard } from '@/components/preflight/CredentialCard'
+import { PageGuide } from '@/components/shared/PageGuide'
+import { PREFLIGHT_GUIDE } from '@/components/shared/guide-content'
 
 interface PreflightPageProps {
   conversationId: string
@@ -36,7 +38,6 @@ export function PreflightPage({ conversationId, onStartBuild }: PreflightPagePro
     if (!connectingType) return
 
     if (state.status === 'interrupted') {
-      // BUG FIX #1: Wrap credentials under the credential type key
       resume('credential', { [connectingType]: credentials })
     } else {
       try {
@@ -55,7 +56,7 @@ export function PreflightPage({ conversationId, onStartBuild }: PreflightPagePro
         return
       }
     }
-    
+
     setConnectingType(null)
   }
 
@@ -67,20 +68,30 @@ export function PreflightPage({ conversationId, onStartBuild }: PreflightPagePro
 
   return (
     <div className="flex flex-col h-full bg-canvas animate-fade-in">
-      <PreflightHeader status={state.status} ariaState={state.ariaState} />
+      <PreflightHeader
+        status={state.status}
+        ariaState={state.ariaState}
+        activeNode={state.activeNode}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         <StepsPanel
           ariaState={state.ariaState}
           status={state.status}
           events={state.events}
+          activeNode={state.activeNode}
         />
-        <BlueprintPanel
-          ariaState={state.ariaState}
-          status={state.status}
-          onStartBuild={handleStartBuild}
-          onConnect={handleConnect}
-        />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="px-6 pt-4">
+            <PageGuide title="How preflight works" steps={PREFLIGHT_GUIDE} storageKey="guide-phase1" />
+          </div>
+          <BlueprintPanel
+            ariaState={state.ariaState}
+            status={state.status}
+            onStartBuild={handleStartBuild}
+            onConnect={handleConnect}
+          />
+        </div>
       </div>
 
       {state.error && (

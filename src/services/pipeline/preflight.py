@@ -50,12 +50,18 @@ async def _stream_preflight(
     """Stream preflight graph, resuming through HITL interrupts until END."""
     log.info("[%s] Preflight streaming starting", job_id)
     current_input: ARIAState | Command = state  # type: ignore[type-arg]
+    node_counter = 0
+    total_nodes = 5  # orchestrator, credential_scanner, credential_guide, credential_saver, handoff
 
     while True:
         interrupted = False
         try:
             async for chunk in pipeline._preflight.astream(current_input, config=config):
-                current_input = await apply_chunk(redis, job_id, chunk, coerce_state(current_input), "preflight")
+                current_input = await apply_chunk(
+                    redis, job_id, chunk, coerce_state(current_input),
+                    "preflight", node_counter, total_nodes,
+                )
+                node_counter += len([k for k in chunk if isinstance(chunk.get(k), dict)])
         except GraphInterrupt:
             interrupted = True
 

@@ -5,6 +5,15 @@ import type { WorkflowStatus, ARIAState } from '@/types'
 interface PreflightHeaderProps {
   status: WorkflowStatus
   ariaState: ARIAState | null
+  activeNode?: string | null
+}
+
+const NODE_DESCRIPTIONS: Record<string, string> = {
+  orchestrator: 'Parsing intent and planning nodes',
+  credential_scanner: 'Scanning for required credentials',
+  credential_guide: 'Building credential setup guide',
+  credential_saver: 'Saving your credentials',
+  handoff: 'Finalizing build blueprint',
 }
 
 function getHeadline(status: WorkflowStatus, ariaState: ARIAState | null): string {
@@ -15,7 +24,11 @@ function getHeadline(status: WorkflowStatus, ariaState: ARIAState | null): strin
   return 'Analysing your requirements...'
 }
 
-function getSubline(status: WorkflowStatus, ariaState: ARIAState | null): string {
+function getSubline(
+  status: WorkflowStatus,
+  ariaState: ARIAState | null,
+  activeNode: string | null,
+): string {
   if (status === 'done') {
     const bp = ariaState?.build_blueprint
     const nodeCount = bp?.required_nodes?.length ?? 0
@@ -23,10 +36,13 @@ function getSubline(status: WorkflowStatus, ariaState: ARIAState | null): string
   }
   if (status === 'failed') return 'Something went wrong. Try again.'
   if (status === 'interrupted') return 'A connection is needed before we can continue'
+  if (activeNode && NODE_DESCRIPTIONS[activeNode]) {
+    return `Running ${activeNode} — ${NODE_DESCRIPTIONS[activeNode]}`
+  }
   return 'ARIA is figuring out exactly what to build and what it needs'
 }
 
-export function PreflightHeader({ status, ariaState }: PreflightHeaderProps) {
+export function PreflightHeader({ status, ariaState, activeNode = null }: PreflightHeaderProps) {
   const isDone = status === 'done'
   const isFailed = status === 'failed'
 
@@ -65,7 +81,7 @@ export function PreflightHeader({ status, ariaState }: PreflightHeaderProps) {
           {getHeadline(status, ariaState)}
         </h1>
         <p className="text-xs text-white/40 mt-0.5 truncate">
-          {getSubline(status, ariaState)}
+          {getSubline(status, ariaState, activeNode)}
         </p>
       </div>
 
