@@ -25,10 +25,11 @@ log = logging.getLogger("aria.preflight")
 
 async def run_preflight(
     job_id: str, description: str, redis: Redis, pipeline: ARIAPipeline,
+    conversation_notes: dict | None = None,
 ) -> None:
     """Background task. Streams preflight graph, handles HITL, writes job:{id}."""
     config = {"configurable": {"thread_id": job_id}}
-    initial_state = build_initial_state(description)
+    initial_state = build_initial_state(description, conversation_notes)
     log.info("[%s] Preflight job started | description=%r", job_id, description[:80])
     try:
         await write_job(redis, job_id, JobState(job_id=job_id, status="planning"))

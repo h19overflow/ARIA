@@ -13,6 +13,15 @@ export interface ConversationNotes {
   constraints?: string[];
   required_integrations?: string[];
   raw_notes?: Record<string, string>;
+  // Granular fields from backend
+  trigger_type?: string;
+  trigger_service?: string;
+  trigger_schedule?: string;
+  trigger_event?: string;
+  transform?: string;
+  destination_service?: string;
+  destination_action?: string;
+  destination_format?: string;
 }
 
 export interface Message {
@@ -21,6 +30,15 @@ export interface Message {
   content: string;
   timestamp: Date;
 }
+
+const GRANULAR_FIELDS = new Set([
+  'trigger_type', 'trigger_service', 'trigger_schedule', 'trigger_event',
+  'transform', 'destination_service', 'destination_action', 'destination_format',
+]);
+
+const KNOWN_FIELDS = new Set([
+  'summary', 'trigger', 'destination', 'data_transform', ...GRANULAR_FIELDS,
+]);
 
 export function applyNoteTaken(prev: ConversationNotes, key: string, value: unknown): ConversationNotes {
   const next = { ...prev };
@@ -39,12 +57,30 @@ export function applyNoteTaken(prev: ConversationNotes, key: string, value: unkn
     } else if (typeof value === 'string' && !arr.includes(value)) {
       (next as Record<string, unknown>)[key] = [...arr, value];
     }
-  } else if (['summary', 'trigger', 'destination', 'data_transform'].includes(key)) {
+  } else if (KNOWN_FIELDS.has(key)) {
     (next as Record<string, unknown>)[key] = value;
   } else {
     next.raw_notes = { ...(next.raw_notes ?? {}), [key]: String(value) };
   }
+  // Synthesize legacy display fields from granular keys
+  if (key.startsWith('trigger_')) {
+    next.trigger = deriveTrigger(next);
+  } else if (key.startsWith('destination_')) {
+    next.destination = deriveDestination(next);
+  } else if (key === 'transform') {
+    next.data_transform = String(value ?? '');
+  }
   return next;
+}
+
+function deriveTrigger(notes: ConversationNotes): string {
+  const parts = [notes.trigger_type, notes.trigger_service, notes.trigger_schedule, notes.trigger_event].filter(Boolean);
+  return parts.join(' — ') || notes.trigger || '';
+}
+
+function deriveDestination(notes: ConversationNotes): string {
+  const parts = [notes.destination_service, notes.destination_action, notes.destination_format].filter(Boolean);
+  return parts.join(' — ') || notes.destination || '';
 }
 
 export function useConversation() {

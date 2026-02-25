@@ -22,7 +22,7 @@ def coerce_state(inp: ARIAState | Command) -> ARIAState:  # type: ignore[type-ar
     return {}  # type: ignore[return-value]
 
 
-def build_initial_state(description: str) -> ARIAState:
+def build_initial_state(description: str, conversation_notes: dict | None = None) -> ARIAState:
     return {  # type: ignore[return-value]
         "messages": [{"type": "human", "content": description}],
         "status": "planning", "intent": "", "required_nodes": [],
@@ -34,6 +34,7 @@ def build_initial_state(description: str) -> ARIAState:
         "n8n_execution_id": None, "execution_result": None, "classified_error": None,
         "fix_attempts": 0, "webhook_url": None, "build_phase": 0,
         "total_phases": 1, "phase_node_map": [], "paused_for_input": False,
+        "conversation_notes": conversation_notes,
     }
 
 

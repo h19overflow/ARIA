@@ -71,6 +71,11 @@ function handleToolEvent(
   const toolData = data.data as Record<string, unknown> | undefined;
   if (tool === 'take_note' && toolData) {
     setNotes(prev => applyNote(prev, String(toolData.key ?? ''), toolData.value));
+  } else if (tool === 'batch_notes' && toolData) {
+    const notes = toolData.notes as { key: string; value: unknown }[] | undefined;
+    if (notes) {
+      setNotes(prev => notes.reduce((acc, n) => applyNote(acc, n.key, n.value), prev));
+    }
   } else if (tool === 'commit_notes' && toolData) {
     setIsCommitted(true);
     if (toolData.summary) setNotes(prev => ({ ...prev, summary: String(toolData.summary) }));

@@ -46,15 +46,15 @@ async def handle_tool_end_state(
         yield {"type": "tool_event", "tool": "take_note", "data": tool_args}
     elif tool_name == "batch_notes":
         raw_notes = tool_args.get("notes", [])
-        keys = []
+        note_pairs: List[Dict[str, Any]] = []
         for note in raw_notes:
             note_dict = _to_dict(note)
             update_notes_state(state, note_dict)
-            keys.append(note_dict.get("key", "?"))
+            note_pairs.append({"key": note_dict.get("key", "?"), "value": note_dict.get("value")})
         yield {
             "type": "tool_event",
             "tool": "batch_notes",
-            "data": {"count": len(raw_notes), "keys": keys},
+            "data": {"count": len(raw_notes), "notes": note_pairs},
         }
     elif tool_name == "commit_notes":
         if state.committed:

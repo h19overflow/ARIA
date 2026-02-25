@@ -49,7 +49,13 @@ export function RequirementsPanel({
       if (prev[f.key] !== notes[f.key]) { flashKey(f.key); return; }
     }
     if (prev.constraints !== notes.constraints) { flashKey('constraints'); return; }
-    if (prev.required_integrations !== notes.required_integrations) { flashKey('integrations'); }
+    if (prev.required_integrations !== notes.required_integrations) { flashKey('integrations'); return; }
+    // Detect granular field changes that synthesize into display fields
+    if (prev.trigger_type !== notes.trigger_type || prev.trigger_service !== notes.trigger_service
+      || prev.trigger_schedule !== notes.trigger_schedule) { flashKey('trigger'); return; }
+    if (prev.destination_service !== notes.destination_service
+      || prev.destination_action !== notes.destination_action) { flashKey('destination'); return; }
+    if (prev.transform !== notes.transform) { flashKey('data_transform'); }
   }, [notes]);
 
   function flashKey(key: string) {

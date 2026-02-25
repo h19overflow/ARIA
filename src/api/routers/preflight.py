@@ -29,12 +29,12 @@ async def start_preflight(
     redis: Redis = Depends(get_redis),
     pipeline: ARIAPipeline = Depends(get_pipeline),
 ) -> PreflightResponse:
-    description = await _resolve_description(body, redis)
+    description, conversation_notes = await _resolve_description(body, redis)
     job_id = str(uuid4())
     log.info("POST /preflight | job_id=%s | description=%r", job_id, description[:80])
     initial = JobState(job_id=job_id, status="planning")
     await redis.set(f"job:{job_id}", initial.model_dump_json(), ex=86_400)
-    asyncio.create_task(preflight_service.run_preflight(job_id, description, redis, pipeline))
+    asyncio.create_task(preflight_service.run_preflight(job_id, description, redis, pipeline, conversation_notes))
     log.info("Preflight background task created | job_id=%s", job_id)
     return PreflightResponse(preflight_job_id=job_id, status="planning")
 
@@ -55,17 +55,18 @@ async def stream_preflight(
     )
 
 
-async def _resolve_description(body: PreflightRequest, redis: Redis) -> str:
+async def _resolve_description(body: PreflightRequest, redis: Redis) -> tuple[str, dict | None]:
     if body.description:
-        return body.description
+        return body.description, None
     if body.conversation_id:
         raw = await redis.get(f"conversation:{body.conversation_id}")
         if raw:
             try:
                 data = json.loads(raw)
-                summary = data.get("notes", {}).get("summary", "")
+                notes = data.get("notes", {})
+                summary = notes.get("summary", "")
                 if summary:
-                    return summary
+                    return summary, notes
             except (json.JSONDecodeError, AttributeError):
                 pass
         raise HTTPException(
