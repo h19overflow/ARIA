@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, FileText } from 'lucide-react';
-import type { ConversationNotes } from '../../hooks/useConversation';
+import type { ConversationNotes } from '@/store';
 import { NoteField } from './NoteField';
 
 interface ScratchpadPanelProps {

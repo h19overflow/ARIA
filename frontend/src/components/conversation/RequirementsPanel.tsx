@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
 import { clsx } from 'clsx';
-import type { ConversationNotes } from '@/hooks/useConversation';
+import type { ConversationNotes } from '@/store';
 import { NoteField } from './NoteField';
 
 interface RequirementsPanelProps {

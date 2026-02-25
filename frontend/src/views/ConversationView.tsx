@@ -1,21 +1,26 @@
-import { useConversation } from '@/hooks/useConversation';
+import { useAppStore } from '@/store';
+import { useSendMessage } from '@/hooks/useSendMessage';
+import { useInitConversation } from '@/hooks/useInitConversation';
 import { ChatPanel } from '@/components/conversation/ChatPanel';
 import { RequirementsPanel } from '@/components/conversation/RequirementsPanel';
 
 interface ConversationViewProps {
-  onStartPreflight: (conversationId: string) => void;
+  onStartPreflight: () => void;
   isStarting?: boolean;
   workflowError?: string | null;
 }
 
 export function ConversationView({ onStartPreflight, isStarting, workflowError }: ConversationViewProps) {
-  const { conversationId, messages, notes, activities, isStreaming, isCommitted, error, sendMessage, updateNote } =
-    useConversation();
+  useInitConversation();
+  const sendMessage = useSendMessage();
 
-  const handleStartPreflight = () => {
-    if (!conversationId) return;
-    onStartPreflight(conversationId);
-  };
+  const messages = useAppStore((s) => s.messages);
+  const notes = useAppStore((s) => s.notes);
+  const activities = useAppStore((s) => s.activities);
+  const isStreaming = useAppStore((s) => s.isStreaming);
+  const isCommitted = useAppStore((s) => s.isCommitted);
+  const error = useAppStore((s) => s.error);
+  const updateNote = useAppStore((s) => s.updateNote);
 
   return (
     <div style={{
@@ -32,7 +37,7 @@ export function ConversationView({ onStartPreflight, isStarting, workflowError }
         isCommitted={isCommitted}
         isStarting={isStarting}
         onUpdate={updateNote}
-        onStartPreflight={handleStartPreflight}
+        onStartPreflight={onStartPreflight}
       />
       <ChatPanel
         messages={messages}

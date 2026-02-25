@@ -3,7 +3,7 @@ import { Send, Loader2, Zap, RefreshCw, BookOpen, CheckCircle2 } from 'lucide-re
 import { clsx } from 'clsx';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { Message } from '@/hooks/useConversation';
+import type { Message } from '@/store';
 import type { AgentActivity } from '@/types';
 import { AgentActivityBar } from './AgentActivityBar';
 
