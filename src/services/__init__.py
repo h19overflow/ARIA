@@ -1,32 +1,33 @@
-"""Services barrel — backward-compat re-exports."""
+"""Services barrel — lazy re-exports to avoid circular imports."""
 
-from src.services.pipeline.build import load_preflight_state, run_build
-from src.services.pipeline.preflight import run_preflight
-from src.services.rag.ingestion import (
-    ingest_api_spec,
-    ingest_n8n_nodes,
-    ingest_n8n_workflow_templates,
-)
-from src.services.rag.retrieval import (
-    hybrid_retrieve_api_endpoints,
-    hybrid_retrieve_n8n_nodes,
-    hybrid_retrieve_workflow_templates,
-    retrieve_api_endpoints,
-    retrieve_n8n_nodes,
-    retrieve_workflow_templates,
-)
+from __future__ import annotations
 
-__all__ = [
-    "run_preflight",
-    "run_build",
-    "load_preflight_state",
-    "ingest_n8n_nodes",
-    "ingest_n8n_workflow_templates",
-    "ingest_api_spec",
-    "retrieve_n8n_nodes",
-    "retrieve_workflow_templates",
-    "retrieve_api_endpoints",
-    "hybrid_retrieve_n8n_nodes",
-    "hybrid_retrieve_workflow_templates",
-    "hybrid_retrieve_api_endpoints",
-]
+
+def __getattr__(name: str) -> object:
+    """Lazily resolve backward-compat re-exports on first access."""
+    _pipeline_names = {"run_preflight", "run_build", "load_preflight_state"}
+    _rag_ingestion_names = {
+        "ingest_n8n_nodes", "ingest_n8n_workflow_templates", "ingest_api_spec",
+    }
+    _rag_retrieval_names = {
+        "retrieve_n8n_nodes", "retrieve_workflow_templates", "retrieve_api_endpoints",
+        "hybrid_retrieve_n8n_nodes", "hybrid_retrieve_workflow_templates",
+        "hybrid_retrieve_api_endpoints",
+    }
+
+    if name in _pipeline_names:
+        if name == "run_preflight":
+            from src.services.pipeline.preflight import run_preflight
+            return run_preflight
+        from src.services.pipeline import build as _build
+        return getattr(_build, name)
+
+    if name in _rag_ingestion_names:
+        from src.services.rag import ingestion as _ing
+        return getattr(_ing, name)
+
+    if name in _rag_retrieval_names:
+        from src.services.rag import retrieval as _ret
+        return getattr(_ret, name)
+
+    raise AttributeError(f"module 'src.services' has no attribute {name!r}")

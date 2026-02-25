@@ -1,6 +1,14 @@
 """Pipeline services — preflight (Phase 1) and build (Phase 2)."""
 
-from src.services.pipeline.build import load_preflight_state, run_build
-from src.services.pipeline.preflight import run_preflight
+from __future__ import annotations
 
-__all__ = ["run_preflight", "run_build", "load_preflight_state"]
+
+def __getattr__(name: str) -> object:
+    """Lazily resolve pipeline sub-module exports."""
+    if name == "run_preflight":
+        from src.services.pipeline.preflight import run_preflight
+        return run_preflight
+    if name in ("run_build", "load_preflight_state"):
+        from src.services.pipeline import build as _build
+        return getattr(_build, name)
+    raise AttributeError(f"module 'src.services.pipeline' has no attribute {name!r}")
