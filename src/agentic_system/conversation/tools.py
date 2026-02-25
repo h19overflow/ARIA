@@ -8,7 +8,12 @@ from pydantic import BaseModel, Field
 class TakeNoteInput(BaseModel):
     """Input schema for the take_note tool."""
     key: str = Field(
-        description="The category or name of the note (e.g., 'trigger', 'destination', 'data_transform', 'constraint')."
+        description=(
+            "The sub-key for the note. Use: trigger_type, trigger_service, "
+            "trigger_schedule, trigger_event, action_1/action_2/..., transform, "
+            "destination_service, destination_action, destination_format, "
+            "constraint, required_integrations."
+        ),
     )
     value: Optional[str] = Field(
         default=None,
@@ -25,13 +30,13 @@ class CommitNotesInput(BaseModel):
 
 @tool("take_note", args_schema=TakeNoteInput)
 async def take_note(key: str, value: Optional[str] = None) -> str:
-    """Records, updates, or deletes a specific requirement or note for the workflow.
-    
-    Use this tool whenever the user provides new information about what they want to build.
-    Common keys include: "trigger", "destination", "data_transform", "constraint", "required_integrations".
-    
-    If the user changes their mind and wants to remove a requirement, call this tool 
-    with the corresponding key and set `value` to None to explicitly delete it.
+    """Records, updates, or deletes a workflow requirement note.
+
+    Use granular sub-keys: trigger_type, trigger_service, trigger_schedule,
+    trigger_event, action_1, action_2, transform, destination_service,
+    destination_action, destination_format, constraint, required_integrations.
+
+    Set `value` to None to delete a note.
     """
     if value is None:
         return f"Action recorded: Deleted note for key '{key}'."

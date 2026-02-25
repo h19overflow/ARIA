@@ -1,5 +1,7 @@
 import { Bot, User, Wrench, Monitor } from 'lucide-react'
 import clsx from 'clsx'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { LangChainMessage, MessageRole } from '@/types'
 
 interface MessageThreadProps {
@@ -52,9 +54,15 @@ function MessageBubble({ msg }: { msg: LangChainMessage }) {
           {msg.name ?? config.label}
         </span>
       </div>
-      <p className="text-xs text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap break-words">
-        {content}
-      </p>
+      {msg.type === 'human' ? (
+        <p className="text-xs text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap break-words">
+          {content}
+        </p>
+      ) : (
+        <div className="prose-aria text-xs leading-relaxed break-words">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        </div>
+      )}
     </div>
   )
 }

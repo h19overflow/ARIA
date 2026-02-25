@@ -8,10 +8,11 @@ wheels/
 
 # Virtual environments
 .venv
-CLAUDE.md 
+CLAUDE.md
 .claude/
 docs/
 .env
 scripts/
 undefined/
 chroma/
+.mermaid/

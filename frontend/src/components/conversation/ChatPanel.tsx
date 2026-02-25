@@ -1,6 +1,8 @@
 import { useRef, useEffect, useState, KeyboardEvent } from 'react';
 import { Send, Loader2, Zap, RefreshCw, BookOpen, CheckCircle2 } from 'lucide-react';
 import { clsx } from 'clsx';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import type { Message } from '@/hooks/useConversation';
 
 interface ChatPanelProps {
@@ -54,12 +56,12 @@ function UserBubble({ content }: { content: string }) {
 function AiBubble({ content }: { content: string }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'flex-start' }} className="msg-enter">
-      <div style={{
+      <div className="prose-aria" style={{
         maxWidth: '92%', fontSize: '0.875rem', lineHeight: 1.75,
-        color: 'var(--text-primary)', whiteSpace: 'pre-wrap',
+        color: 'var(--text-primary)',
         borderLeft: '2px solid rgba(238,79,39,0.3)', paddingLeft: '14px',
       }}>
-        {content}
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
       </div>
     </div>
   );

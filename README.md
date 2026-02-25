@@ -30,67 +30,17 @@ ARIA's engine is built on LangGraph and is split into two distinct execution pha
 
 The Preflight phase orchestrates the initial conversation, ensuring ARIA completely understands the user's intent and that all required integration credentials exist in n8n before writing any code.
 
-```mermaid
-flowchart TD
-    Start([User Request]) --> O[Orchestrator Agent]
-    
-    O -->|Needs Info| HC[HITL Clarify]
-    HC -->|User Answer| O
-    
-    O -->|Intent Clear| CS[Credential Scanner]
-    
-    CS -->|Missing Creds| CSV[Credential Saver]
-    CSV -->|Interrupts User| CS
-    
-    CS -->|Ambiguous Creds| AMB[Ambiguity Resolver]
-    AMB -->|User Selects| CS
-    
-    CS -->|All Resolved| HO([Handoff to Build Blueprint])
+<!-- mermaid-source-file:.mermaid\README_1772023225_4.mmd-->
 
-    style O fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
-    style HC fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
-    style CS fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
-    style CSV fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
-    style AMB fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
-    style HO fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#0f172a
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772023225_4.svg)
 
 ### 2. Build Cycle Phase (Execution & Self-Healing)
 
 Once the blueprint is finalized, the Build Cycle takes over. It builds the workflow phase-by-phase (e.g., Trigger → Data Processing → Output), testing and self-healing at each step.
 
-```mermaid
-flowchart TD
-    Start([Build Blueprint]) --> PP[Phase Planner]
-    
-    PP --> RAG[RAG Retriever]
-    RAG --> ENG[Engineer Agent]
-    
-    ENG -->|Generates JSON| DEP[Deploy to n8n]
-    DEP --> TST[Execute Test]
-    
-    TST -->|Success| CHK{More Phases?}
-    CHK -->|Yes| PP
-    CHK -->|No| DONE([Workflow Activated])
-    
-    TST -->|Error| DBG[Debugger Agent]
-    
-    DBG -->|Schema Error| FIX[Fix Agent]
-    FIX -->|Patch| DEP
-    
-    DBG -->|Max Attempts Reached| ESC[HITL Escalation]
-    DBG -->|Auth Error| ESC
-    
-    ESC -->|Manual UI Fix| DEP
-    ESC -->|Replan| Start
-    ESC -->|Abort| FAIL([Failed])
+<!-- mermaid-source-file:.mermaid\README_1772023225_5.mmd-->
 
-    style ENG fill:#bae6fd,stroke:#0284c7,stroke-width:2px,color:#0f172a
-    style DBG fill:#fca5a5,stroke:#dc2626,stroke-width:2px,color:#0f172a
-    style ESC fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
-    style FIX fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
-    style DONE fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#0f172a
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772023225_5.svg)
 
 ---
 
@@ -98,35 +48,9 @@ flowchart TD
 
 ARIA utilizes a decoupled service architecture, separating the conversational UI from the intelligence engine.
 
-```mermaid
-graph LR
-    subgraph Client [Frontend App]
-        React[React / Vite]
-    end
+<!-- mermaid-source-file:.mermaid\README_1772023225_6.mmd-->
 
-    subgraph API [Backend API]
-        FA[FastAPI]
-        RD[(Redis Pub/Sub)]
-    end
-
-    subgraph Engine [Intelligence]
-        LG[LangGraph Pipeline]
-        GM[Gemini 1.5 Pro]
-        CH[(ChromaDB)]
-    end
-
-    subgraph Runtime [Execution]
-        N8N[n8n Instance]
-    end
-
-    React <-->|REST & SSE| FA
-    FA <-->|Job Queue| RD
-    RD --> LG
-    
-    LG <--> GM
-    LG <-->|RAG Retrieval| CH
-    LG <-->|Deploy & Test| N8N
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772023225_6.svg)
 
 | Component | Role |
 |-----------|------|
