@@ -156,24 +156,28 @@ class N8nClient:
         return resp.json().get("data", [])
 
 
-# Only backfill plain string and notice fields.
-# Booleans trigger allOf/if-then branches; enums reject empty strings.
-_BACKFILL_TYPES = {"string", "notice"}
+# Type → safe default value for missing credential fields.
+# Booleans default to False (won't activate allOf if/then branches).
+# Strings/notices default to "".  Enums are skipped (no safe default).
+_BACKFILL_DEFAULTS: dict[str, object] = {
+    "string": "",
+    "notice": "",
+    "boolean": False,
+}
 
 
 def _backfill_credential_data(user_data: dict, schema: dict) -> dict:
     """Merge user-supplied data with schema defaults for missing fields.
 
-    n8n requires certain fields to be present even when optional.
-    Only safe-to-default types (plain strings, notice) are backfilled.
-    Booleans and enum fields are skipped to avoid triggering conditional
-    validation branches or enum mismatch errors.
+    n8n requires certain fields to be present even when optional —
+    especially booleans that gate allOf/if-then conditional branches.
     """
     result = dict(user_data)
     for prop in schema.get("properties", []):
         field_name = prop["name"]
         if field_name in result:
             continue
-        if prop.get("type", "string") in _BACKFILL_TYPES and not prop.get("enum"):
-            result[field_name] = ""
+        field_type = prop.get("type", "string")
+        if field_type in _BACKFILL_DEFAULTS and not prop.get("enum"):
+            result[field_name] = _BACKFILL_DEFAULTS[field_type]
     return result
