@@ -77,6 +77,14 @@ export function ChatPanel({ messages, activities, isStreaming, isCommitted, erro
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isStreaming]);
 
+  const prevStreamingRef = useRef(false);
+  useEffect(() => {
+    if (prevStreamingRef.current && !isStreaming) {
+      textareaRef.current?.focus();
+    }
+    prevStreamingRef.current = isStreaming;
+  }, [isStreaming]);
+
   const resizeTextarea = () => {
     const el = textareaRef.current;
     if (!el) return;
@@ -93,7 +101,6 @@ export function ChatPanel({ messages, activities, isStreaming, isCommitted, erro
     if (!trimmed || isStreaming) return;
     setInput('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
-    textareaRef.current?.focus();
     await onSendMessage(trimmed);
   };
 
@@ -170,7 +177,7 @@ export function ChatPanel({ messages, activities, isStreaming, isCommitted, erro
           </p>
         )}
         <div className={clsx('input-focus-orange')} style={{
-          display: 'flex', alignItems: 'flex-end', gap: '10px',
+          display: 'flex', alignItems: 'center', gap: '10px',
           background: 'var(--bg-elevated)', border: '1px solid var(--border-muted)',
           borderRadius: '14px', padding: '12px 14px',
           boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
