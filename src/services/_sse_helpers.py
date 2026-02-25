@@ -1,7 +1,6 @@
 """Shared SSE/Redis helpers used by preflight_service and build_service."""
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 
