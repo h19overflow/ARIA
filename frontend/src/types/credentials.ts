@@ -1,12 +1,22 @@
 export interface CredentialField {
   name: string
   label: string
-  type: 'text' | 'password' | 'url'
+  description: string
+  required: boolean
+  type?: 'text' | 'password' | 'url'
   placeholder?: string
 }
 
-export interface CredentialGuidePayload {
+export interface CredentialGuideEntry {
   credential_type: string
+  display_name: string
+  service_description: string
+  how_to_obtain: string
+  help_url: string
   fields: CredentialField[]
-  instructions?: string
+}
+
+export interface CredentialGuidePayload {
+  entries: CredentialGuideEntry[]
+  summary: string
 }

@@ -40,3 +40,14 @@ export const submitResume = (
   }
   return request(`/jobs/${jobId}/resume`, { method: 'POST', body: JSON.stringify(body) })
 }
+
+// Direct credential saving (bypasses LangGraph interrupt)
+export const saveCredential = (
+  credentialType: string,
+  name: string,
+  data: Record<string, string>
+): Promise<{ credential_id: string; credential_type: string; name: string }> =>
+  request('/credentials', {
+    method: 'POST',
+    body: JSON.stringify({ credential_type: credentialType, name, data })
+  })

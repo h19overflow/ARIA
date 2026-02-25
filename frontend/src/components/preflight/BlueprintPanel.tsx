@@ -9,10 +9,10 @@ interface BlueprintPanelProps {
   ariaState: ARIAState | null
   status: WorkflowStatus
   onStartBuild: () => void
-  onConnectMissing?: () => void
+  onConnect?: (credentialType: string) => void
 }
 
-export function BlueprintPanel({ ariaState, status, onStartBuild, onConnectMissing }: BlueprintPanelProps) {
+export function BlueprintPanel({ ariaState, status, onStartBuild, onConnect }: BlueprintPanelProps) {
   const isComplete = status === 'done' && ariaState?.build_blueprint != null
   const nodes = ariaState?.required_nodes ?? []
   const hasMissing = (ariaState?.pending_credential_types ?? []).length > 0
@@ -21,7 +21,7 @@ export function BlueprintPanel({ ariaState, status, onStartBuild, onConnectMissi
     <div className="flex-1 overflow-y-auto px-6 py-6">
       <div className="max-w-2xl mx-auto flex flex-col gap-4">
         <IntentCard ariaState={ariaState} />
-        <CredentialChecklist ariaState={ariaState} onConnectMissing={hasMissing ? onConnectMissing : undefined} />
+        <CredentialChecklist ariaState={ariaState} onConnect={hasMissing ? onConnect : undefined} />
         <NodeChips nodes={nodes} />
 
         {/* Start build button */}

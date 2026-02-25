@@ -4,7 +4,7 @@ import type { ARIAState } from '@/types'
 
 interface CredentialChecklistProps {
   ariaState: ARIAState | null
-  onConnectMissing?: () => void
+  onConnect?: (credentialType: string) => void
 }
 
 function cleanLabel(raw: string): string {
@@ -52,7 +52,7 @@ function buildRows(ariaState: ARIAState | null): CredRow[] {
   return rows
 }
 
-export function CredentialChecklist({ ariaState, onConnectMissing }: CredentialChecklistProps) {
+export function CredentialChecklist({ ariaState, onConnect }: CredentialChecklistProps) {
   const rows = buildRows(ariaState)
 
   return (
@@ -96,9 +96,9 @@ export function CredentialChecklist({ ariaState, onConnectMissing }: CredentialC
                 </span>
               </div>
 
-              {row.status === 'missing' && onConnectMissing && (
+              {row.status === 'missing' && onConnect && (
                 <button
-                  onClick={onConnectMissing}
+                  onClick={() => onConnect(row.type)}
                   className="flex-shrink-0 text-[11px] font-semibold text-orange hover:text-orange/80 transition-colors"
                 >
                   Connect →

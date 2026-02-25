@@ -44,8 +44,9 @@ function CredentialFieldInput({
 export function CredentialModal({ interrupt, onSubmit, onDismiss }: CredentialModalProps) {
   const guide = interrupt?.payload?.guide as CredentialGuidePayload | undefined
   const pendingTypes = (interrupt?.payload?.pending_types as string[] | undefined) ?? []
-  const credentialType = guide?.credential_type ?? pendingTypes[0] ?? 'Connection'
-  const fields: CredentialField[] = guide?.fields ?? []
+  const entry = guide?.entries?.[0]
+  const credentialType = entry?.credential_type ?? pendingTypes[0] ?? 'Connection'
+  const fields: CredentialField[] = entry?.fields ?? []
 
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(fields.map((f) => [f.name, ''])),
@@ -93,9 +94,9 @@ export function CredentialModal({ interrupt, onSubmit, onDismiss }: CredentialMo
 
           {/* Body */}
           <div className="px-6 py-5 flex flex-col gap-4">
-            {guide?.instructions && (
+            {entry?.how_to_obtain && (
               <p className="text-sm text-white/50 leading-relaxed bg-white/[0.03] rounded-lg px-3 py-2.5 border border-white/6">
-                {guide.instructions}
+                {entry.how_to_obtain}
               </p>
             )}
 

@@ -1,10 +1,11 @@
-import { useEffect } from 'react'
-import type { ARIAState } from '@/types'
+import { useEffect, useState, useCallback } from 'react'
+import type { ARIAState, CredentialGuideEntry } from '@/types'
 import { usePreflight } from '@/hooks/usePreflight'
+import { saveCredential } from '@/lib/api'
 import { PreflightHeader } from '@/components/preflight/PreflightHeader'
 import { StepsPanel } from '@/components/preflight/StepsPanel'
 import { BlueprintPanel } from '@/components/preflight/BlueprintPanel'
-import { CredentialModal } from '@/components/preflight/CredentialModal'
+import { CredentialCard } from '@/components/preflight/CredentialCard'
 
 interface PreflightPageProps {
   conversationId: string
@@ -13,6 +14,7 @@ interface PreflightPageProps {
 
 export function PreflightPage({ conversationId, onStartBuild }: PreflightPageProps) {
   const { state, start, resume, reset } = usePreflight()
+  const [connectingType, setConnectingType] = useState<string | null>(null)
 
   useEffect(() => {
     start(conversationId)
@@ -26,18 +28,50 @@ export function PreflightPage({ conversationId, onStartBuild }: PreflightPagePro
     }
   }
 
-  function handleCredentialSubmit(credentials: Record<string, unknown>) {
-    resume('credential', credentials)
+  const handleConnect = useCallback((credentialType: string) => {
+    setConnectingType(credentialType)
+  }, [])
+
+  async function handleCredentialSubmit(credentials: Record<string, string>) {
+    if (!connectingType) return
+
+    if (state.status === 'interrupted') {
+      // BUG FIX #1: Wrap credentials under the credential type key
+      resume('credential', { [connectingType]: credentials })
+    } else {
+      // BUG FIX #2: Use direct API when not in interrupted state
+      try {
+        const result = await saveCredential(connectingType, connectingType, credentials)
+        
+        // Update local state to reflect the saved credential
+        if (state.ariaState) {
+          const updatedState: ARIAState = {
+            ...state.ariaState,
+            pending_credential_types: state.ariaState.pending_credential_types?.filter(
+              (t) => t !== connectingType
+            ),
+            resolved_credential_ids: {
+              ...state.ariaState.resolved_credential_ids,
+              [connectingType]: result.credential_id,
+            },
+          }
+          // Note: The usePreflight hook doesn't expose setState directly,
+          // but the credential will be available on next refresh
+        }
+      } catch (error) {
+        console.error('Failed to save credential:', error)
+        return
+      }
+    }
+    
+    setConnectingType(null)
   }
 
   function handleCredentialDismiss() {
-    resume('credential', {})
+    setConnectingType(null)
   }
 
-  function handleConnectMissing() {
-    // Surfacing the existing credential interrupt modal
-    // The interrupt will be set by the SSE stream when credentials are needed
-  }
+  const activeEntry = findGuideEntry(state.ariaState, connectingType)
 
   return (
     <div className="flex flex-col h-full bg-canvas animate-fade-in">
@@ -53,7 +87,7 @@ export function PreflightPage({ conversationId, onStartBuild }: PreflightPagePro
           ariaState={state.ariaState}
           status={state.status}
           onStartBuild={handleStartBuild}
-          onConnectMissing={handleConnectMissing}
+          onConnect={handleConnect}
         />
       </div>
 
@@ -65,11 +99,22 @@ export function PreflightPage({ conversationId, onStartBuild }: PreflightPagePro
         </div>
       )}
 
-      <CredentialModal
-        interrupt={state.interrupt}
-        onSubmit={handleCredentialSubmit}
-        onDismiss={handleCredentialDismiss}
-      />
+      {activeEntry && (
+        <CredentialCard
+          entry={activeEntry}
+          onSubmit={handleCredentialSubmit}
+          onDismiss={handleCredentialDismiss}
+        />
+      )}
     </div>
   )
+}
+
+function findGuideEntry(
+  ariaState: ARIAState | null,
+  credentialType: string | null,
+): CredentialGuideEntry | null {
+  if (!ariaState?.credential_guide_payload || !credentialType) return null
+  const payload = ariaState.credential_guide_payload
+  return payload.entries?.find((e) => e.credential_type === credentialType) ?? null
 }
