@@ -47,9 +47,44 @@ flowchart TD
 | **Orchestrator** | Yes | No | Reads the user's request, determines which n8n nodes are needed, decides whether to ask a follow-up question or proceed. Max 3 clarification rounds. |
 | **HITL Clarify** | No | Yes | Surfaces the orchestrator's question to the user. Graph freezes until the user replies. |
 | **Credential Scanner** | Yes | Sometimes | Queries n8n for existing credentials. If two match and it can't pick one, pauses and asks. |
-| **Credential Guide** | Yes | No | Deterministically fetches n8n credential schemas, injects them into the LLM prompt as ground truth, then validates/patches the output. LLM only generates prose (setup steps, help URLs). See [Credential Guide -- Reliability](#credential-guide--reliability). |
+| **Credential Guide** | Yes | No | Deterministically fetches n8n credential schemas, injects them into the LLM prompt as ground truth, then validates/patches the output. LLM only generates prose (setup steps, help URLs). No tools. See [Credential Guide -- Reliability](#credential-guide--reliability). |
 | **Credential Saver** | No | Yes | Displays the setup guide and waits while the user enters credentials in n8n. Loops back to scanner once saved. |
 | **Handoff** | No | No | Packages `BuildBlueprint` -- intent, node list, credential IDs, topology -- and hands off to Build Cycle. |
+
+---
+
+## Agent Configuration
+
+All agentic nodes use `gemini-3-flash-preview` with explicit recursion limits tuned per node complexity.
+
+| Agent | Model | Recursion Limit | Tools |
+|---|---|---|---|
+| **Orchestrator** | `gemini-3-flash-preview` | 16 | `search_n8n_nodes` (RAG) |
+| **Credential Scanner** | `gemini-3-flash-preview` | 12 | `list_credentials`, `get_credential_schema` |
+| **Credential Guide** | `gemini-3-flash-preview` | 8 | None -- schemas pre-fetched via `_fetch_schemas()` |
+
+The credential guide previously had RAG tools (`search_n8n_nodes`, `get_credential_schema`) which caused 6-minute loops in Docker as the agent repeatedly searched instead of generating prose. Removing all tools and injecting schemas directly into the prompt solved this.
+
+### RAG Tool Singleton
+
+`search_n8n_nodes` uses a **module-level singleton `ChromaStore`** (`src/agentic_system/preflight/tools/rag_tools.py`). The store is lazy-initialized on first call and persists for the process lifetime, avoiding the overhead of connecting/disconnecting ChromaDB on every tool invocation.
+
+### BM25 Index Cache
+
+`ChromaStore._get_n8n_bm25()` caches BM25 indexes keyed by `doc_type` (`str | None`). All n8n documents are fetched from ChromaDB once per store lifetime into `_all_n8n_docs`, then filtered per `doc_type` to build each index. This eliminates redundant full-collection fetches on repeated hybrid queries.
+
+Key file: `src/boundary/chroma/store.py:97`
+
+---
+
+## Performance
+
+| Benchmark | Time | Notes |
+|---|---|---|
+| Orchestrator-only (no creds) | ~3.7s avg | Down from ~5.1s before singleton + flash model |
+| Full Docker pipeline (complex) | ~36s | Down from ~6 min (credential guide tool-loop fix) |
+
+The two biggest wins: (1) removing tools from the credential guide eliminated runaway tool-call loops, and (2) the ChromaStore singleton removed per-call connection overhead for RAG searches.
 
 ---
 
@@ -63,7 +98,7 @@ The credential guide uses a 3-step **fetch-inject-validate** pattern to guarante
 | **2. Inject** | Raw n8n field schemas are serialized into the LLM prompt as ground-truth JSON. The LLM is instructed to use only these fields and to focus on prose: `how_to_obtain`, `help_url`, `service_description`. | `_build_prompt()` |
 | **3. Validate** | `_validate_and_patch()` iterates pending types. Missing entries get a deterministic fallback. All entries have their `fields` list **overridden** with ground-truth data from n8n -- even if the LLM got them right. | `_validate_and_patch()` |
 
-**Tool list**: The agent only has `search_n8n_nodes` (for service context). `get_credential_schema` was removed from the tool list because schemas are pre-fetched deterministically.
+**Tool list**: The agent has no tools. Both `search_n8n_nodes` and `get_credential_schema` were removed because schemas are pre-fetched deterministically via `_fetch_schemas()`. The agent only generates prose (how_to_obtain, help_url, service_description).
 
 **Enum options**: Fields with enum constraints in n8n (e.g., `region` for Google Service Account) flow through as `options: list[str]` on `CredentialFieldInfo`. The frontend renders a `<select>` dropdown instead of a free-text input.
 

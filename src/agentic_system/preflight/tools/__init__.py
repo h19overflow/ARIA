@@ -9,7 +9,7 @@ from src.agentic_system.preflight.tools.rag_tools import search_n8n_nodes
 
 ORCHESTRATOR_TOOLS = [lookup_node_credential_types, search_n8n_nodes]
 SCANNER_TOOLS = [list_saved_credentials, get_credential_schema, check_credentials_resolved]
-GUIDE_TOOLS = [get_credential_schema, search_n8n_nodes]
+GUIDE_TOOLS: list = []
 
 __all__ = [
     "ORCHESTRATOR_TOOLS",

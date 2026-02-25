@@ -19,6 +19,8 @@ _scanner_agent: BaseAgent[ScannerOutput] = BaseAgent(
     schema=ScannerOutput,
     tools=SCANNER_TOOLS,
     name="CredentialScanner",
+    model_name="gemini-3-flash-preview",
+    recursion_limit=12,
 )
 
 

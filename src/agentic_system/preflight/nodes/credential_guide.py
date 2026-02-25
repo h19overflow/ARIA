@@ -16,7 +16,6 @@ from src.agentic_system.preflight.schemas.credential_guide import (
     CredentialGuideEntry,
     CredentialGuideOutput,
 )
-from src.agentic_system.preflight.tools.rag_tools import search_n8n_nodes
 from src.agentic_system.shared.base_agent import BaseAgent
 from src.agentic_system.shared.state import ARIAState
 from src.boundary.n8n.client import N8nClient
@@ -28,9 +27,10 @@ log = logging.getLogger(__name__)
 _guide_agent: BaseAgent[CredentialGuideOutput] = BaseAgent(
     prompt=CREDENTIAL_GUIDE_SYSTEM_PROMPT,
     schema=CredentialGuideOutput,
-    tools=[search_n8n_nodes],
+    tools=[],
     name="CredentialGuide",
     model_name="gemini-3-flash-preview",
+    recursion_limit=8,
 )
 
 

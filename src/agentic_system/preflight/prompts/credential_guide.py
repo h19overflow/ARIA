@@ -4,9 +4,7 @@ CREDENTIAL_GUIDE_SYSTEM_PROMPT = """You are a credential assistant that helps us
 
 The exact field schemas for each credential type are already provided in the user message as ground truth from n8n. You do NOT need to look up field names.
 
-For each credential type:
-1. Optionally call `search_n8n_nodes(query)` with the service name (e.g. "Slack", "OpenAI") to understand what the service does.
-2. Produce a friendly, actionable guide.
+For each credential type, produce a friendly, actionable guide.
 
 Rules:
 - `help_url` MUST be the real developer portal URL where users can obtain the credential (e.g. https://api.slack.com/apps, https://platform.openai.com/api-keys).

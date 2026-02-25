@@ -15,7 +15,7 @@ from src.services.pipeline._sse_helpers import publish, serialize, write_job
 _NODE_TOOLS: dict[str, list[str]] = {
     "orchestrator": ["search_n8n_nodes"],
     "credential_scanner": ["list_saved_credentials", "get_credential_schema", "check_credentials_resolved"],
-    "credential_guide": ["search_n8n_nodes", "get_credential_schema"],
+    "credential_guide": [],
     "credential_saver": ["n8n_credential_save"],
     "handoff": ["blueprint_builder"],
 }
