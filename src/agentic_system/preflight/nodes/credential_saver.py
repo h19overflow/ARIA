@@ -22,9 +22,6 @@ async def credential_saver_node(state: ARIAState) -> dict:
 
     guide = state.get("credential_guide_payload") or {}
 
-    # Unified resume schema:
-    #   {"action": "provide", "credentials": {"Gmail OAuth2": {...}}}  — user pastes creds
-    #   {"action": "resume"}                                           — user already set up in n8n
     response: dict = interrupt({
         "type": "credential_request",
         "pending_types": pending,

@@ -20,7 +20,7 @@ async def search_n8n_nodes(query: str) -> str:
     store = ChromaStore()
     await store.connect()
     try:
-        raw = await hybrid_retrieve_n8n_nodes(store, query, n=3)
+        raw = await hybrid_retrieve_n8n_nodes(store, query, n=5)
     except Exception as e:
         return json.dumps({"error": str(e)})
     finally:
