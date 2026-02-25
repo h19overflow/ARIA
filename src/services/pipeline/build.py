@@ -18,7 +18,7 @@ from src.agentic_system.shared.state import ARIAState
 from src.api.schemas import JobState, SSEEvent
 from src.services.pipeline._sse_helpers import (
     apply_build_chunk, coerce_state, detect_interrupt,
-    publish, serialize, wait_resume, write_job,
+    is_interrupt_chunk, publish, serialize, wait_resume, write_job,
 )
 
 log = logging.getLogger("aria.build")
@@ -85,9 +85,12 @@ async def _stream_build(
         interrupted = False
         try:
             async for chunk in pipeline._build_cycle.astream(current_input, config=config):
+                if is_interrupt_chunk(chunk):
+                    interrupted = True
+                    break
                 current_input = await apply_build_chunk(redis, job_id, chunk, coerce_state(current_input))
         except GraphInterrupt:
-            interrupted = True
+            interrupted = True  # safety fallback for older LangGraph
 
         if interrupted:
             snapshot = await pipeline._build_cycle.aget_state(config)

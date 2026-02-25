@@ -14,6 +14,13 @@ log = logging.getLogger("aria.services")
 
 _JOB_TTL = 86_400  # 24 hours
 
+_INTERRUPT_KEY = "__interrupt__"
+
+
+def is_interrupt_chunk(chunk: dict) -> bool:
+    """Detect LangGraph 1.0.9+ interrupt chunk from astream()."""
+    return _INTERRUPT_KEY in chunk
+
 
 def coerce_state(inp: ARIAState | Command) -> ARIAState:  # type: ignore[type-arg]
     """Return inp as ARIAState — Commands don't have state fields."""

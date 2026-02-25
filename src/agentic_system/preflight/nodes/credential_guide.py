@@ -1,18 +1,27 @@
 """Pre-Flight Credential Guide -- enriches interrupt payload with per-credential guides.
 
-Fetches n8n credential schemas deterministically, injects them into the LLM
-prompt as ground truth, then validates the output covers all pending types.
+Known credential types are resolved from a static map (zero LLM cost).
+Unknown types fall back to a Gemini agent for prose generation.
+Schema fields always come from n8n (ground truth).
 """
 from __future__ import annotations
 
-import json
+import asyncio
 import logging
+from typing import Any
 
 from langchain_core.messages import HumanMessage
 
+from src.agentic_system.preflight.nodes._credential_guide_data import CREDENTIAL_GUIDES
+from src.agentic_system.preflight.nodes._credential_guide_helpers import (
+    build_llm_prompt,
+    build_static_entry,
+    build_summary,
+    reorder_entries,
+    validate_and_patch,
+)
 from src.agentic_system.preflight.prompts.credential_guide import CREDENTIAL_GUIDE_SYSTEM_PROMPT
 from src.agentic_system.preflight.schemas.credential_guide import (
-    CredentialFieldInfo,
     CredentialGuideEntry,
     CredentialGuideOutput,
 )
@@ -22,118 +31,74 @@ from src.boundary.n8n.client import N8nClient
 
 log = logging.getLogger(__name__)
 
-# Agent only generates prose (how_to_obtain, help_url, service_description).
-# Field data comes from n8n schemas injected into the prompt — no tool needed.
-_guide_agent: BaseAgent[CredentialGuideOutput] = BaseAgent(
-    prompt=CREDENTIAL_GUIDE_SYSTEM_PROMPT,
-    schema=CredentialGuideOutput,
-    tools=[],
-    name="CredentialGuide",
-    model_name="gemini-3-flash-preview",
-    recursion_limit=8,
-)
+# Lazy-initialised -- only created when unknown credential types are encountered.
+_guide_agent: BaseAgent[CredentialGuideOutput] | None = None
 
 
-async def credential_guide_node(state: ARIAState) -> dict:
-    """Fetch schemas from n8n, generate prose via LLM, validate coverage."""
+def _get_guide_agent() -> BaseAgent[CredentialGuideOutput]:
+    """Return the LLM agent, creating it on first call."""
+    global _guide_agent  # noqa: PLW0603
+    if _guide_agent is None:
+        _guide_agent = BaseAgent(
+            prompt=CREDENTIAL_GUIDE_SYSTEM_PROMPT,
+            schema=CredentialGuideOutput,
+            tools=[],
+            name="CredentialGuide",
+            model_name="gemini-3-flash-preview",
+            recursion_limit=8,
+        )
+    return _guide_agent
+
+
+async def credential_guide_node(state: ARIAState) -> dict[str, Any]:
+    """Build credential guides from static data (known) or LLM (unknown)."""
     pending = state.get("pending_credential_types", [])
     if not pending:
         return {}
 
-    schemas = await _fetch_schemas(pending)
-    prompt = _build_prompt(pending, schemas)
-    result: CredentialGuideOutput = await _guide_agent.invoke([HumanMessage(content=prompt)])
-    result = _validate_and_patch(result, pending, schemas)
+    schemas = await _fetch_schemas_parallel(pending)
+    known = [ct for ct in pending if ct in CREDENTIAL_GUIDES]
+    unknown = [ct for ct in pending if ct not in CREDENTIAL_GUIDES]
+
+    known_entries = [build_static_entry(ct, schemas.get(ct, {})) for ct in known]
+    unknown_entries = await _resolve_unknown(unknown, schemas) if unknown else []
+
+    all_entries = known_entries + unknown_entries
+    ordered = reorder_entries(all_entries, pending)
+    summary = build_summary(pending)
+    result = CredentialGuideOutput(entries=ordered, summary=summary)
     return {"credential_guide_payload": result.model_dump()}
 
 
-async def _fetch_schemas(pending: list[str]) -> dict[str, dict]:
-    """Fetch credential schemas from n8n for each pending type."""
+async def _fetch_schemas_parallel(pending: list[str]) -> dict[str, dict]:
+    """Fetch credential schemas from n8n in parallel via asyncio.gather."""
     client = N8nClient()
     await client.connect()
-    schemas: dict[str, dict] = {}
     try:
-        for cred_type in pending:
-            try:
-                schemas[cred_type] = await client.get_credential_schema(cred_type)
-            except Exception as exc:
-                log.warning("Failed to fetch schema for %s: %s", cred_type, exc)
-                schemas[cred_type] = {"properties": [], "required": []}
+        results = await asyncio.gather(
+            *[_safe_fetch_schema(client, ct) for ct in pending]
+        )
+        return dict(zip(pending, results))
     finally:
         await client.disconnect()
-    return schemas
 
 
-def _build_prompt(pending: list[str], schemas: dict[str, dict]) -> str:
-    """Build an LLM prompt with ground-truth schema data."""
-    schema_blocks = []
-    for cred_type in pending:
-        schema = schemas.get(cred_type, {})
-        props = schema.get("properties", [])
-        field_summary = json.dumps(props, indent=2) if props else "[]"
-        schema_blocks.append(
-            f"### {cred_type}\n"
-            f"Fields (from n8n — do NOT invent others):\n```json\n{field_summary}\n```"
-        )
-
-    return (
-        f"Generate a guide for these credential types: {pending}\n\n"
-        f"## Ground-truth schemas (fetched from n8n)\n\n"
-        + "\n\n".join(schema_blocks)
-        + "\n\nUse ONLY the fields listed above for each credential type. "
-        "Focus on writing helpful how_to_obtain steps, a real help_url, "
-        "and a clear service_description."
-    )
+async def _safe_fetch_schema(client: N8nClient, cred_type: str) -> dict:
+    """Fetch a single schema, returning an empty fallback on failure."""
+    try:
+        return await client.get_credential_schema(cred_type)
+    except Exception as exc:
+        log.warning("Failed to fetch schema for %s: %s", cred_type, exc)
+        return {"properties": [], "required": []}
 
 
-def _validate_and_patch(
-    result: CredentialGuideOutput,
-    pending: list[str],
-    schemas: dict[str, dict],
-) -> CredentialGuideOutput:
-    """Ensure every pending type has an entry with correct fields."""
-    entries_by_type = {e.credential_type: e for e in result.entries}
-
-    for cred_type in pending:
-        schema = schemas.get(cred_type, {})
-        ground_truth_fields = _fields_from_schema(schema)
-
-        if cred_type not in entries_by_type:
-            log.warning("LLM missed entry for %s — patching with deterministic fallback", cred_type)
-            entries_by_type[cred_type] = _fallback_entry(cred_type, ground_truth_fields)
-        else:
-            # Override fields with ground truth — LLM prose stays, fields are deterministic
-            entries_by_type[cred_type] = entries_by_type[cred_type].model_copy(
-                update={"fields": ground_truth_fields}
-            )
-
-    patched = [entries_by_type[ct] for ct in pending]
-    return result.model_copy(update={"entries": patched})
-
-
-def _fields_from_schema(schema: dict) -> list[CredentialFieldInfo]:
-    """Convert n8n schema properties to CredentialFieldInfo list."""
-    fields: list[CredentialFieldInfo] = []
-    for p in schema.get("properties", []):
-        enum_values = p.get("enum")
-        fields.append(CredentialFieldInfo(
-            name=p["name"],
-            label=p.get("name", "").replace("_", " ").title(),
-            description=p.get("description", ""),
-            required=p.get("required", False),
-            options=enum_values if enum_values else None,
-        ))
-    return fields
-
-
-def _fallback_entry(cred_type: str, fields: list[CredentialFieldInfo]) -> CredentialGuideEntry:
-    """Deterministic fallback when the LLM skips a credential type entirely."""
-    display = cred_type.replace("Api", " API").replace("OAuth2", " OAuth2")
-    return CredentialGuideEntry(
-        credential_type=cred_type,
-        display_name=display,
-        service_description=f"Credentials for {display}.",
-        how_to_obtain="1. Visit the service's developer portal.\n2. Create or locate your API credentials.",
-        help_url="",
-        fields=fields,
-    )
+async def _resolve_unknown(
+    unknown: list[str], schemas: dict[str, dict],
+) -> list[CredentialGuideEntry]:
+    """Fall back to LLM agent for credential types not in the static map."""
+    log.info("Using LLM fallback for unknown credential types: %s", unknown)
+    prompt = build_llm_prompt(unknown, schemas)
+    agent = _get_guide_agent()
+    result: CredentialGuideOutput = await agent.invoke([HumanMessage(content=prompt)])
+    result = validate_and_patch(result, unknown, schemas)
+    return result.entries

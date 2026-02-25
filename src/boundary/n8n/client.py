@@ -171,8 +171,10 @@ def _backfill_credential_data(user_data: dict, schema: dict) -> dict:
 
     n8n requires certain fields to be present even when optional —
     especially booleans that gate allOf/if-then conditional branches.
+    Strips unknown keys since n8n uses additionalProperties: false.
     """
-    result = dict(user_data)
+    known_fields = {prop["name"] for prop in schema.get("properties", [])}
+    result = {k: v for k, v in user_data.items() if k in known_fields}
     for prop in schema.get("properties", []):
         field_name = prop["name"]
         if field_name in result:

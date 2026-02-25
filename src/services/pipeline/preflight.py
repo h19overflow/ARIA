@@ -17,7 +17,7 @@ from src.agentic_system.shared.state import ARIAState
 from src.api.schemas import JobState, SSEEvent
 from src.services.pipeline._sse_helpers import (
     apply_chunk, build_initial_state, coerce_state,
-    detect_interrupt, publish, serialize, wait_resume, write_job,
+    detect_interrupt, is_interrupt_chunk, publish, serialize, wait_resume, write_job,
 )
 
 log = logging.getLogger("aria.preflight")
@@ -57,13 +57,16 @@ async def _stream_preflight(
         interrupted = False
         try:
             async for chunk in pipeline._preflight.astream(current_input, config=config):
+                if is_interrupt_chunk(chunk):
+                    interrupted = True
+                    break
                 current_input = await apply_chunk(
                     redis, job_id, chunk, coerce_state(current_input),
                     "preflight", node_counter, total_nodes,
                 )
                 node_counter += len([k for k in chunk if isinstance(chunk.get(k), dict)])
         except GraphInterrupt:
-            interrupted = True
+            interrupted = True  # safety fallback for older LangGraph
 
         if interrupted:
             snapshot = await pipeline._preflight.aget_state(config)

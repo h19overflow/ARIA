@@ -6,6 +6,11 @@ import json
 import httpx
 from langchain_core.tools import tool
 
+from src.agentic_system.shared.credential_utils import (
+    classify_node_credentials,
+    fuzzy_match_credential_types,
+    group_by_type,
+)
 from src.agentic_system.shared.node_credential_map import get_credential_types
 from src.boundary.n8n.client import N8nClient
 
@@ -31,7 +36,7 @@ async def lookup_node_credential_types(node_type: str) -> str:
     finally:
         await client.disconnect()
 
-    matched = _fuzzy_match_credential_types(node_type, all_types)
+    matched = fuzzy_match_credential_types(node_type, all_types)
     return json.dumps({"node_type": node_type, "credential_types": matched, "source": "api"})
 
 
@@ -92,7 +97,7 @@ async def check_credentials_resolved(node_types: list[str]) -> str:
     finally:
         await client.disconnect()
 
-    saved_by_type = _group_by_type(saved)
+    saved_by_type = group_by_type(saved)
     resolved: dict[str, str] = {}
     pending: list[str] = []
     ambiguous: dict[str, list[dict]] = {}
@@ -103,7 +108,7 @@ async def check_credentials_resolved(node_types: list[str]) -> str:
             continue
         if any(ct in resolved for ct in cred_types):
             continue
-        _classify_node_credentials(cred_types, saved_by_type, resolved, pending, ambiguous)
+        classify_node_credentials(cred_types, saved_by_type, resolved, pending, ambiguous)
 
     return json.dumps({
         "resolved": resolved,
@@ -113,36 +118,3 @@ async def check_credentials_resolved(node_types: list[str]) -> str:
     })
 
 
-# ---------------------------------------------------------------------------
-# Private helpers
-# ---------------------------------------------------------------------------
-
-def _fuzzy_match_credential_types(node_type: str, all_types: list[dict]) -> list[str]:
-    """Return credential type names whose displayName contains node_type (case-insensitive)."""
-    needle = node_type.lower()
-    return [t["name"] for t in all_types if needle in t.get("displayName", "").lower() and "name" in t]
-
-
-def _group_by_type(credentials: list[dict]) -> dict[str, list[dict]]:
-    grouped: dict[str, list[dict]] = {}
-    for cred in credentials:
-        grouped.setdefault(cred.get("type", ""), []).append(cred)
-    return grouped
-
-
-def _classify_node_credentials(
-    cred_types: list[str],
-    saved_by_type: dict[str, list[dict]],
-    resolved: dict[str, str],
-    pending: list[str],
-    ambiguous: dict[str, list[dict]],
-) -> None:
-    for cred_type in cred_types:
-        candidates = saved_by_type.get(cred_type, [])
-        if len(candidates) == 1:
-            resolved[cred_type] = candidates[0]["id"]
-            return
-        if len(candidates) > 1:
-            ambiguous[cred_type] = candidates
-            return
-    pending.append(cred_types[0])
