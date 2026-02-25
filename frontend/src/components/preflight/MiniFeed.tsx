@@ -6,7 +6,7 @@ interface MiniFeedProps {
 }
 
 const STATUS_DOT: Record<FeedEvent['status'], string> = {
-  running: 'bg-phase1 animate-pulse-dot',
+  running: 'bg-orange animate-pulse-dot',
   success: 'bg-success',
   error: 'bg-error',
   warning: 'bg-warning',

@@ -4,16 +4,17 @@ import clsx from 'clsx';
 interface PhaseHeaderProps {
   activePhase: 0 | 1 | 2;
   completedPhases: Set<number>;
+  onPhaseClick: (phase: 0 | 1 | 2) => void;
   onReset: () => void;
 }
 
 const PHASES = [
-  { index: 0 as const, label: 'Describe',  color: '#7c6af7', dim: 'rgba(124,106,247,0.16)' },
-  { index: 1 as const, label: 'Analyse',   color: '#a855f7', dim: 'rgba(168,85,247,0.16)'  },
-  { index: 2 as const, label: 'Build',     color: '#10b981', dim: 'rgba(16,185,129,0.16)'  },
+  { index: 0 as const, label: 'Describe',  color: '#ee4f27', dim: 'rgba(238,79,39,0.12)' },
+  { index: 1 as const, label: 'Analyse',   color: '#ee4f27', dim: 'rgba(238,79,39,0.12)' },
+  { index: 2 as const, label: 'Build',     color: '#ee4f27', dim: 'rgba(238,79,39,0.12)' },
 ];
 
-export default function PhaseHeader({ activePhase, completedPhases, onReset }: PhaseHeaderProps) {
+export default function PhaseHeader({ activePhase, completedPhases, onPhaseClick, onReset }: PhaseHeaderProps) {
   return (
     <header className={clsx(
       'flex items-center justify-between shrink-0',
@@ -36,13 +37,20 @@ export default function PhaseHeader({ activePhase, completedPhases, onReset }: P
           const isActive = activePhase === phase.index;
           const isDone   = completedPhases.has(phase.index);
           const isPending = !isActive && !isDone;
+          const isClickable = !isActive && (isDone || phase.index === 0);
 
           return (
             <div key={phase.index} className="flex items-center">
               {/* Step pill */}
-              <div className={clsx(
+              <div
+                role={isClickable ? 'button' : undefined}
+                tabIndex={isClickable ? 0 : undefined}
+                onClick={isClickable ? () => onPhaseClick(phase.index) : undefined}
+                onKeyDown={isClickable ? (e) => { if (e.key === 'Enter') onPhaseClick(phase.index); } : undefined}
+                className={clsx(
                 'flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold',
                 'transition-all duration-300',
+                isClickable && 'cursor-pointer hover:brightness-125',
               )} style={{
                 background: isActive ? phase.dim : isDone ? 'rgba(255,255,255,0.05)' : 'transparent',
                 border: `1px solid ${isActive ? phase.color + '55' : isDone ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.06)'}`,
@@ -72,7 +80,7 @@ export default function PhaseHeader({ activePhase, completedPhases, onReset }: P
                   <div className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: completedPhases.has(phase.index) ? '100%' : '0%',
-                      background: 'linear-gradient(90deg, #6366f1, #a855f7)',
+                      background: 'linear-gradient(90deg, #ee4f27, #ff6b4a)',
                     }} />
                 </div>
               )}

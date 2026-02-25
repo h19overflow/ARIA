@@ -71,12 +71,12 @@ export function CredentialModal({ interrupt, onSubmit, onDismiss }: CredentialMo
 
       {/* Modal */}
       <div className="relative z-10 w-full max-w-md animate-slide-up">
-        <div className="rounded-2xl border border-white/12 bg-[#161a2a] shadow-lg overflow-hidden">
+        <div className="rounded-2xl border border-white/12 bg-[var(--bg-surface)] shadow-lg overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-phase1/20 border border-phase1/30">
-                <Link2 size={15} className="text-phase1" />
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-orange/15 border border-orange/30">
+                <Link2 size={15} className="text-orange" />
               </div>
               <div>
                 <h2 className="text-sm font-semibold text-white/90">Connect your apps</h2>

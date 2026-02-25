@@ -11,10 +11,10 @@ export function IntentCard({ ariaState }: IntentCardProps) {
   const isLoading = !intent
 
   return (
-    <div className="phase-1-tint border border-phase1/20 rounded-xl p-5">
+    <div className="bg-orange/[0.06] border border-orange/20 rounded-xl p-5">
       <div className="flex items-center gap-2 mb-3">
-        <Sparkles size={14} className="text-phase1" />
-        <span className="text-xs font-mono font-semibold text-phase1 uppercase tracking-widest">
+        <Sparkles size={14} className="text-orange" />
+        <span className="text-xs font-mono font-semibold text-orange uppercase tracking-widest">
           What we're building
         </span>
       </div>

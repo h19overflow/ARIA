@@ -81,8 +81,8 @@ export function StepsPanel({ ariaState, status, events }: StepsPanelProps) {
       {/* Header */}
       <div className="px-4 pt-5 pb-4 border-b border-white/6">
         <div className="flex items-center gap-2 mb-1">
-          <Activity size={14} className="text-phase1" />
-          <span className="text-xs font-mono font-semibold text-phase1 uppercase tracking-widest">Analysis</span>
+          <Activity size={14} className="text-orange" />
+          <span className="text-xs font-mono font-semibold text-orange uppercase tracking-widest">Analysis</span>
         </div>
         <p className="text-[11px] text-white/30 font-mono">{activeCount} of 3 complete</p>
       </div>

@@ -131,10 +131,10 @@ export function ScratchpadPanel({ notes, onUpdate }: ScratchpadPanelProps) {
               {notes.required_integrations!.map((integ, i) => (
                 <span
                   key={i}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', background: 'rgba(124,106,247,0.10)', border: '1px solid rgba(124,106,247,0.22)', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 500, color: 'var(--accent-indigo)', fontFamily: 'monospace' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', background: 'rgba(238,79,39,0.10)', border: '1px solid rgba(238,79,39,0.22)', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 500, color: 'var(--accent-orange)', fontFamily: 'monospace' }}
                 >
                   {integ}
-                  <button onClick={() => removeIntegration(i)} style={{ lineHeight: 0, color: 'var(--accent-indigo)', opacity: 0.6, transition: 'opacity 150ms ease' }}>
+                  <button onClick={() => removeIntegration(i)} style={{ lineHeight: 0, color: 'var(--accent-orange)', opacity: 0.6, transition: 'opacity 150ms ease' }}>
                     <X size={10} />
                   </button>
                 </span>

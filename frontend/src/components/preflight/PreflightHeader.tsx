@@ -34,7 +34,7 @@ export function PreflightHeader({ status, ariaState }: PreflightHeaderProps) {
     <div
       className={clsx(
         'flex items-center gap-4 px-6 py-4 border-b border-white/6',
-        'phase-1-tint',
+        'bg-orange/[0.04]',
       )}
     >
       {/* Icon */}
@@ -43,7 +43,7 @@ export function PreflightHeader({ status, ariaState }: PreflightHeaderProps) {
           'flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-xl border',
           isDone && 'bg-success/20 border-success/30',
           isFailed && 'bg-error/20 border-error/30',
-          !isDone && !isFailed && 'bg-phase1/20 border-phase1/30',
+          !isDone && !isFailed && 'bg-orange/15 border-orange/30',
         )}
       >
         {isDone ? (
@@ -52,7 +52,7 @@ export function PreflightHeader({ status, ariaState }: PreflightHeaderProps) {
           <Loader
             size={17}
             className={clsx(
-              isFailed ? 'text-error' : 'text-phase1',
+              isFailed ? 'text-error' : 'text-orange',
               !isFailed && !isDone && 'animate-spin-slow',
             )}
           />
@@ -71,10 +71,10 @@ export function PreflightHeader({ status, ariaState }: PreflightHeaderProps) {
 
       {/* Phase badge */}
       <div className="ml-auto flex-shrink-0">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-phase1/15 border border-phase1/25 text-[10px] font-mono font-bold text-phase1 uppercase tracking-widest">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange/15 border border-orange/25 text-[10px] font-mono font-bold text-orange uppercase tracking-widest">
           <span
             className={clsx(
-              'w-1.5 h-1.5 rounded-full bg-phase1',
+              'w-1.5 h-1.5 rounded-full bg-orange',
               !isDone && !isFailed && 'animate-pulse-dot',
             )}
           />

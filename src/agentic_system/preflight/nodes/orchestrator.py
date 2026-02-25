@@ -2,10 +2,7 @@
 from __future__ import annotations
 
 import json
-import logging
 from langchain_core.messages import HumanMessage
-
-log = logging.getLogger("aria.preflight.orchestrator")
 
 from src.agentic_system.shared.base_agent import BaseAgent
 from src.agentic_system.shared.state import ARIAState, WorkflowTopology, WorkflowEdge
@@ -33,15 +30,12 @@ _agent = BaseAgent[OrchestratorOutput](
 async def orchestrator_node(state: ARIAState) -> dict:
     """Parse ConversationNotes into OrchestratorOutput."""
     notes = state.get("conversation_notes")
-    log.info("[Orchestrator] conversation_notes present: %s | keys: %s",
-             notes is not None, list(notes.keys()) if notes else [])
     if not notes:
         # Fallback if no notes provided
         notes = {"summary": state.get("intent", "Unknown intent")}
 
     # Convert notes to a formatted string for the LLM
     notes_str = json.dumps(notes, indent=2)
-    log.info("[Orchestrator] Sending notes to LLM (%d chars)", len(notes_str))
     messages = [HumanMessage(content=f"Here are the ConversationNotes:\n{notes_str}")]
 
     try:

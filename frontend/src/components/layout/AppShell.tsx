@@ -59,6 +59,7 @@ export function AppShell() {
       <PhaseHeader
         activePhase={app.phase}
         completedPhases={completedPhases}
+        onPhaseClick={app.goToPhase}
         onReset={app.reset}
       />
 

@@ -22,9 +22,9 @@ function StepIcon({ status, index }: { status: StepStatus; index: number }) {
   }
   if (status === 'running') {
     return (
-      <span className="relative flex items-center justify-center w-7 h-7 rounded-full bg-phase1/20 border border-phase1/40">
-        <Loader size={13} className="text-phase1 animate-spin-slow" />
-        <span className="absolute inset-0 rounded-full animate-ping opacity-30 bg-phase1" style={{ animationDuration: '1.8s' }} />
+      <span className="relative flex items-center justify-center w-7 h-7 rounded-full bg-orange/15 border border-orange/40">
+        <Loader size={13} className="text-orange animate-spin-slow" />
+        <span className="absolute inset-0 rounded-full animate-ping opacity-30 bg-orange" style={{ animationDuration: '1.8s' }} />
       </span>
     )
   }
@@ -64,7 +64,7 @@ export function StepItem({ index, label, description, status, detail, isLast }: 
           className={clsx(
             'text-sm font-medium leading-tight transition-colors duration-300',
             status === 'done' && 'text-white/90',
-            status === 'running' && 'text-phase1',
+            status === 'running' && 'text-orange',
             status === 'idle' && 'text-white/30',
             status === 'error' && 'text-error',
           )}
@@ -77,7 +77,7 @@ export function StepItem({ index, label, description, status, detail, isLast }: 
         {status === 'running' && (
           <div className="mt-2 h-0.5 w-full rounded-full bg-white/6 overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-phase1/60 via-phase1 to-phase1/60"
+              className="h-full rounded-full bg-gradient-to-r from-orange/60 via-orange to-orange/60"
               style={{
                 width: '40%',
                 animation: 'scanLine 1.4s ease-in-out infinite',

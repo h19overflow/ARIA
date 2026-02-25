@@ -7,6 +7,7 @@ export interface AppStateReturn {
   preflightJobId: string | null;
   buildJobId: string | null;
   preflightAriaState: ARIAState | null;
+  goToPhase: (n: 0 | 1 | 2) => void;
   goToPhase1: (convId: string) => void;
   goToPhase2: (pJobId: string, pState: ARIAState) => void;
   setBuildJobId: (id: string) => void;
@@ -19,6 +20,13 @@ export function useAppState(): AppStateReturn {
   const [preflightJobId, setPreflightJobId] = useState<string | null>(null);
   const [buildJobId, setBuildJobId] = useState<string | null>(null);
   const [preflightAriaState, setPreflightAriaState] = useState<ARIAState | null>(null);
+
+  const goToPhase = useCallback((n: 0 | 1 | 2) => {
+    // Only allow navigating to phases that have the required data
+    if (n === 0) { setPhase(0); return; }
+    if (n === 1 && conversationId) { setPhase(1); return; }
+    if (n === 2 && preflightJobId) { setPhase(2); return; }
+  }, [conversationId, preflightJobId]);
 
   const goToPhase1 = useCallback((convId: string) => {
     setConversationId(convId);
@@ -45,6 +53,7 @@ export function useAppState(): AppStateReturn {
     preflightJobId,
     buildJobId,
     preflightAriaState,
+    goToPhase,
     goToPhase1,
     goToPhase2,
     setBuildJobId,

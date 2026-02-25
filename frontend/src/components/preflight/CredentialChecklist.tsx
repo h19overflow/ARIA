@@ -99,7 +99,7 @@ export function CredentialChecklist({ ariaState, onConnectMissing }: CredentialC
               {row.status === 'missing' && onConnectMissing && (
                 <button
                   onClick={onConnectMissing}
-                  className="flex-shrink-0 text-[11px] font-semibold text-phase1 hover:text-phase1/80 transition-colors"
+                  className="flex-shrink-0 text-[11px] font-semibold text-orange hover:text-orange/80 transition-colors"
                 >
                   Connect →
                 </button>
