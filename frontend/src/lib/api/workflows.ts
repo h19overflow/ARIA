@@ -1,28 +1,42 @@
-import type { CreateWorkflowResponse, JobStatusResponse } from '@/types/state'
 import { request } from './client'
+import type {
+  StartConversationResponse,
+  PreflightResponse,
+  BuildResponse,
+  JobStatusResponse,
+} from '@/types'
 
-export function createWorkflow(description?: string, conversationId?: string): Promise<CreateWorkflowResponse> {
-  return request<CreateWorkflowResponse>('/workflows', {
-    method: 'POST',
-    body: JSON.stringify({ description, conversation_id: conversationId }),
-  })
-}
+// Phase 0 — Conversation
+export const startConversation = (): Promise<StartConversationResponse> =>
+  request('/conversation/start', { method: 'POST' })
 
-export function getJobStatus(jobId: string): Promise<JobStatusResponse> {
-  return request<JobStatusResponse>(`/jobs/${jobId}`)
-}
+// Phase 1 — Preflight
+export const startPreflight = (
+  params: { description?: string; conversation_id?: string }
+): Promise<PreflightResponse> =>
+  request('/preflight', { method: 'POST', body: JSON.stringify(params) })
 
-export function submitResume(
+// Phase 2 — Build
+export const startBuild = (preflightJobId: string): Promise<BuildResponse> =>
+  request('/build', { method: 'POST', body: JSON.stringify({ preflight_job_id: preflightJobId }) })
+
+// Jobs (all types)
+export const getJobStatus = (jobId: string): Promise<JobStatusResponse> =>
+  request(`/jobs/${jobId}`)
+
+// HITL resume
+export const submitResume = (
   jobId: string,
-  kind: 'clarify' | 'credential',
-  value: string | Record<string, string>,
-): Promise<void> {
-  const body =
-    kind === 'clarify'
-      ? { action: 'clarify', value }
-      : { action: 'provide', credentials: value }
-  return request<void>(`/jobs/${jobId}/resume`, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  })
+  kind: 'clarify' | 'provide' | 'resume' | 'retry' | 'replan' | 'abort',
+  value?: string | Record<string, unknown>
+): Promise<void> => {
+  let body: Record<string, unknown>
+  if (kind === 'clarify') {
+    body = { action: 'clarify', value }
+  } else if (kind === 'provide') {
+    body = { action: 'provide', credentials: value }
+  } else {
+    body = { action: kind }
+  }
+  return request(`/jobs/${jobId}/resume`, { method: 'POST', body: JSON.stringify(body) })
 }
