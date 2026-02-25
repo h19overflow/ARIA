@@ -17,6 +17,8 @@ _agent = BaseAgent[OrchestratorOutput](
     schema=OrchestratorOutput,
     tools=ORCHESTRATOR_TOOLS,
     name="PreflightOrchestrator",
+    model_name="gemini-3-flash-preview",
+    recursion_limit=10,
 )
 
 

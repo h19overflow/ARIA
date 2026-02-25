@@ -54,10 +54,12 @@ class BaseAgent(Generic[S]):
         name: str | None = None,
         max_retries: int = 3,
         model_name: str | None = None,
+        recursion_limit: int | None = None,
     ) -> None:
         self._system_prompt = prompt
         self._output_schema = schema
         self._max_retries = max_retries
+        self._recursion_limit = recursion_limit
         self.name = name or self.__class__.__name__
 
         model = ChatGoogleGenerativeAI(
@@ -79,6 +81,15 @@ class BaseAgent(Generic[S]):
         ensure_weave_init()
 
     # ── Internal ──────────────────────────────────────────────────────────
+
+    def _merge_config(self, config: RunnableConfig | None) -> RunnableConfig | None:
+        """Merge recursion_limit into caller-provided config."""
+        if self._recursion_limit is None:
+            return config
+        base: RunnableConfig = {"recursion_limit": self._recursion_limit}
+        if config:
+            base.update(config)
+        return base
 
     def _build_input(
         self, messages: list[BaseMessage], **kwargs: Any
@@ -115,10 +126,12 @@ class BaseAgent(Generic[S]):
         construction, otherwise the last AIMessage.
         """
 
+        merged = self._merge_config(config)
+
         @self._make_retry()
         async def _call() -> Union[S, AIMessage]:
             result = await self._agent.ainvoke(
-                cast(Any, self._build_input(messages, **kwargs)), config=config
+                cast(Any, self._build_input(messages, **kwargs)), config=merged
             )
             if self._output_schema:
                 return cast(S, result.get("structured_response"))
@@ -141,9 +154,10 @@ class BaseAgent(Generic[S]):
             {"type": "tool_start", "name": ..., "args": ...}
             {"type": "tool_chunk", "chunks": [...]}
         """
+        merged = self._merge_config(config)
         async for _, data in self._agent.astream(
             cast(Any, self._build_input(messages, **kwargs)),
-            config=config,
+            config=merged,
             stream_mode="messages",
         ):
             token = cast(AIMessageChunk, data[0])
@@ -172,8 +186,9 @@ class BaseAgent(Generic[S]):
         if include_types:
             stream_kwargs["include_types"] = include_types
 
+        merged = self._merge_config(config)
         async for event in self._agent.astream_events(
-            cast(Any, self._build_input(messages, **kwargs)), config=config, **stream_kwargs
+            cast(Any, self._build_input(messages, **kwargs)), config=merged, **stream_kwargs
         ):
             yield cast(dict[str, Any], event)
 
