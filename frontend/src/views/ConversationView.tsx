@@ -9,7 +9,7 @@ interface ConversationViewProps {
 }
 
 export function ConversationView({ onStartPreflight, isStarting, workflowError }: ConversationViewProps) {
-  const { conversationId, messages, notes, isStreaming, isCommitted, error, sendMessage, updateNote } =
+  const { conversationId, messages, notes, activities, isStreaming, isCommitted, error, sendMessage, updateNote } =
     useConversation();
 
   const handleStartPreflight = () => {
@@ -36,6 +36,7 @@ export function ConversationView({ onStartPreflight, isStarting, workflowError }
       />
       <ChatPanel
         messages={messages}
+        activities={activities}
         isStreaming={isStreaming}
         isCommitted={isCommitted}
         error={error}

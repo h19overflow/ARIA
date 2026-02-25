@@ -1,5 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { startConversation } from '@/lib/api';
+import type { AgentActivity } from '@/types';
+import { dispatchConversationEvent } from './dispatchConversationEvent';
+
+export type { AgentActivity } from '@/types';
 
 export interface ConversationNotes {
   summary?: string;
@@ -18,7 +22,7 @@ export interface Message {
   timestamp: Date;
 }
 
-function applyNoteTaken(prev: ConversationNotes, key: string, value: unknown): ConversationNotes {
+export function applyNoteTaken(prev: ConversationNotes, key: string, value: unknown): ConversationNotes {
   const next = { ...prev };
   if (value === null) {
     if (key in next) {
@@ -47,10 +51,9 @@ export function useConversation() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [notes, setNotes] = useState<ConversationNotes>({
-    constraints: [],
-    required_integrations: [],
-    raw_notes: {},
+    constraints: [], required_integrations: [], raw_notes: {},
   });
+  const [activities, setActivities] = useState<AgentActivity[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isCommitted, setIsCommitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +74,7 @@ export function useConversation() {
     ]);
     setIsStreaming(true);
     setError(null);
+    setActivities([]);
     assistantMsgIdRef.current = null;
 
     abortRef.current?.abort();
@@ -106,42 +110,11 @@ export function useConversation() {
 
           try {
             const data = JSON.parse(raw) as Record<string, unknown>;
-
-            if (data.type === 'token') {
-              const chunk = String(data.content ?? '');
-              setMessages(prev => {
-                const last = prev[prev.length - 1];
-                if (last?.role === 'assistant' && last.id === assistantMsgIdRef.current) {
-                  return [...prev.slice(0, -1), { ...last, content: last.content + chunk }];
-                }
-                const newId = crypto.randomUUID();
-                assistantMsgIdRef.current = newId;
-                return [...prev, { id: newId, role: 'assistant', content: chunk, timestamp: new Date() }];
-              });
-            } else if (data.type === 'tool_event') {
-              const tool = data.tool as string | undefined;
-              const toolData = data.data as Record<string, unknown> | undefined;
-              if (tool === 'take_note' && toolData) {
-                setNotes(prev => applyNoteTaken(prev, String(toolData.key ?? ''), toolData.value));
-              } else if (tool === 'commit_notes' && toolData) {
-                setIsCommitted(true);
-                if (toolData.summary) setNotes(prev => ({ ...prev, summary: String(toolData.summary) }));
-              }
-            } else if (data.type === 'note_taken') {
-              const payload = data.payload as { key: string; value: unknown } | undefined;
-              if (payload) setNotes(prev => applyNoteTaken(prev, payload.key, payload.value));
-            } else if (data.type === 'committed') {
-              setIsCommitted(true);
-              const payload = data.payload as { summary?: string } | undefined;
-              if (payload?.summary) setNotes(prev => ({ ...prev, summary: payload.summary }));
-            } else if (data.type === 'done') {
-              setIsStreaming(false);
-              assistantMsgIdRef.current = null;
-            } else if (data.type === 'error') {
-              const errPayload = data.error as { message?: string } | undefined;
-              setError(errPayload?.message ?? 'Unknown error');
-              setIsStreaming(false);
-            }
+            dispatchConversationEvent(data, {
+              setMessages, setNotes, setActivities, setIsCommitted,
+              setIsStreaming, setError, assistantMsgIdRef,
+              applyNote: applyNoteTaken,
+            });
           } catch {
             // ignore malformed lines
           }
@@ -166,5 +139,8 @@ export function useConversation() {
     }
   }, [conversationId]);
 
-  return { conversationId, messages, notes, isStreaming, isCommitted, error, sendMessage, updateNote };
+  return {
+    conversationId, messages, notes, activities,
+    isStreaming, isCommitted, error, sendMessage, updateNote,
+  };
 }

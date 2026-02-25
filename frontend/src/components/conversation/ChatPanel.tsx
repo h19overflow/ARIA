@@ -4,9 +4,12 @@ import { clsx } from 'clsx';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Message } from '@/hooks/useConversation';
+import type { AgentActivity } from '@/types';
+import { AgentActivityBar } from './AgentActivityBar';
 
 interface ChatPanelProps {
   messages: Message[];
+  activities: AgentActivity[];
   isStreaming: boolean;
   isCommitted: boolean;
   error: string | null;
@@ -67,7 +70,7 @@ function AiBubble({ content }: { content: string }) {
   );
 }
 
-export function ChatPanel({ messages, isStreaming, isCommitted, error, workflowError, isStarting: _isStarting, onSendMessage }: ChatPanelProps) {
+export function ChatPanel({ messages, activities, isStreaming, isCommitted, error, workflowError, isStarting: _isStarting, onSendMessage }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -155,6 +158,9 @@ export function ChatPanel({ messages, isStreaming, isCommitted, error, workflowE
         )}
         {!hasMessages && <div ref={bottomRef} />}
       </div>
+
+      {/* Agent Activity Bar - between messages and input */}
+      <AgentActivityBar activities={activities} isStreaming={isStreaming} />
 
       {/* Input area */}
       <div style={{ flexShrink: 0, padding: '10px 24px 24px', maxWidth: COL, width: '100%', marginInline: 'auto', boxSizing: 'border-box' }}>

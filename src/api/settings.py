@@ -21,6 +21,7 @@ class Settings(BaseSettings):
 
     # Weights & Biases / Weave
     wandb_project: str = "ARIA"
+    wandb_api_key: str = ""
 
     class Config:
         env_file = ".env"
