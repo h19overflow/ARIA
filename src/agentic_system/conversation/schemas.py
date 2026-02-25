@@ -17,6 +17,14 @@ class TakeNoteInput(BaseModel):
     )
 
 
+class BatchNotesInput(BaseModel):
+    """Input schema for recording multiple notes in a single call."""
+    notes: List[TakeNoteInput] = Field(
+        ...,
+        description="List of notes to record. Each has a key and optional value.",
+    )
+
+
 class CommitNotesInput(BaseModel):
     """Input schema for committing the gathered requirements."""
     summary: str = Field(

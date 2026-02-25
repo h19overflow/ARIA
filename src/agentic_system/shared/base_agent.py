@@ -53,6 +53,7 @@ class BaseAgent(Generic[S]):
         temperature: float = 1.0,
         name: str | None = None,
         max_retries: int = 3,
+        model_name: str | None = None,
     ) -> None:
         self._system_prompt = prompt
         self._output_schema = schema
@@ -60,7 +61,7 @@ class BaseAgent(Generic[S]):
         self.name = name or self.__class__.__name__
 
         model = ChatGoogleGenerativeAI(
-            model=settings.gemini_model,
+            model=model_name or settings.gemini_model,
             api_key=settings.gemini_api_key or settings.google_api_key,
             temperature=temperature,
             max_tokens=max_tokens,

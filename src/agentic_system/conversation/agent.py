@@ -6,7 +6,7 @@ from src.agentic_system.shared.base_agent import BaseAgent
 from .state import get_state, save_state, ConversationState
 from .schemas import ConversationNotes
 from .prompts import PHASE_0_SYSTEM_PROMPT
-from .tools import take_note, commit_notes
+from .tools import batch_notes, take_note, commit_notes
 from .event_handlers import (
     build_lc_messages,
     handle_tool_end_state,
@@ -26,9 +26,10 @@ class ConversationAgent(BaseAgent):
 
     def __init__(self, name: str = "ConversationAgent"):
         super().__init__(
-            tools=[take_note, commit_notes],
+            tools=[batch_notes, take_note, commit_notes],
             prompt=PHASE_0_SYSTEM_PROMPT,
             name=name,
+            model_name="gemini-3-flash-preview",
         )
 
     async def initialize_conversation(self, conversation_id: str) -> None:

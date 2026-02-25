@@ -10,8 +10,19 @@ from langchain_core.messages import (
     HumanMessage, AIMessage, ToolMessage, BaseMessage,
 )
 
+from pydantic import BaseModel
+
 from .state import ConversationState
 from .notes_updater import update_notes_state
+
+
+def _to_dict(obj: Any) -> Dict[str, Any]:
+    """Convert a Pydantic model or dict to a plain dict."""
+    if isinstance(obj, BaseModel):
+        return obj.model_dump()
+    if isinstance(obj, dict):
+        return obj
+    return {"key": str(obj)}
 
 
 def build_lc_messages(
@@ -66,6 +77,18 @@ async def handle_tool_end_state(
     if tool_name == "take_note":
         update_notes_state(state, tool_args)
         yield {"type": "tool_event", "tool": "take_note", "data": tool_args}
+    elif tool_name == "batch_notes":
+        raw_notes = tool_args.get("notes", [])
+        keys = []
+        for note in raw_notes:
+            note_dict = _to_dict(note)
+            update_notes_state(state, note_dict)
+            keys.append(note_dict.get("key", "?"))
+        yield {
+            "type": "tool_event",
+            "tool": "batch_notes",
+            "data": {"count": len(raw_notes), "keys": keys},
+        }
     elif tool_name == "commit_notes":
         state.notes.summary = tool_args.get("summary", "")
         state.committed = True
