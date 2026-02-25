@@ -10,22 +10,30 @@ def parse_credentials(raw: list[dict]) -> list[dict]:
 
 
 def parse_credential_schema(raw: dict) -> dict:
-    """Extract {required_fields, optional_fields} from a JSON Schema credential response."""
+    """Extract {properties, required} from a JSON Schema credential response.
+
+    Preserves enum lists so callers can avoid backfilling enum fields
+    with invalid empty strings. Notice-type fields are included because
+    n8n's allOf validation may require them.
+    """
     properties: dict = raw.get("properties", {})
     required_set: set[str] = set(raw.get("required", []))
-    props = [
-        {
+    props = []
+    for field_name, field_def in properties.items():
+        if not isinstance(field_def, dict):
+            continue
+        entry: dict = {
             "name": field_name,
-            "type": field_def.get("type", "string") if isinstance(field_def, dict) else "string",
+            "type": field_def.get("type", "string"),
             "required": field_name in required_set,
-            "description": field_def.get("description", "") if isinstance(field_def, dict) else "",
+            "description": field_def.get("description", ""),
         }
-        for field_name, field_def in properties.items()
-        if field_name != "notice"
-    ]
+        if "enum" in field_def:
+            entry["enum"] = field_def["enum"]
+        props.append(entry)
     return {
         "properties": props,
-        "required": sorted(required_set - {"notice"}),
+        "required": sorted(required_set),
     }
 
 

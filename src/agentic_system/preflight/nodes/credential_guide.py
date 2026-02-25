@@ -112,15 +112,17 @@ def _validate_and_patch(
 
 def _fields_from_schema(schema: dict) -> list[CredentialFieldInfo]:
     """Convert n8n schema properties to CredentialFieldInfo list."""
-    return [
-        CredentialFieldInfo(
+    fields: list[CredentialFieldInfo] = []
+    for p in schema.get("properties", []):
+        enum_values = p.get("enum")
+        fields.append(CredentialFieldInfo(
             name=p["name"],
             label=p.get("name", "").replace("_", " ").title(),
             description=p.get("description", ""),
             required=p.get("required", False),
-        )
-        for p in schema.get("properties", [])
-    ]
+            options=enum_values if enum_values else None,
+        ))
+    return fields
 
 
 def _fallback_entry(cred_type: str, fields: list[CredentialFieldInfo]) -> CredentialGuideEntry:

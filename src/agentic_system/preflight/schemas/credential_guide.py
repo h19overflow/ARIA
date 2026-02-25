@@ -9,6 +9,7 @@ class CredentialFieldInfo(BaseModel):
     label: str
     description: str
     required: bool
+    options: list[str] | None = None
 
 
 class CredentialGuideEntry(BaseModel):

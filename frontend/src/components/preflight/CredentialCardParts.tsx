@@ -2,6 +2,13 @@ import clsx from 'clsx'
 import { X, Link2, ExternalLink, Asterisk } from 'lucide-react'
 import type { CredentialGuideEntry } from '@/types'
 
+const fieldStyles = clsx(
+  'w-full px-3 py-2.5 rounded-lg text-sm bg-white/[0.04] border border-white/12',
+  'text-white/90 placeholder:text-white/25',
+  'focus:outline-none focus:border-orange/50 focus:bg-white/[0.06]',
+  'transition-colors duration-150',
+)
+
 export function FieldInput({
   field,
   value,
@@ -11,26 +18,36 @@ export function FieldInput({
   value: string
   onChange: (v: string) => void
 }) {
-  const inputType = field.type === 'password' ? 'password' : 'text'
-
   return (
     <div className="flex flex-col gap-1.5">
       <label className="flex items-center gap-1 text-xs font-medium text-white/60">
         {field.label}
         {field.required && <Asterisk size={8} className="text-orange/60" />}
       </label>
-      <input
-        type={inputType}
-        placeholder={field.placeholder ?? ''}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={clsx(
-          'w-full px-3 py-2.5 rounded-lg text-sm bg-white/[0.04] border border-white/12',
-          'text-white/90 placeholder:text-white/25',
-          'focus:outline-none focus:border-orange/50 focus:bg-white/[0.06]',
-          'transition-colors duration-150',
-        )}
-      />
+      {field.options ? (
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={clsx(fieldStyles, 'appearance-none cursor-pointer')}
+        >
+          <option value="" className="bg-[var(--bg-surface)] text-white/50">
+            Select...
+          </option>
+          {field.options.map((opt) => (
+            <option key={opt} value={opt} className="bg-[var(--bg-surface)] text-white/90">
+              {opt}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          type={field.type === 'password' ? 'password' : 'text'}
+          placeholder={field.placeholder ?? ''}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={fieldStyles}
+        />
+      )}
       {field.description && (
         <span className="text-[11px] text-white/30 leading-snug">{field.description}</span>
       )}

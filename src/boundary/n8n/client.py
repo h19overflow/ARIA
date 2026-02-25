@@ -129,8 +129,14 @@ class N8nClient:
         return resp.json().get("data", [])
 
     async def save_credential(self, credential_type: str, name: str, data: dict) -> dict:
-        """POST /api/v1/credentials -- save a new credential."""
-        payload = {"type": credential_type, "name": name, "data": data}
+        """POST /api/v1/credentials -- save a new credential.
+
+        Fetches the credential schema first and backfills missing fields
+        with type-appropriate defaults so n8n's strict validation passes.
+        """
+        schema = await self.get_credential_schema(credential_type)
+        full_data = _backfill_credential_data(data, schema)
+        payload = {"type": credential_type, "name": name, "data": full_data}
         resp = await self._client.post("/api/v1/credentials", json=payload)
         resp.raise_for_status()
         return resp.json()
@@ -148,3 +154,26 @@ class N8nClient:
         resp = await self._client.get("/api/v1/workflows", params={"limit": limit})
         resp.raise_for_status()
         return resp.json().get("data", [])
+
+
+# Only backfill plain string and notice fields.
+# Booleans trigger allOf/if-then branches; enums reject empty strings.
+_BACKFILL_TYPES = {"string", "notice"}
+
+
+def _backfill_credential_data(user_data: dict, schema: dict) -> dict:
+    """Merge user-supplied data with schema defaults for missing fields.
+
+    n8n requires certain fields to be present even when optional.
+    Only safe-to-default types (plain strings, notice) are backfilled.
+    Booleans and enum fields are skipped to avoid triggering conditional
+    validation branches or enum mismatch errors.
+    """
+    result = dict(user_data)
+    for prop in schema.get("properties", []):
+        field_name = prop["name"]
+        if field_name in result:
+            continue
+        if prop.get("type", "string") in _BACKFILL_TYPES and not prop.get("enum"):
+            result[field_name] = ""
+    return result

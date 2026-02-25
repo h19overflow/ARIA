@@ -24,8 +24,15 @@ async def save_credential(
     try:
         result = await client.save_credential(body.credential_type, body.name, body.data)
     except httpx.HTTPStatusError as exc:
-        log.error("n8n rejected credential save | type=%s status=%s", body.credential_type, exc.response.status_code)
-        raise HTTPException(status_code=502, detail="n8n rejected the credential save") from exc
+        n8n_body = exc.response.text
+        log.error(
+            "n8n rejected credential save | type=%s status=%s body=%s",
+            body.credential_type, exc.response.status_code, n8n_body,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=f"n8n rejected the credential save: {n8n_body}",
+        ) from exc
     except httpx.HTTPError as exc:
         log.error("n8n unreachable during credential save | type=%s error=%s", body.credential_type, exc)
         raise HTTPException(status_code=502, detail="Could not reach n8n") from exc

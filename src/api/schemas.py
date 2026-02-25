@@ -139,7 +139,7 @@ class BuildResponse(BaseModel):
 class SaveCredentialRequest(BaseModel):
     credential_type: str
     name: str
-    data: dict[str, str]
+    data: dict[str, object]
 
 
 class SaveCredentialResponse(BaseModel):

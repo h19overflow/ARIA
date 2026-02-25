@@ -5,6 +5,7 @@ export interface CredentialField {
   required: boolean
   type?: 'text' | 'password' | 'url'
   placeholder?: string
+  options?: string[]
 }
 
 export interface CredentialGuideEntry {
