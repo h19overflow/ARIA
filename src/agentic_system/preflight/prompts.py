@@ -45,7 +45,7 @@ been successfully saved via `save_credential`.
 `commit_preflight` immediately after the scan — do not wait for user input.
    - After the last `save_credential` returns `"success": true`, call \
 `commit_preflight` immediately — do not wait for user input.
-   - Summary format: "Resolved N credentials: type1, type2, ..."
+   - The `summary` argument is a credential resolution status: "Resolved N credentials: type1, type2, ..." or "All credentials already configured". Do NOT put the workflow description here — that is preserved separately from Phase 0.
    - Never commit while any required type is still failing or unresolved.
 
 ## Conversation Style

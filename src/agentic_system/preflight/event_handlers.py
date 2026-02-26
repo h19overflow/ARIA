@@ -128,3 +128,17 @@ def _apply_scan_to_notes(state: PreflightState, scan_data: dict) -> None:
     for item in scan_data.get("resolved", []):
         if isinstance(item, dict) and item.get("type") and item.get("id"):
             state.notes.resolved_credential_ids[item["type"]] = item["id"]
+    if not state.notes.workflow_description:
+        state.notes.workflow_description = _extract_workflow_description(state.messages)
+
+
+def _extract_workflow_description(messages: list) -> str:
+    """Extract the workflow intent line from the Phase 0 context message."""
+    for msg in messages:
+        if msg.get("role") == "user":
+            content = msg.get("content", "")
+            if "[Phase 0 Context]" in content:
+                for line in content.splitlines():
+                    if line.startswith("Workflow intent:"):
+                        return line.removeprefix("Workflow intent:").strip()
+    return ""

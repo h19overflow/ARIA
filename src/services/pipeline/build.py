@@ -68,27 +68,29 @@ async def _load_state_for_build(preflight_id: str, redis: Redis) -> ARIAState:
 def _preflight_to_aria_state(state: PreflightState) -> ARIAState:
     """Convert PreflightState (new chat agent) to ARIAState for the build cycle."""
     notes = state.notes
+    # Use the actual workflow description — not the credential resolution summary
+    workflow_intent = notes.workflow_description or notes.summary or "Build the requested workflow"
     empty_topology: WorkflowTopology = {
         "nodes": [], "edges": [], "entry_node": "", "branch_nodes": [],
     }
     blueprint: BuildBlueprint = {
-        "intent": notes.summary or "Build the requested workflow",
+        "intent": workflow_intent,
         "required_nodes": notes.required_nodes,
         "credential_ids": notes.resolved_credential_ids,
         "topology": empty_topology,
-        "user_description": notes.summary,
+        "user_description": workflow_intent,
     }
     return {
         "messages": [],
-        "intent": notes.summary,
+        "intent": workflow_intent,
         "required_nodes": notes.required_nodes,
         "resolved_credential_ids": notes.resolved_credential_ids,
         "pending_credential_types": [],
         "credential_guide_payload": None,
         "build_blueprint": blueprint,
         "topology": empty_topology,
-        "user_description": notes.summary,
-        "intent_summary": notes.summary,
+        "user_description": workflow_intent,
+        "intent_summary": workflow_intent,
         "conversation_notes": None,
         "node_templates": [],
         "workflow_json": None,

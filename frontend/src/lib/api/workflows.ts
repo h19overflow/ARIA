@@ -1,7 +1,6 @@
 import { request } from './client'
 import type {
   StartConversationResponse,
-  PreflightResponse,
   BuildResponse,
   JobStatusResponse,
   StartPreflightResponse,
@@ -21,12 +20,6 @@ export const startPreflightChat = (conversationId: string): Promise<StartPreflig
 
 export const getPreflightStatus = (preflightId: string): Promise<PreflightStatusResponse> =>
   request(`/preflight/${preflightId}/status`)
-
-// Phase 1 — Preflight (legacy job-based flow)
-export const startPreflight = (
-  params: { description?: string; conversation_id?: string }
-): Promise<PreflightResponse> =>
-  request('/preflight', { method: 'POST', body: JSON.stringify(params) })
 
 // Phase 2 — Build
 export const startBuild = (preflightId: string): Promise<BuildResponse> =>

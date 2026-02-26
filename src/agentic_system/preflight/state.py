@@ -22,7 +22,8 @@ class PreflightNotes(BaseModel):
     required_integrations: List[str] = []   # service names from Phase 0
     resolved_credential_ids: Dict[str, str] = {}
     pending_credential_types: List[str] = []
-    summary: str = ""
+    summary: str = ""                        # credential resolution status (NOT the workflow intent)
+    workflow_description: str = ""           # original workflow intent from Phase 0
     committed: bool = False
     raw_notes: Dict[str, str] = {}
 
