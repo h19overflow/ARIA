@@ -108,6 +108,12 @@ class N8nClient:
             f"did not complete in {timeout}s",
         )
 
+    async def run_workflow(self, workflow_id: str) -> dict:
+        """POST /api/v1/workflows/{id}/run — trigger a manual execution."""
+        resp = await self._client.post(f"/api/v1/workflows/{workflow_id}/run")
+        resp.raise_for_status()
+        return resp.json()
+
     # -- Credentials --
 
     async def list_credentials(self) -> list[dict]:
