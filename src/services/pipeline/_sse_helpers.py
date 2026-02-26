@@ -45,11 +45,20 @@ def build_initial_state(description: str, conversation_notes: dict | None = None
     }
 
 
-def detect_interrupt(state: ARIAState) -> tuple[str, dict]:
+def detect_interrupt(state: ARIAState, interrupt_value: dict | None = None) -> tuple[str, dict]:
+    """Classify an interrupt into (kind, payload) for SSE emission."""
     if state.get("pending_credential_types"):
         return "credential", {
             "pending_types": state.get("pending_credential_types", []),
             "guide": state.get("credential_guide_payload"),
+        }
+    if interrupt_value and interrupt_value.get("type") == "fix_exhausted":
+        return "fix_exhausted", {
+            "explanation": interrupt_value.get("explanation", ""),
+            "error": interrupt_value.get("error", {}),
+            "fix_attempts": interrupt_value.get("fix_attempts", 0),
+            "n8n_url": interrupt_value.get("n8n_url", ""),
+            "options": interrupt_value.get("options", ["retry", "replan", "abort"]),
         }
     return "clarify", {"question": state.get("pending_question", "")}
 
