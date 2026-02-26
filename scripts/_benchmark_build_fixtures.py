@@ -186,7 +186,7 @@ FIXTURES: list[dict] = [
         "name": "Webhook Set HTTP IF Set HTTP Merge HTTP",
         "tier": "large",
         "expected_trigger_type": "webhook",
-        "expected_node_count": 8,
+        "expected_node_count": 9,
         "blueprint": {
             "intent": "When I receive a webhook with a 'query' field: extract the query with Set, fetch https://httpbin.org/get?q={{query}}, check if the response status is 200, if yes transform the result with another Set and POST to https://httpbin.org/post with success=true, if no POST directly with success=false, merge both paths, then POST a final audit record to https://httpbin.org/post",
             "required_nodes": ["webhook", "set", "httpRequest", "if", "merge"],

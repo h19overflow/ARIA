@@ -6,7 +6,10 @@ from langchain_core.messages import HumanMessage
 from src.agentic_system.shared.state import ARIAState
 from src.boundary.n8n.client import N8nClient
 from src.api.settings import settings
-from src.agentic_system.build_cycle.nodes._trigger_utils import extract_webhook_path
+from src.agentic_system.build_cycle.nodes._trigger_utils import (
+    detect_trigger_type,
+    extract_webhook_path,
+)
 
 
 async def activate_node(state: ARIAState) -> dict:
@@ -29,12 +32,9 @@ async def activate_node(state: ARIAState) -> dict:
         await client.disconnect()
 
     base = settings.n8n_base_url.rstrip("/")
-    webhook_path = extract_webhook_path(workflow_json)
-    has_webhook = any(
-        "webhook" in node.get("type", "").lower()
-        for node in workflow_json.get("nodes", [])
-    )
-    webhook_url = f"{base}/webhook/{webhook_path}" if has_webhook else None
+    is_webhook = detect_trigger_type(workflow_json) == "webhook"
+    webhook_path = extract_webhook_path(workflow_json) if is_webhook else None
+    webhook_url = f"{base}/webhook/{webhook_path}" if is_webhook else None
 
     return {
         "webhook_url": webhook_url,

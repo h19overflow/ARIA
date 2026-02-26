@@ -64,12 +64,18 @@ def _make_initial_state(blueprint: dict) -> dict:
 
 # ── n8n helpers ────────────────────────────────────────────
 
-async def _run_manual_execution(workflow_id: str) -> dict:
-    """Trigger a manual execution and poll for result."""
+async def _verify_execution(workflow_id: str, workflow_json: dict) -> dict:
+    """Fire the workflow using the correct method for its trigger type, then poll."""
+    trigger_type = detect_trigger_type(workflow_json)
     client = N8nClient()
     await client.connect()
     try:
-        await client.run_workflow(workflow_id)
+        if trigger_type == "webhook":
+            from src.agentic_system.build_cycle.nodes._trigger_utils import extract_webhook_path
+            webhook_path = extract_webhook_path(workflow_json)
+            await client.trigger_webhook(webhook_path, payload={"test": True})
+        else:
+            await client.run_workflow(workflow_id)
         return await client.poll_execution(workflow_id, timeout=30.0)
     finally:
         await client.disconnect()
@@ -137,7 +143,7 @@ async def run_fixture(fixture: dict, graph) -> dict:
     exec_status = "skipped"
     exec_error = None
     try:
-        raw_exec = await _run_manual_execution(workflow_id)
+        raw_exec = await _verify_execution(workflow_id, workflow_json)
         exec_status = raw_exec.get("status", "error")
         exec_result = raw_exec
     except Exception as exc:
@@ -255,8 +261,7 @@ def _build_result(
 
 def _print_summary(results: list[dict], total_elapsed: float) -> None:
     passed = sum(1 for r in results if r["status"] == "PASS")
-    print(f"
-{'=' * 72}")
+    print(f"\n{'=' * 72}")
     print("  BUILD CYCLE BENCHMARK RESULTS")
     print(f"{'=' * 72}")
     header = f"  {'Name':<42} {'Tier':<8} {'Result':<6} {'Phases':<7} {'Fixes':<6} Exec"
@@ -272,8 +277,7 @@ def _print_summary(results: list[dict], total_elapsed: float) -> None:
         )
         if r["reason"]:
             print(f"    -> {r['reason']}")
-    print(f"
-  Passed: {passed}/{len(results)}")
+    print(f"\n  Passed: {passed}/{len(results)}")
     print(f"  Total time: {round(total_elapsed, 1)}s")
     print(f"{'=' * 72}")
 
@@ -290,8 +294,7 @@ async def main() -> None:
     total_t0 = time.time()
 
     for i, fixture in enumerate(FIXTURES, 1):
-        print(f"
-[{i}/{len(FIXTURES)}] {fixture['name']} ({fixture['tier']})")
+        print(f"\n[{i}/{len(FIXTURES)}] {fixture['name']} ({fixture['tier']})")
         result = await run_fixture(fixture, graph)
         icon = "PASS" if result["status"] == "PASS" else "FAIL"
         print(f"  {icon} -- {result['elapsed_seconds']}s -- exec: {result['execution_status']}")
@@ -313,8 +316,7 @@ async def main() -> None:
         "total": len(results),
         "results": results,
     }, indent=2))
-    print(f"
-  Report saved: {output_file}")
+    print(f"\n  Report saved: {output_file}")
 
 
 if __name__ == "__main__":
