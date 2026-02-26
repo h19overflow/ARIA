@@ -34,6 +34,21 @@ async def validate_preflight(preflight_id: str, redis: Redis) -> None:
         raise ValueError("Preflight is not committed — complete Phase 1 first")
 
 
+def _extract_interrupt_value(snapshot: object) -> dict | None:
+    """Extract the interrupt payload from a LangGraph snapshot."""
+    try:
+        tasks = getattr(snapshot, "tasks", [])
+        if tasks:
+            interrupts = getattr(tasks[0], "interrupts", [])
+            if interrupts:
+                value = getattr(interrupts[0], "value", None)
+                if isinstance(value, dict):
+                    return value
+    except Exception:
+        pass
+    return None
+
+
 async def run_build(
     job_id: str, preflight_id: str, redis: Redis, pipeline: ARIAPipeline,
 ) -> None:
@@ -130,7 +145,8 @@ async def _stream_build(
         if interrupted:
             snapshot = await pipeline._build_cycle.aget_state(config)
             snap_state: ARIAState = snapshot.values  # type: ignore[assignment]
-            kind, payload = detect_interrupt(snap_state)
+            interrupt_value = _extract_interrupt_value(snapshot)
+            kind, payload = detect_interrupt(snap_state, interrupt_value)
             log.info("[%s] Build interrupted | kind=%s", job_id, kind)
             await publish(redis, job_id, SSEEvent(type="interrupt", kind=kind, payload=payload))
             await write_job(redis, job_id, JobState(
