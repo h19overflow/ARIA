@@ -1,13 +1,17 @@
 import { useState, useCallback, useRef } from 'react'
 import { startBuild, submitResume } from '@/lib/api'
 import { subscribeSSE } from '@/lib/sse'
-import type { ARIAState, WorkflowStatus, FeedEvent, SSEEnvelope } from '@/types'
+import type { ARIAState, WorkflowStatus, FeedEvent, SSEEnvelope, SSEInterruptEvent, SSEFixEscalationEvent } from '@/types'
+
+type BuildInterrupt =
+  | { kind: 'clarify' | 'credential'; payload: SSEInterruptEvent['payload'] }
+  | { kind: 'fix_exhausted'; payload: SSEFixEscalationEvent['payload'] }
 
 export interface BuildState {
   jobId: string | null
   status: WorkflowStatus
   ariaState: ARIAState | null
-  interrupt: { kind: string; payload: Record<string, unknown> } | null
+  interrupt: BuildInterrupt | null
   events: FeedEvent[]
   error: string | null
 }
@@ -64,7 +68,7 @@ export function useBuild(): UseBuild {
         } else if (envelope.type === 'interrupt') {
           setState((prev) => ({
             ...prev,
-            interrupt: { kind: envelope.kind, payload: envelope.payload as Record<string, unknown> },
+            interrupt: envelope as BuildInterrupt,
           }))
         } else if (envelope.type === 'done') {
           setState((prev) => ({
@@ -115,7 +119,11 @@ export function useBuild(): UseBuild {
     if (!jobId) return
     setState((prev) => ({ ...prev, interrupt: null }))
     try {
-      await submitResume(jobId, kind as 'clarify' | 'provide', value as string)
+      await submitResume(
+        jobId,
+        kind as 'clarify' | 'provide' | 'resume' | 'retry' | 'replan' | 'abort',
+        value as string | Record<string, unknown>,
+      )
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Resume failed'
       setState((prev) => ({ ...prev, error: message }))

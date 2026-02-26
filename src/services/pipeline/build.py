@@ -120,6 +120,7 @@ def _preflight_to_aria_state(state: PreflightState) -> ARIAState:
         "total_phases": 1,
         "phase_node_map": [],
         "paused_for_input": False,
+        "hitl_explanation": None,
     }
 
 

@@ -1,12 +1,16 @@
 """Build Cycle HITL Escalation -- asks user when fix budget is exhausted."""
 from __future__ import annotations
 
+import logging
+
 from langchain_core.messages import HumanMessage
 from langgraph.types import interrupt
 from pydantic import BaseModel
 
 from src.agentic_system.shared.base_agent import BaseAgent
 from src.agentic_system.shared.state import ARIAState
+
+log = logging.getLogger("aria.hitl")
 
 
 class _Explanation(BaseModel):
@@ -40,7 +44,8 @@ async def _generate_explanation(error: dict, fix_attempts: int) -> str:
     try:
         result: _Explanation = await _explainer.invoke([HumanMessage(content=prompt)])
         return result.explanation
-    except Exception:
+    except (ValueError, RuntimeError, TimeoutError, OSError) as exc:
+        log.warning("HITLExplainer failed, using fallback: %s", exc)
         return (
             f"The '{node_name}' node failed after {fix_attempts} fix attempt(s). "
             f"Error: {message}"

@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { subscribeSSE } from '@/lib/sse'
-import type { FeedEvent, SSEEnvelope, SSEInterruptEvent, SSEFixEscalationEvent, SSEErrorEvent } from '@/types'
-import type { ARIAState } from '@/types/state'
+import type { FeedEvent, SSEEnvelope, SSEInterruptEvent, SSEFixEscalationEvent, SSEErrorEvent, ARIAState } from '@/types'
 
 interface EventFeedCallbacks {
   onInterrupt: (kind: 'clarify' | 'credential', payload: SSEInterruptEvent['payload']) => void

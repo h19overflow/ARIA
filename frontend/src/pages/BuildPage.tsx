@@ -72,10 +72,10 @@ export function BuildPage({ preflightId }: BuildPageProps) {
             {/* HITL: fix escalation panel — shown when fix budget exhausted */}
             {interrupt?.kind === 'fix_exhausted' && (
               <FixEscalationPanel
-                explanation={(interrupt.payload.explanation as string) ?? ''}
-                error={(interrupt.payload.error as Record<string, unknown>) ?? {}}
-                fixAttempts={(interrupt.payload.fix_attempts as number) ?? 0}
-                n8nUrl={(interrupt.payload.n8n_url as string) ?? ''}
+                explanation={interrupt.payload.explanation ?? ''}
+                error={interrupt.payload.error ?? {}}
+                fixAttempts={interrupt.payload.fix_attempts ?? 0}
+                n8nUrl={interrupt.payload.n8n_url ?? ''}
                 onAction={handleFixEscalationAction}
               />
             )}
@@ -83,7 +83,7 @@ export function BuildPage({ preflightId }: BuildPageProps) {
             {/* HITL: clarify drawer — shown for mid-build clarification questions */}
             {interrupt?.kind === 'clarify' && (
               <ClarifyDrawer
-                question={(interrupt.payload.question as string) ?? ''}
+                question={interrupt.payload.question ?? ''}
                 onSubmit={handleClarifySubmit}
                 isLoading={false}
               />
