@@ -1,129 +1,114 @@
-"""Phase 1 — Preflight router."""
+"""Phase 1 — Preflight router (conversational agent pattern)."""
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
-from uuid import uuid4
+import uuid
+from typing import AsyncGenerator
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import StreamingResponse
 from redis.asyncio import Redis
 
-from src.agentic_system.graph import ARIAPipeline
-from src.api.lifespan.pipeline import get_pipeline
+from src.agentic_system.preflight.agent import PreflightAgent
+from src.api.lifespan.preflight import get_preflight_agent
 from src.api.lifespan.redis import get_redis
-from src.api.schemas import JobState, PreflightRequest, PreflightResponse
-from src.services.pipeline import preflight
+from src.api.schemas import (
+    ErrorResponse,
+    StartPreflightRequest,
+    StartPreflightResponse,
+    PreflightMessageRequest,
+    PreflightStatusResponse,
+)
+from src.services.preflight.service import (
+    initialize_preflight,
+    process_preflight_message,
+    get_preflight_status,
+)
 
 log = logging.getLogger("aria.api.preflight")
+
 router = APIRouter(prefix="/preflight", tags=["Phase 1 — Preflight"])
 
-_PING_INTERVAL = 15
-_TERMINAL = {"done", "error"}
+
+def _get_request_id(request: Request) -> str:
+    return getattr(request.state, "request_id", request.headers.get("X-Request-ID", str(uuid.uuid4())))
 
 
-@router.post("", response_model=PreflightResponse, status_code=202)
+@router.post(
+    "/start",
+    response_model=StartPreflightResponse,
+    responses={422: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+    summary="Start a preflight session",
+    description="Reads Phase 0 conversation notes from Redis and initialises a new preflight session.",
+)
 async def start_preflight(
-    body: PreflightRequest,
+    body: StartPreflightRequest,
+    response: Response,
+    request: Request,
     redis: Redis = Depends(get_redis),
-    pipeline: ARIAPipeline = Depends(get_pipeline),
-) -> PreflightResponse:
-    description, conversation_notes = await _resolve_description(body, redis)
-    job_id = str(uuid4())
-    log.info("POST /preflight | job_id=%s | description=%r", job_id, description[:80])
-    initial = JobState(job_id=job_id, status="planning")
-    await redis.set(f"job:{job_id}", initial.model_dump_json(), ex=86_400)
-    asyncio.create_task(preflight.run_preflight(job_id, description, redis, pipeline, conversation_notes))
-    log.info("Preflight background task created | job_id=%s", job_id)
-    return PreflightResponse(preflight_job_id=job_id, status="planning")
+    agent: PreflightAgent = Depends(get_preflight_agent),
+) -> StartPreflightResponse:
+    request_id = _get_request_id(request)
+    response.headers["X-Request-ID"] = request_id
+    try:
+        preflight_id = await initialize_preflight(body.conversation_id, redis, agent)
+        return StartPreflightResponse(preflight_id=preflight_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    except Exception as e:
+        log.error("Failed to start preflight: %s", e, exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to start preflight")
 
 
-@router.get("/{job_id}/stream")
-async def stream_preflight(
-    job_id: str,
-    redis: Redis = Depends(get_redis),
+@router.post(
+    "/{preflight_id}/message",
+    response_class=StreamingResponse,
+    summary="Send a message and stream the preflight agent response",
+    description="Streams agent tokens and tool events as Server-Sent Events.",
+)
+async def send_preflight_message(
+    preflight_id: str,
+    payload: PreflightMessageRequest,
+    response: Response,
+    request: Request,
+    agent: PreflightAgent = Depends(get_preflight_agent),
 ) -> StreamingResponse:
-    log.info("GET /preflight/%s/stream — SSE connection opened", job_id)
-    raw = await redis.get(f"job:{job_id}")
-    if raw is None:
-        raise HTTPException(status_code=404, detail="Preflight job not found")
+    request_id = _get_request_id(request)
+    response.headers["X-Request-ID"] = request_id
+
+    async def event_generator() -> AsyncGenerator[str, None]:
+        try:
+            async for event in process_preflight_message(preflight_id, payload.message, agent):
+                if await request.is_disconnected():
+                    break
+                data = json.dumps(event) if isinstance(event, dict) else str(event)
+                yield f"data: {data}\n\n"
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            log.error("Preflight stream error preflight_id=%s: %s", preflight_id, e, exc_info=True)
+            error_event = {
+                "type": "error",
+                "error": {"code": "STREAM_ERROR", "message": str(e)},
+            }
+            yield f"data: {json.dumps(error_event)}\n\n"
+
     return StreamingResponse(
-        _sse_generator(job_id, redis),
+        event_generator(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Request-ID": request_id},
     )
 
 
-async def _resolve_description(body: PreflightRequest, redis: Redis) -> tuple[str, dict | None]:
-    if body.description:
-        return body.description, None
-    if body.conversation_id:
-        raw = await redis.get(f"conversation:{body.conversation_id}")
-        if raw:
-            try:
-                data = json.loads(raw)
-                notes = data.get("notes", {})
-                summary = notes.get("summary", "")
-                if summary:
-                    return summary, notes
-            except (json.JSONDecodeError, AttributeError):
-                pass
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Conversation has no committed summary yet. Complete Phase 0 first.",
-        )
-    raise HTTPException(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        detail="Either 'description' or 'conversation_id' must be provided.",
-    )
-
-
-async def _sse_generator(job_id: str, redis: Redis):
-    # Replay current job state so late-connecting clients don't miss events
-    raw = await redis.get(f"job:{job_id}")
-    if raw:
-        job = json.loads(raw)
-        if job.get("status") in _TERMINAL or job.get("status") == "failed":
-            event_type = "error" if job.get("status") == "failed" else "done"
-            replay = json.dumps({"type": event_type, "aria_state": job.get("aria_state"),
-                                 "message": job.get("error", "")})
-            yield f"data: {replay}\n\n"
-            return
-
-    pubsub = redis.pubsub()
-    await pubsub.subscribe(f"sse:{job_id}")
+@router.get(
+    "/{preflight_id}/status",
+    summary="Get preflight session status",
+    description="Returns committed state and current notes for a preflight session.",
+)
+async def get_status(preflight_id: str) -> dict:
     try:
-        while True:
-            msg = await _poll_message(pubsub)
-            if msg is None:
-                yield ": ping\n\n"
-                continue
-            data = msg["data"]
-            event_type = _event_type(data)
-            log.debug("SSE event | job=%s type=%s", job_id, event_type)
-            yield f"data: {data}\n\n"
-            if event_type in _TERMINAL:
-                log.info("SSE stream terminal | job=%s type=%s", job_id, event_type)
-                break
-    except GeneratorExit:
-        log.info("SSE stream closed by client | job=%s", job_id)
-    finally:
-        await pubsub.unsubscribe(f"sse:{job_id}")
-
-
-async def _poll_message(pubsub: object) -> dict | None:
-    try:
-        return await asyncio.wait_for(
-            pubsub.get_message(ignore_subscribe_messages=True),  # type: ignore[union-attr]
-            timeout=_PING_INTERVAL,
-        )
-    except asyncio.TimeoutError:
-        return None
-
-
-def _event_type(data: str | bytes) -> str:
-    try:
-        return json.loads(data).get("type", "unknown")
-    except (json.JSONDecodeError, AttributeError):
-        return "unknown"
+        return await get_preflight_status(preflight_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

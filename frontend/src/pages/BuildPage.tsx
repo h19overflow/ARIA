@@ -9,14 +9,11 @@ import { CredentialDrawer } from '@/components/build/CredentialDrawer'
 import { useBuild } from '@/hooks/useBuild'
 import { PageGuide } from '@/components/shared/PageGuide'
 import { BUILD_GUIDE } from '@/components/shared/guide-content'
-import type { ARIAState } from '@/types'
-
 interface BuildPageProps {
   preflightJobId: string
-  preflightAriaState: ARIAState | null
 }
 
-export function BuildPage({ preflightJobId, preflightAriaState: _ }: BuildPageProps) {
+export function BuildPage({ preflightJobId }: BuildPageProps) {
   const { state, start, resume, reset } = useBuild()
   const { status, ariaState, interrupt, events, error } = state
 

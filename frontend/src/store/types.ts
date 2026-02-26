@@ -1,4 +1,4 @@
-import type { AgentActivity, ARIAState } from '@/types';
+import type { AgentActivity } from '@/types';
 
 export interface Message {
   id: string;
@@ -29,10 +29,9 @@ export interface PhaseSlice {
   phase: 0 | 1 | 2;
   preflightJobId: string | null;
   buildJobId: string | null;
-  preflightAriaState: ARIAState | null;
   goToPhase: (n: 0 | 1 | 2) => void;
   goToPhase1: () => void;
-  goToPhase2: (pJobId: string, pState: ARIAState) => void;
+  goToPhase2: (preflightId: string) => void;
   setBuildJobId: (id: string) => void;
   resetPhase: () => void;
 }

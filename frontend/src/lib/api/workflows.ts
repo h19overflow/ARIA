@@ -4,13 +4,25 @@ import type {
   PreflightResponse,
   BuildResponse,
   JobStatusResponse,
+  StartPreflightResponse,
+  PreflightStatusResponse,
 } from '@/types'
 
 // Phase 0 — Conversation
 export const startConversation = (): Promise<StartConversationResponse> =>
   request('/conversation/start', { method: 'POST' })
 
-// Phase 1 — Preflight
+// Phase 1 — Conversational preflight (new chat-based flow)
+export const startPreflightChat = (conversationId: string): Promise<StartPreflightResponse> =>
+  request('/preflight/start', {
+    method: 'POST',
+    body: JSON.stringify({ conversation_id: conversationId }),
+  })
+
+export const getPreflightStatus = (preflightId: string): Promise<PreflightStatusResponse> =>
+  request(`/preflight/${preflightId}/status`)
+
+// Phase 1 — Preflight (legacy job-based flow)
 export const startPreflight = (
   params: { description?: string; conversation_id?: string }
 ): Promise<PreflightResponse> =>

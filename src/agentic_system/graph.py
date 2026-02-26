@@ -1,28 +1,10 @@
-"""ARIA pipeline — sequential two-phase runner (Preflight → Build Cycle).
+"""ARIA pipeline — Build Cycle LangGraph runner.
 
-Replaces the old nested-subgraph master graph that caused BUG-6:
-MemorySaver checkpointer deadlocked when interrupt() fired inside
-compiled subgraphs nested inside a parent StateGraph.
+Phase 1 (Preflight) is now a conversational agent (PreflightAgent).
+This module owns only Phase 2: the Build Cycle LangGraph subgraph.
 
-The fix: compile each subgraph independently with its own MemorySaver
-and execute them sequentially at the service level.  HITL interrupts
-work correctly because each graph is a top-level compiled graph.
-
-Unified resume schema
----------------------
-All resume_* methods accept a dict with an ``action`` key.
-
-Preflight clarify:
-  {"action": "clarify", "value": "<user answer>"}
-
-Preflight credential_request:
-  {"action": "provide", "credentials": {"Gmail OAuth2": {...}}}   # user pastes creds
-  {"action": "resume"}                                             # already set up in n8n
-
-Preflight credential_ambiguity:
-  {"action": "select", "selections": {"Gmail OAuth2": "<id>"}}
-
-Build-cycle fix_exhausted:
+Build-cycle resume schema
+-------------------------
   {"action": "retry"}    # user fixed in n8n UI
   {"action": "replan"}
   {"action": "abort"}
@@ -32,44 +14,24 @@ from __future__ import annotations
 from langgraph.checkpoint.memory import MemorySaver
 
 from src.agentic_system.shared.state import ARIAState
-from src.agentic_system.preflight.graph import build_preflight_graph
 from src.agentic_system.build_cycle.graph import build_build_cycle_graph
 
 
 class ARIAPipeline:
-    """Sequential runner for the two-phase ARIA pipeline.
+    """Runner for the Phase 2 Build Cycle LangGraph graph.
 
     Usage
     -----
     pipeline = ARIAPipeline()
-
-    # Phase 1 — Preflight (handles HITL clarify + credential collection)
     config = {"configurable": {"thread_id": "run-123"}}
-    state = await pipeline.run_preflight(initial_state, config)
-
-    # Phase 2 — Build Cycle (handles HITL escalation)
     final_state = await pipeline.run_build_cycle(state, config)
     """
 
     def __init__(self) -> None:
-        preflight_ckpt = MemorySaver()
         build_cycle_ckpt = MemorySaver()
-
-        self._preflight = build_preflight_graph().compile(
-            checkpointer=preflight_ckpt,
-        )
         self._build_cycle = build_build_cycle_graph().compile(
             checkpointer=build_cycle_ckpt,
         )
-
-    async def run_preflight(
-        self,
-        state: ARIAState,
-        config: dict,
-    ) -> ARIAState:
-        """Run preflight to completion and return the final state."""
-        result = await self._preflight.ainvoke(state, config=config)
-        return result
 
     async def run_build_cycle(
         self,
@@ -78,23 +40,6 @@ class ARIAPipeline:
     ) -> ARIAState:
         """Run build cycle to completion and return the final state."""
         result = await self._build_cycle.ainvoke(state, config=config)
-        return result
-
-    async def resume_preflight(
-        self,
-        resume_value: dict,
-        config: dict,
-    ) -> ARIAState:
-        """Resume a preflight graph that is paused at an interrupt.
-
-        ``resume_value`` must follow the unified schema — see module docstring.
-        LangGraph feeds it to the interrupted node via Command(resume=...).
-        """
-        from langgraph.types import Command  # noqa: PLC0415
-        result = await self._preflight.ainvoke(
-            Command(resume=resume_value),
-            config=config,
-        )
         return result
 
     async def resume_build_cycle(

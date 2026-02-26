@@ -5,7 +5,6 @@ export const createPhaseSlice: StateCreator<AppStore, [], [], PhaseSlice> = (set
   phase: 0,
   preflightJobId: null,
   buildJobId: null,
-  preflightAriaState: null,
 
   goToPhase: (n) => {
     const { conversationId, preflightJobId } = get();
@@ -18,8 +17,8 @@ export const createPhaseSlice: StateCreator<AppStore, [], [], PhaseSlice> = (set
     set({ phase: 1 });
   },
 
-  goToPhase2: (pJobId, pState) => {
-    set({ preflightJobId: pJobId, preflightAriaState: pState, phase: 2 });
+  goToPhase2: (preflightId) => {
+    set({ preflightJobId: preflightId, phase: 2 });
   },
 
   setBuildJobId: (id) => set({ buildJobId: id }),
@@ -29,7 +28,6 @@ export const createPhaseSlice: StateCreator<AppStore, [], [], PhaseSlice> = (set
       phase: 0,
       preflightJobId: null,
       buildJobId: null,
-      preflightAriaState: null,
       // Also reset conversation state on full reset
       conversationId: null,
       messages: [],

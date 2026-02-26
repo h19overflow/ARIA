@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { useAppStore } from '@/store';
 import PhaseHeader from './PhaseHeader';
-import type { ARIAState } from '@/types';
 
 const ConversationView = lazy(() =>
   import('@/views/ConversationView').then((m) => ({ default: m.ConversationView }))
@@ -32,15 +31,14 @@ function PhaseFallback() {
   );
 }
 
-function BuildPhaseWrapper({ preflightJobId, preflightAriaState }: { preflightJobId: string; preflightAriaState: ARIAState | null }) {
-  return <BuildPage preflightJobId={preflightJobId} preflightAriaState={preflightAriaState} />;
+function BuildPhaseWrapper({ preflightJobId }: { preflightJobId: string }) {
+  return <BuildPage preflightJobId={preflightJobId} />;
 }
 
 export function AppShell() {
   const phase = useAppStore((s) => s.phase);
   const conversationId = useAppStore((s) => s.conversationId);
   const preflightJobId = useAppStore((s) => s.preflightJobId);
-  const preflightAriaState = useAppStore((s) => s.preflightAriaState);
   const goToPhase = useAppStore((s) => s.goToPhase);
   const goToPhase1 = useAppStore((s) => s.goToPhase1);
   const goToPhase2 = useAppStore((s) => s.goToPhase2);
@@ -51,8 +49,8 @@ export function AppShell() {
     ...(phase > 1 ? [1] : []),
   ]);
 
-  const handleStartBuild = (pJobId: string, pState: ARIAState) => {
-    goToPhase2(pJobId, pState);
+  const handleStartBuild = (preflightId: string) => {
+    goToPhase2(preflightId);
   };
 
   return (
@@ -84,10 +82,7 @@ export function AppShell() {
             />
           )}
           {phase === 2 && preflightJobId && (
-            <BuildPhaseWrapper
-              preflightJobId={preflightJobId}
-              preflightAriaState={preflightAriaState}
-            />
+            <BuildPhaseWrapper preflightJobId={preflightJobId} />
           )}
         </Suspense>
       </main>

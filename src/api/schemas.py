@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Literal
+from typing import Any, Dict
 
 from pydantic import BaseModel, Field
 
+from src.api.schemas_sse import SSEEvent  # noqa: F401 — re-export for existing imports
 
-# ---------------------------------------------------------------------------
+
 # Ingestion
-# ---------------------------------------------------------------------------
 
 class IngestN8nResponse(BaseModel):
     type: str
@@ -25,9 +25,7 @@ class IngestApiSpecResponse(BaseModel):
     ingested: int
 
 
-# ---------------------------------------------------------------------------
-# Workflows (job submission)
-# ---------------------------------------------------------------------------
+# Workflows / Jobs
 
 class WorkflowRequest(BaseModel):
     description: str | None = None
@@ -38,10 +36,6 @@ class WorkflowResponse(BaseModel):
     job_id: str
     status: str
 
-
-# ---------------------------------------------------------------------------
-# Jobs
-# ---------------------------------------------------------------------------
 
 class JobStatusResponse(BaseModel):
     job_id: str
@@ -69,47 +63,32 @@ class ResumeRequest(BaseModel):
     Fix abort:            {"action": "abort"}
     """
     action: str
-    value: str | None = None                  # clarify
-    credentials: dict | None = None           # provide
-    selections: dict[str, str] | None = None  # select
+    value: str | None = None
+    credentials: dict | None = None
+    selections: dict[str, str] | None = None
 
 
-class SSEEvent(BaseModel):
-    type: Literal["node", "node_start", "interrupt", "done", "error", "ping"]
-    stage: str | None = None
-    node_name: str | None = None
-    message: str | None = None
-    status: str | None = None
-    kind: str | None = None
-    payload: dict | None = None
-    aria_state: dict | None = None
-    event_id: str | None = None
-    tools: list[str] | None = None
-    duration_ms: int | None = None
-    timestamp: str | None = None
-    progress: str | None = None
-
-
-# --- Conversation ---
+# Phase 0 — Conversation
 
 class StartConversationResponse(BaseModel):
     conversation_id: str = Field(..., description="Unique identifier for the new conversation")
 
+
 class MessageRequest(BaseModel):
     message: str = Field(..., description="User input message")
+
 
 class ErrorDetail(BaseModel):
     code: str
     message: str
     details: Dict[str, Any]
 
+
 class ErrorResponse(BaseModel):
     error: ErrorDetail
 
 
-# ---------------------------------------------------------------------------
-# Phase 1 — Preflight
-# ---------------------------------------------------------------------------
+# Phase 1 — Preflight (legacy job-based)
 
 class PreflightRequest(BaseModel):
     description: str | None = None
@@ -121,9 +100,26 @@ class PreflightResponse(BaseModel):
     status: str  # "planning"
 
 
-# ---------------------------------------------------------------------------
+# Phase 1 — Preflight (conversational)
+
+class StartPreflightRequest(BaseModel):
+    conversation_id: str
+
+
+class StartPreflightResponse(BaseModel):
+    preflight_id: str
+
+
+class PreflightMessageRequest(BaseModel):
+    message: str
+
+
+class PreflightStatusResponse(BaseModel):
+    committed: bool
+    notes: dict
+
+
 # Phase 2 — Build
-# ---------------------------------------------------------------------------
 
 class BuildRequest(BaseModel):
     preflight_job_id: str
@@ -134,9 +130,7 @@ class BuildResponse(BaseModel):
     status: str  # "building"
 
 
-# ---------------------------------------------------------------------------
 # Credentials
-# ---------------------------------------------------------------------------
 
 class SaveCredentialRequest(BaseModel):
     credential_type: str
