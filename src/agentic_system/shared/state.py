@@ -97,3 +97,6 @@ class ARIAState(TypedDict):
     # HITL pause indicator — set True immediately before interrupt(), False after resume.
     # Frontend can read this without inferring from SSE gaps.
     paused_for_input: bool
+
+    # LLM-generated explanation shown to the user during a HITL pause.
+    hitl_explanation: str | None
