@@ -25,7 +25,7 @@ class BaseAgent(Generic[S]):
     Wrapper around langchain.agents.create_agent backed by ChatGoogleGenerativeAI.
 
     Hides model construction, tool binding, structured-output wiring, and retries.
-    Every agent in preflight/ and build_cycle/ inherits from this.
+    Every agent in conversation/ and build_cycle/ inherits from this.
 
     Usage
     -----

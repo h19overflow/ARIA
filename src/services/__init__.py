@@ -5,7 +5,7 @@ from __future__ import annotations
 
 def __getattr__(name: str) -> object:
     """Lazily resolve backward-compat re-exports on first access."""
-    _pipeline_names = {"run_preflight", "run_build", "load_preflight_state"}
+    _pipeline_names = {"run_build"}
     _rag_ingestion_names = {
         "ingest_n8n_nodes", "ingest_n8n_workflow_templates", "ingest_api_spec",
     }
@@ -16,9 +16,6 @@ def __getattr__(name: str) -> object:
     }
 
     if name in _pipeline_names:
-        if name == "run_preflight":
-            from src.services.pipeline.preflight import run_preflight
-            return run_preflight
         from src.services.pipeline import build as _build
         return getattr(_build, name)
 
