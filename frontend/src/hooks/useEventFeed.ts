@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { subscribeSSE } from '@/lib/sse'
-import type { FeedEvent, SSEEnvelope, SSEInterruptEvent } from '@/types'
+import type { FeedEvent, SSEEnvelope, SSEInterruptEvent, SSEFixEscalationEvent, SSEErrorEvent } from '@/types'
 import type { ARIAState } from '@/types/state'
 
 interface EventFeedCallbacks {
   onInterrupt: (kind: 'clarify' | 'credential', payload: SSEInterruptEvent['payload']) => void
+  onFixExhausted?: (payload: SSEFixEscalationEvent['payload']) => void
   onDone: (ariaState: ARIAState) => void
   onError: (message: string) => void
   onStateUpdate?: (ariaState: ARIAState) => void
@@ -29,6 +30,37 @@ function nodeEventToFeed(e: Extract<SSEEnvelope, { type: 'node' }>): FeedEvent {
   }
 }
 
+function makeErrorFeedEvent(message: string): FeedEvent {
+  return {
+    id: makeId(),
+    stage: 'system' as const,
+    message,
+    timestamp: new Date(),
+    status: 'error' as const,
+  }
+}
+
+function makeDisconnectFeedEvent(): FeedEvent {
+  return {
+    id: makeId(),
+    stage: 'system' as const,
+    message: 'Stream disconnected',
+    timestamp: new Date(),
+    status: 'warning' as const,
+  }
+}
+
+function handleInterruptEnvelope(
+  envelope: SSEInterruptEvent | SSEFixEscalationEvent,
+  callbacks: EventFeedCallbacks,
+): void {
+  if (envelope.kind === 'fix_exhausted') {
+    callbacks.onFixExhausted?.(envelope.payload)
+  } else {
+    callbacks.onInterrupt(envelope.kind, envelope.payload)
+  }
+}
+
 export function useEventFeed(
   jobId: string | null,
   callbacks: EventFeedCallbacks,
@@ -47,35 +79,17 @@ export function useEventFeed(
             callbacks.onStateUpdate?.(envelope.aria_state as unknown as ARIAState)
           }
         } else if (envelope.type === 'interrupt') {
-          callbacks.onInterrupt(envelope.kind, envelope.payload)
+          handleInterruptEnvelope(envelope, callbacks)
         } else if (envelope.type === 'done') {
           callbacks.onDone(envelope.aria_state)
         } else if (envelope.type === 'error') {
-          setEvents((prev) => [
-            {
-              id: makeId(),
-              stage: 'system' as const,
-              message: envelope.message,
-              timestamp: new Date(),
-              status: 'error' as const,
-            },
-            ...prev,
-          ])
-          callbacks.onError(envelope.message)
+          setEvents((prev) => [makeErrorFeedEvent((envelope as SSEErrorEvent).message), ...prev])
+          callbacks.onError((envelope as SSEErrorEvent).message)
         }
         // ping → ignore
       },
       onError: () => {
-        setEvents((prev) => [
-          {
-            id: makeId(),
-            stage: 'system' as const,
-            message: 'Stream disconnected',
-            timestamp: new Date(),
-            status: 'warning' as const,
-          },
-          ...prev,
-        ])
+        setEvents((prev) => [makeDisconnectFeedEvent(), ...prev])
       },
     })
 
