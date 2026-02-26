@@ -10,23 +10,8 @@ export const CONVERSATION_GUIDE: GuideStep[] = [
     detail: 'The left panel fills in as you chat. Edit any field if ARIA got something wrong.',
   },
   {
-    label: 'Run Preflight when ready',
-    detail: 'Once requirements are captured and committed, hit "Run Preflight" to move to analysis.',
-  },
-]
-
-export const PREFLIGHT_GUIDE: GuideStep[] = [
-  {
-    label: 'ARIA analyses your requirements',
-    detail: 'The orchestrator parses your intent and identifies which n8n nodes are needed.',
-  },
-  {
-    label: 'Connect any missing credentials',
-    detail: 'If a service needs authentication, you\'ll be prompted to provide API keys or OAuth tokens.',
-  },
-  {
-    label: 'Review the blueprint and start building',
-    detail: 'Once all nodes and credentials are resolved, click "Start Building" to begin Phase 2.',
+    label: 'Start Build when ready',
+    detail: 'Once requirements and credentials are resolved, hit "Start Build" to begin building your workflow.',
   },
 ]
 

@@ -156,7 +156,7 @@ export function ChatPanel({ messages, activities, isStreaming, isCommitted, erro
               }}>
                 <CheckCircle2 size={15} style={{ color: 'var(--accent-orange)', flexShrink: 0 }} />
                 <span style={{ fontSize: '0.82rem', color: 'var(--accent-orange)', fontWeight: 500 }}>
-                  Requirements captured — click "Run Preflight" in the sidebar to continue.
+                  Requirements captured — once credentials are resolved, click "Start Build" in the sidebar.
                 </span>
               </div>
             )}

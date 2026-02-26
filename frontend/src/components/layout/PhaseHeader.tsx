@@ -2,16 +2,15 @@ import { RotateCcw, Check, Zap } from 'lucide-react';
 import clsx from 'clsx';
 
 interface PhaseHeaderProps {
-  activePhase: 0 | 1 | 2;
+  activePhase: 0 | 1;
   completedPhases: Set<number>;
-  onPhaseClick: (phase: 0 | 1 | 2) => void;
+  onPhaseClick: (phase: 0 | 1) => void;
   onReset: () => void;
 }
 
 const PHASES = [
-  { index: 0 as const, label: 'Describe',  color: '#ee4f27', dim: 'rgba(238,79,39,0.12)' },
-  { index: 1 as const, label: 'Analyse',   color: '#ee4f27', dim: 'rgba(238,79,39,0.12)' },
-  { index: 2 as const, label: 'Build',     color: '#ee4f27', dim: 'rgba(238,79,39,0.12)' },
+  { index: 0 as const, label: 'Describe', color: '#ee4f27', dim: 'rgba(238,79,39,0.12)' },
+  { index: 1 as const, label: 'Build',    color: '#ee4f27', dim: 'rgba(238,79,39,0.12)' },
 ];
 
 export default function PhaseHeader({ activePhase, completedPhases, onPhaseClick, onReset }: PhaseHeaderProps) {

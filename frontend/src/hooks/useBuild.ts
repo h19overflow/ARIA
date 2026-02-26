@@ -18,7 +18,7 @@ export interface BuildState {
 
 export interface UseBuild {
   state: BuildState
-  start: (preflightId: string) => Promise<void>
+  start: (conversationId: string) => Promise<void>
   resume: (kind: string, value: unknown) => Promise<void>
   reset: () => void
 }
@@ -101,10 +101,10 @@ export function useBuild(): UseBuild {
     })
   }, [])
 
-  const start = useCallback(async (preflightId: string) => {
+  const start = useCallback(async (conversationId: string) => {
     setState({ ...INITIAL, status: 'building' })
     try {
-      const res = await startBuild(preflightId)
+      const res = await startBuild(conversationId)
       jobIdRef.current = res.build_job_id
       setState((prev) => ({ ...prev, jobId: res.build_job_id }))
       subscribeToJob(res.build_job_id)

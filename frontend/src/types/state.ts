@@ -9,7 +9,7 @@ export type WorkflowStatus =
   | 'done'
   | 'failed'
 
-export type PhaseId = 0 | 1 | 2
+export type PhaseId = 0 | 1
 
 export interface ARIAState {
   status?: WorkflowStatus
@@ -62,27 +62,9 @@ export interface JobStatusResponse {
   error?: string
 }
 
-export interface PreflightNotes {
-  required_nodes: string[]
-  resolved_credential_ids: Record<string, string>
-  pending_credential_types: string[]
-  summary: string
-  committed: boolean
-}
-
-export interface StartPreflightResponse {
-  preflight_id: string
-}
-
-export interface PreflightStatusResponse {
-  committed: boolean
-  notes: PreflightNotes
-}
-
 // Global app phase state
 export interface PhaseState {
   activePhase: PhaseId
   conversationId: string | null
-  preflightId: string | null
   buildJobId: string | null
 }

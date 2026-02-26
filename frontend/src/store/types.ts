@@ -23,15 +23,17 @@ export interface ConversationNotes {
   destination_service?: string;
   destination_action?: string;
   destination_format?: string;
+  required_nodes?: string[];
+  resolved_credential_ids?: Record<string, string>;
+  pending_credential_types?: string[];
+  credentials_committed?: boolean;
 }
 
 export interface PhaseSlice {
-  phase: 0 | 1 | 2;
-  preflightId: string | null;
+  phase: 0 | 1;
   buildJobId: string | null;
-  goToPhase: (n: 0 | 1 | 2) => void;
-  goToPhase1: () => void;
-  goToPhase2: (preflightId: string) => void;
+  goToPhase: (n: 0 | 1) => void;
+  goToBuild: () => void;
   setBuildJobId: (id: string) => void;
   resetPhase: () => void;
 }

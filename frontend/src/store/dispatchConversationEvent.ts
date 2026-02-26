@@ -53,6 +53,33 @@ function handleToolEvent(data: Record<string, unknown>, actions: StoreActions): 
     if (toolData.summary) {
       actions.setNotes((prev) => ({ ...prev, summary: String(toolData.summary) }));
     }
+  } else if (tool === 'scan_credentials' && toolData) {
+    const resolved = toolData.resolved as Array<{ type: string; id: string }> | undefined;
+    const pending = toolData.pending as string[] | undefined;
+    actions.setNotes((prev) => ({
+      ...prev,
+      resolved_credential_ids: {
+        ...prev.resolved_credential_ids,
+        ...(resolved ? Object.fromEntries(resolved.map((r) => [r.type, r.id])) : {}),
+      },
+      pending_credential_types: pending ?? prev.pending_credential_types ?? [],
+    }));
+  } else if (tool === 'save_credential' && toolData) {
+    const credType = String(toolData.credential_type ?? '');
+    const credId = String(toolData.id ?? '');
+    const success = Boolean(toolData.success);
+    if (success && credType && credId) {
+      actions.setNotes((prev) => ({
+        ...prev,
+        resolved_credential_ids: { ...(prev.resolved_credential_ids ?? {}), [credType]: credId },
+        pending_credential_types: (prev.pending_credential_types ?? []).filter((t) => t !== credType),
+      }));
+    }
+  } else if (tool === 'commit_preflight' && toolData) {
+    actions.setNotes((prev) => ({
+      ...prev,
+      credentials_committed: true,
+    }));
   }
 }
 

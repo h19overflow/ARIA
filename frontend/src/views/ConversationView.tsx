@@ -7,12 +7,12 @@ import { PageGuide } from '@/components/shared/PageGuide';
 import { CONVERSATION_GUIDE } from '@/components/shared/guide-content';
 
 interface ConversationViewProps {
-  onStartPreflight: () => void;
+  onStartBuild: () => void;
   isStarting?: boolean;
   workflowError?: string | null;
 }
 
-export function ConversationView({ onStartPreflight, isStarting, workflowError }: ConversationViewProps) {
+export function ConversationView({ onStartBuild, isStarting, workflowError }: ConversationViewProps) {
   useInitConversation();
   const sendMessage = useSendMessage();
 
@@ -39,7 +39,7 @@ export function ConversationView({ onStartPreflight, isStarting, workflowError }
         isCommitted={isCommitted}
         isStarting={isStarting}
         onUpdate={updateNote}
-        onStartPreflight={onStartPreflight}
+        onStartBuild={onStartBuild}
       />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: '12px 16px 0' }}>

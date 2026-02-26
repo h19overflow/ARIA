@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
+import { X, ArrowRight, Loader2, CheckCircle2, Clock } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ConversationNotes } from '@/store';
 import { NoteField } from './NoteField';
@@ -10,7 +10,7 @@ interface RequirementsPanelProps {
   isCommitted: boolean;
   isStarting?: boolean;
   onUpdate: (key: string, value: string | null) => void;
-  onStartPreflight: () => void;
+  onStartBuild: () => void;
 }
 
 const FIELDS: { key: keyof ConversationNotes; label: string; friendly: string }[] = [
@@ -33,8 +33,17 @@ function removeAt<T>(arr: T[], idx: number): T[] {
   return arr.filter((_, i) => i !== idx);
 }
 
+function getAllCredentialTypes(notes: ConversationNotes): string[] {
+  return [
+    ...new Set([
+      ...Object.keys(notes.resolved_credential_ids ?? {}),
+      ...(notes.pending_credential_types ?? []),
+    ]),
+  ];
+}
+
 export function RequirementsPanel({
-  notes, isStreaming, isCommitted, isStarting, onUpdate, onStartPreflight,
+  notes, isStreaming, isCommitted, isStarting, onUpdate, onStartBuild,
 }: RequirementsPanelProps) {
   const [updatedKey, setUpdatedKey] = useState<string | null>(null);
   const notesRef = useRef(notes);
@@ -42,7 +51,6 @@ export function RequirementsPanel({
 
   useEffect(() => {
     if (notesRef.current === notes) return;
-    // detect which key changed
     const prev = notesRef.current;
     notesRef.current = notes;
     for (const f of FIELDS) {
@@ -50,7 +58,6 @@ export function RequirementsPanel({
     }
     if (prev.constraints !== notes.constraints) { flashKey('constraints'); return; }
     if (prev.required_integrations !== notes.required_integrations) { flashKey('integrations'); return; }
-    // Detect granular field changes that synthesize into display fields
     if (prev.trigger_type !== notes.trigger_type || prev.trigger_service !== notes.trigger_service
       || prev.trigger_schedule !== notes.trigger_schedule) { flashKey('trigger'); return; }
     if (prev.destination_service !== notes.destination_service
@@ -75,6 +82,8 @@ export function RequirementsPanel({
   };
 
   const filledCount = FIELDS.filter(f => notes[f.key]).length;
+  const allCredentialTypes = getAllCredentialTypes(notes);
+  const canStartBuild = isCommitted && notes.credentials_committed;
 
   return (
     <aside style={{
@@ -158,9 +167,17 @@ export function RequirementsPanel({
             </div>
           )}
         </div>
+
+        {/* Credentials */}
+        {isCommitted && (
+          <CredentialStatusCard
+            allCredentialTypes={allCredentialTypes}
+            resolvedIds={notes.resolved_credential_ids}
+          />
+        )}
       </div>
 
-      {/* Run Preflight CTA */}
+      {/* Start Build CTA */}
       {isCommitted && (
         <div style={{ padding: '12px 14px 16px', borderTop: '1px solid var(--border-subtle)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
@@ -169,16 +186,52 @@ export function RequirementsPanel({
           </div>
           <button
             className="btn-run-preflight"
-            onClick={onStartPreflight}
-            disabled={isStarting}
+            onClick={onStartBuild}
+            disabled={!canStartBuild || isStarting}
           >
             {isStarting
-              ? <><Loader2 size={15} className="animate-spin" /> Starting preflight...</>
-              : <>Run Preflight <ArrowRight size={15} /></>
+              ? <><Loader2 size={15} className="animate-spin" /> Starting build...</>
+              : canStartBuild
+                ? <>Start Build <ArrowRight size={15} /></>
+                : <>Waiting for credentials...</>
             }
           </button>
         </div>
       )}
     </aside>
+  );
+}
+
+function CredentialStatusCard({
+  allCredentialTypes,
+  resolvedIds,
+}: {
+  allCredentialTypes: string[];
+  resolvedIds?: Record<string, string>;
+}) {
+  return (
+    <div className={clsx('req-field-card')}
+      style={{ borderRadius: '8px', padding: '10px 12px', border: '1px solid var(--border-subtle)', background: 'transparent' }}>
+      <span style={{ display: 'block', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '7px' }}>
+        Connections
+      </span>
+      {allCredentialTypes.length === 0 ? (
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Scanning...</span>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {allCredentialTypes.map((type) => {
+            const isResolved = type in (resolvedIds ?? {});
+            return (
+              <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem' }}>
+                {isResolved
+                  ? <CheckCircle2 size={12} style={{ color: 'var(--color-success)' }} />
+                  : <Clock size={12} style={{ color: 'var(--text-muted)' }} />}
+                <span style={{ color: isResolved ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{type}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
