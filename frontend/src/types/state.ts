@@ -32,6 +32,8 @@ export interface ARIAState {
   resolved_credential_ids?: Record<string, string>
   pending_question?: string
   user_description?: string
+  hitl_explanation?: string | null
+  phase_node_map?: Array<{ nodes: string[]; internal_edges: unknown[]; entry_edges: unknown[] }>
 }
 
 export interface BuildBlueprint {
