@@ -96,4 +96,3 @@ def update_notes_on_credentials_commit(
 ) -> None:
     """Mark credentials as committed."""
     state.notes.credentials_committed = True
-    state.committed = True

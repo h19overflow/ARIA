@@ -1,12 +1,14 @@
 import asyncio
 import logging
-from typing import AsyncGenerator, Any, Dict, List
+from typing import Any, AsyncGenerator, Dict, List
+
+from langchain.agents import create_agent
 
 from src.agentic_system.shared.base_agent import BaseAgent
 from src.agentic_system.shared.node_credential_map import NODE_CREDENTIAL_MAP
 from .state import get_state, save_state, ConversationState
 from .schemas import ConversationNotes
-from .prompts import PHASE_0_SYSTEM_PROMPT
+from .prompts import CONVERSATION_SYSTEM_PROMPT
 from .tools import (
     batch_notes, take_note, commit_notes,
     make_scan_credentials, get_credential_schema, save_credential, commit_preflight,
@@ -30,6 +32,11 @@ def _integrations_to_node_keys(integrations: list[str]) -> list[str]:
         key = name.lower().replace(" ", "").replace("-", "")
         if key in lookup:
             result.append(lookup[key])
+        else:
+            logger.warning(
+                "No node mapping for integration %r — skipping credential scan for it",
+                name,
+            )
     return result
 
 
@@ -41,12 +48,8 @@ class ConversationAgent(BaseAgent):
 
     def __init__(self, name: str = "ConversationAgent"):
         super().__init__(
-            tools=[
-                batch_notes, take_note, commit_notes,
-                make_scan_credentials([]),
-                get_credential_schema, save_credential, commit_preflight,
-            ],
-            prompt=PHASE_0_SYSTEM_PROMPT,
+            tools=[batch_notes, take_note, commit_notes],
+            prompt=CONVERSATION_SYSTEM_PROMPT,
             name=name,
             model_name="gemini-3-flash-preview",
         )
@@ -71,19 +74,14 @@ class ConversationAgent(BaseAgent):
         state = await self._load_or_create_state(conversation_id)
         state.messages.append({"role": "user", "content": user_message})
 
-        if state.committed and not state.notes.credentials_committed:
-            required_nodes = _integrations_to_node_keys(state.notes.required_integrations)
-            self.rebind_tools([
-                batch_notes, take_note, commit_notes,
-                make_scan_credentials(required_nodes),
-                get_credential_schema, save_credential, commit_preflight,
-            ])
-
+        agent_graph = self._build_agent_graph_for_state(state)
         lc_messages = build_lc_messages(state.messages)
 
         try:
             current_tool_calls: List[Dict[str, Any]] = []
-            async for event in self.stream_events(lc_messages):
+            async for event in agent_graph.astream_events(
+                {"messages": lc_messages}, version="v2"
+            ):
                 async for sse in self._dispatch_event(
                     event, state, current_tool_calls
                 ):
@@ -112,6 +110,33 @@ class ConversationAgent(BaseAgent):
                 committed=False,
             )
         return state
+
+    def _build_agent_graph_for_state(self, state: ConversationState) -> Any:
+        """Build an agent graph appropriate for the current conversation phase.
+
+        In credential mode (after commit_notes, before commit_preflight),
+        creates a per-request graph with credential tools bound to the
+        required nodes. Otherwise returns the default agent graph.
+        """
+        if not state.committed or state.notes.credentials_committed:
+            return self._agent
+
+        required_nodes = _integrations_to_node_keys(
+            state.notes.required_integrations,
+        )
+        state.notes.required_nodes = required_nodes
+
+        credential_tools = [
+            batch_notes, take_note, commit_notes,
+            make_scan_credentials(required_nodes),
+            get_credential_schema, save_credential, commit_preflight,
+        ]
+        return create_agent(
+            model=self._model,
+            tools=credential_tools,
+            system_prompt=self._system_prompt,
+            name=self.name,
+        )
 
     async def _dispatch_event(
         self,

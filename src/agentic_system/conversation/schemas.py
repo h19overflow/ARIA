@@ -1,36 +1,5 @@
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
-
-
-class TakeNoteInput(BaseModel):
-    """Input schema for taking or updating a conversation note."""
-    key: str = Field(
-        ...,
-        description=(
-            "The key of the note (e.g., 'trigger_type', "
-            "'trigger_service', 'action_1', 'constraint')."
-        ),
-    )
-    value: Optional[str] = Field(
-        None,
-        description="Free-form text for the note. If None, the note is deleted."
-    )
-
-
-class BatchNotesInput(BaseModel):
-    """Input schema for recording multiple notes in a single call."""
-    notes: List[TakeNoteInput] = Field(
-        ...,
-        description="List of notes to record. Each has a key and optional value.",
-    )
-
-
-class CommitNotesInput(BaseModel):
-    """Input schema for committing the gathered requirements."""
-    summary: str = Field(
-        ...,
-        description="A one-line summary of the full workflow intent."
-    )
 
 
 class ConversationNotes(BaseModel):

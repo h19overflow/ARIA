@@ -1,5 +1,6 @@
 import logging
 import os
+from collections import OrderedDict
 from typing import Any, Dict, List, Optional
 
 import redis.asyncio as redis
@@ -11,7 +12,8 @@ from .schemas import ConversationNotes
 logger = logging.getLogger(__name__)
 
 # In-memory fallback cache: maps conversation_id to JSON string of state
-_FALLBACK_CACHE: Dict[str, str] = {}
+_FALLBACK_CACHE: OrderedDict[str, str] = OrderedDict()
+_MAX_FALLBACK_CACHE = 100
 
 # Initialize async Redis client
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -42,8 +44,10 @@ async def save_state(state: ConversationState) -> None:
         if state.conversation_id in _FALLBACK_CACHE:
             del _FALLBACK_CACHE[state.conversation_id]
     except RedisError as e:
-        logger.warning(f"Redis unavailable, using in-memory cache for save_state: {e}")
+        logger.warning("Redis unavailable, using in-memory cache for save_state: %s", e)
         _FALLBACK_CACHE[state.conversation_id] = state_json
+        while len(_FALLBACK_CACHE) > _MAX_FALLBACK_CACHE:
+            _FALLBACK_CACHE.popitem(last=False)
 
 
 async def get_state(conversation_id: str) -> Optional[ConversationState]:
@@ -58,7 +62,7 @@ async def get_state(conversation_id: str) -> Optional[ConversationState]:
     try:
         state_json = await redis_client.get(key)
     except RedisError as e:
-        logger.warning(f"Redis unavailable, using in-memory cache for get_state: {e}")
+        logger.warning("Redis unavailable, using in-memory cache for get_state: %s", e)
     
     # If not found in Redis (or Redis failed), check the fallback cache
     if not state_json:

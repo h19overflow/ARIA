@@ -125,4 +125,4 @@ and tell the user everything is ready.
 - After commit_preflight, the conversation is DONE. Do not call it again.
 """
 
-PHASE_0_SYSTEM_PROMPT = PHASE_0_SYSTEM_PROMPT + CREDENTIAL_PROMPT_SECTION
+CONVERSATION_SYSTEM_PROMPT = PHASE_0_SYSTEM_PROMPT + CREDENTIAL_PROMPT_SECTION

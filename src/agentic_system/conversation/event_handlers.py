@@ -108,13 +108,26 @@ async def handle_tool_end_state(
             },
         }
     elif tool_name == "commit_preflight":
-        summary = tool_args.get("summary", "")
-        update_notes_on_credentials_commit(state, summary)
-        yield {
-            "type": "tool_event",
-            "tool": "commit_preflight",
-            "data": {"summary": summary, "committed": True},
-        }
+        if not state.committed:
+            yield {
+                "type": "tool_event",
+                "tool": "commit_preflight",
+                "data": {"skipped": True, "reason": "requirements_not_committed"},
+            }
+        elif state.notes.credentials_committed:
+            yield {
+                "type": "tool_event",
+                "tool": "commit_preflight",
+                "data": {"skipped": True, "reason": "already_committed"},
+            }
+        else:
+            summary = tool_args.get("summary", "")
+            update_notes_on_credentials_commit(state, summary)
+            yield {
+                "type": "tool_event",
+                "tool": "commit_preflight",
+                "data": {"summary": summary, "committed": True},
+            }
 
 
 def capture_ai_message(
@@ -163,10 +176,16 @@ def capture_tool_message(
 def _find_tool_call_id(
     state: ConversationState, tool_name: str
 ) -> str:
-    """Look up the tool_call_id from the last assistant message."""
+    """Look up the next unmatched tool_call_id for the given tool name."""
     if not state.messages or state.messages[-1]["role"] != "assistant":
         return ""
+    consumed = {
+        m.get("tool_call_id", "")
+        for m in state.messages
+        if m.get("role") == "tool"
+    }
     for tc in state.messages[-1].get("tool_calls", []):
-        if tc["name"] == tool_name:
-            return tc["id"]
+        tc_id = tc.get("id", "")
+        if tc["name"] == tool_name and tc_id not in consumed:
+            return tc_id
     return ""
