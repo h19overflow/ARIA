@@ -13,16 +13,58 @@ from src.agentic_system.build_cycle.nodes._trigger_utils import (
 
 
 async def test_node(state: ARIAState) -> dict:
-    """Activate workflow, fire it (webhook or manual run), poll result, deactivate on failure."""
+    """Activate workflow and verify it — strategy depends on trigger type.
+
+    Webhook: activate → fire webhook → poll execution.
+    Schedule/other: activate-only. n8n does not expose a manual-run API for
+    non-webhook triggers, so a successful activation is treated as a pass.
+    """
     workflow_id = state["n8n_workflow_id"]
     workflow_json = state["workflow_json"]
     trigger_type = detect_trigger_type(workflow_json)
 
+    if trigger_type != "webhook":
+        return await _test_activation_only(workflow_id, workflow_json)
+
+    return await _test_webhook(workflow_id, workflow_json)
+
+
+async def _test_activation_only(workflow_id: str, workflow_json: dict) -> dict:
+    """Activate the workflow; treat activation success as a passing test."""
     client = N8nClient()
     await client.connect()
     try:
         await client.activate_workflow(workflow_id)
-        await _fire_workflow(client, workflow_id, workflow_json, trigger_type)
+    except httpx.HTTPStatusError as exc:
+        body = exc.response.json() if exc.response else {}
+        node_name = body.get("context", {}).get("nodeName", "unknown")
+        return _error_result(body.get("message", str(exc)), node_name=node_name)
+    except Exception as exc:
+        return _error_result(str(exc))
+    finally:
+        await client.disconnect()
+
+    exec_result: ExecutionResult = {
+        "status": "success", "execution_id": "", "data": None, "error": None,
+    }
+    return {
+        "execution_result": exec_result,
+        "n8n_execution_id": "",
+        "status": "done",
+        "messages": [HumanMessage(content="[Test] Activation success (non-webhook trigger)")],
+    }
+
+
+async def _test_webhook(workflow_id: str, workflow_json: dict) -> dict:
+    """Activate, fire webhook, poll execution result."""
+    webhook_path = extract_webhook_path(workflow_json)
+    client = N8nClient()
+    await client.connect()
+    exec_result: ExecutionResult | None = None
+    execution: dict = {}
+    try:
+        await client.activate_workflow(workflow_id)
+        await client.trigger_webhook(webhook_path, payload={"test": True})
         execution = await client.poll_execution(workflow_id, timeout=30.0)
         exec_result = _parse_execution(execution)
         if exec_result["status"] != "success":
@@ -47,20 +89,6 @@ async def test_node(state: ARIAState) -> dict:
             content=f"[Test] Execution {exec_result['status']}: {execution.get('id', 'unknown')}"
         )],
     }
-
-
-async def _fire_workflow(
-    client: N8nClient,
-    workflow_id: str,
-    workflow_json: dict,
-    trigger_type: str,
-) -> None:
-    """Dispatch the correct trigger method based on trigger type."""
-    if trigger_type == "webhook":
-        webhook_path = extract_webhook_path(workflow_json)
-        await client.trigger_webhook(webhook_path, payload={"test": True})
-    else:
-        await client.run_workflow(workflow_id)
 
 
 async def _safe_deactivate(client: N8nClient, workflow_id: str) -> None:

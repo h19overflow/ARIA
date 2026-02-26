@@ -80,7 +80,8 @@ class N8nClient:
             f"/{prefix}/{webhook_path}", json=payload or {}
         )
         resp.raise_for_status()
-        return resp.json()
+        # n8n may respond with an empty body (200 OK) for some webhook modes
+        return resp.json() if resp.content else {}
 
     async def poll_execution(
         self,
