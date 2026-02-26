@@ -44,7 +44,7 @@ def _extract_interrupt_value(snapshot: object) -> dict | None:
                 value = getattr(interrupts[0], "value", None)
                 if isinstance(value, dict):
                     return value
-    except Exception:
+    except (AttributeError, IndexError, TypeError):
         pass
     return None
 
