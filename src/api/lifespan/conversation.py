@@ -1,21 +1,21 @@
 from fastapi import Request
 
-from src.agentic_system.conversation.core.agent import ConversationAgent
+from src.services.conversation.service import ConversationService
 
-_agent: ConversationAgent | None = None
+_service: ConversationService | None = None
 
 
 async def startup() -> None:
-    global _agent
-    _agent = ConversationAgent()
+    global _service
+    _service = ConversationService()
 
 
 async def shutdown() -> None:
-    global _agent
-    _agent = None
+    global _service
+    _service = None
 
 
-def get_conversation_agent(request: Request) -> ConversationAgent:  # noqa: ARG001
-    if _agent is None:
-        raise RuntimeError("ConversationAgent not initialised — lifespan not running")
-    return _agent
+def get_conversation_service(request: Request) -> ConversationService:  # noqa: ARG001
+    if _service is None:
+        raise RuntimeError("ConversationService not initialised — lifespan not running")
+    return _service

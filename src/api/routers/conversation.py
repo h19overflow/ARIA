@@ -6,8 +6,8 @@ from typing import AsyncGenerator
 from fastapi import APIRouter, Depends, Request, Response, HTTPException, status
 from fastapi.responses import StreamingResponse
 
-from src.agentic_system.conversation.core.agent import ConversationAgent
-from src.api.lifespan.conversation import get_conversation_agent
+from src.api.lifespan.conversation import get_conversation_service
+from src.services.conversation.service import ConversationService
 from src.api.schemas import StartConversationResponse, MessageRequest, ErrorResponse
 
 router = APIRouter(
@@ -40,14 +40,13 @@ def get_request_id(request: Request) -> str:
 async def start_conversation(
     response: Response,
     request: Request,
-    agent: ConversationAgent = Depends(get_conversation_agent),
+    service: ConversationService = Depends(get_conversation_service),
     user: dict = Depends(get_current_user),
     request_id: str = Depends(get_request_id)
 ):
     response.headers["X-Request-ID"] = request_id
     try:
-        conversation_id = str(uuid.uuid4())
-        await agent.initialize_conversation(conversation_id)
+        conversation_id = await service.start_conversation()
         return StartConversationResponse(conversation_id=conversation_id)
     except Exception as e:
         raise HTTPException(
@@ -66,7 +65,7 @@ async def send_message_stream(
     payload: MessageRequest,
     response: Response,
     request: Request,
-    agent: ConversationAgent = Depends(get_conversation_agent),
+    service: ConversationService = Depends(get_conversation_service),
     user: dict = Depends(get_current_user),
     request_id: str = Depends(get_request_id)
 ):
@@ -75,7 +74,7 @@ async def send_message_stream(
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
             # Process the message and consume the AsyncGenerator from the agent
-            async for event in agent.process_message(conversation_id, payload.message):
+            async for event in service.process_message(conversation_id, payload.message):
                 if await request.is_disconnected():
                     break
                 
