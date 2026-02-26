@@ -1,30 +1,40 @@
-"""Build Cycle Test — activate, trigger webhook, poll, deactivate on failure."""
+"""Build Cycle Test — activate, trigger webhook or run manually, poll, deactivate on failure."""
 from __future__ import annotations
 
+import httpx
 from langchain_core.messages import HumanMessage
 
 from src.agentic_system.shared.state import ARIAState, ExecutionResult
 from src.boundary.n8n.client import N8nClient
+from src.agentic_system.build_cycle.nodes._trigger_utils import (
+    detect_trigger_type,
+    extract_webhook_path,
+)
 
 
 async def test_node(state: ARIAState) -> dict:
-    """Activate workflow, fire webhook, poll result, deactivate on failure."""
+    """Activate workflow, fire it (webhook or manual run), poll result, deactivate on failure."""
     workflow_id = state["n8n_workflow_id"]
     workflow_json = state["workflow_json"]
-    webhook_path = _extract_webhook_path(workflow_json)
+    trigger_type = detect_trigger_type(workflow_json)
 
     client = N8nClient()
     await client.connect()
     try:
         await client.activate_workflow(workflow_id)
-        await client.trigger_webhook(webhook_path, payload={"test": True})
+        await _fire_workflow(client, workflow_id, workflow_json, trigger_type)
         execution = await client.poll_execution(workflow_id, timeout=30.0)
         exec_result = _parse_execution(execution)
         if exec_result["status"] != "success":
             await _safe_deactivate(client, workflow_id)
-    except Exception as e:
+    except httpx.HTTPStatusError as exc:
         await _safe_deactivate(client, workflow_id)
-        return _error_result(str(e))
+        body = exc.response.json() if exc.response else {}
+        node_name = body.get("context", {}).get("nodeName", "unknown")
+        return _error_result(body.get("message", str(exc)), node_name=node_name)
+    except Exception as exc:
+        await _safe_deactivate(client, workflow_id)
+        return _error_result(str(exc))
     finally:
         await client.disconnect()
 
@@ -39,6 +49,20 @@ async def test_node(state: ARIAState) -> dict:
     }
 
 
+async def _fire_workflow(
+    client: N8nClient,
+    workflow_id: str,
+    workflow_json: dict,
+    trigger_type: str,
+) -> None:
+    """Dispatch the correct trigger method based on trigger type."""
+    if trigger_type == "webhook":
+        webhook_path = extract_webhook_path(workflow_json)
+        await client.trigger_webhook(webhook_path, payload={"test": True})
+    else:
+        await client.run_workflow(workflow_id)
+
+
 async def _safe_deactivate(client: N8nClient, workflow_id: str) -> None:
     """Deactivate workflow, swallowing errors."""
     try:
@@ -47,30 +71,18 @@ async def _safe_deactivate(client: N8nClient, workflow_id: str) -> None:
         pass
 
 
-def _error_result(error_msg: str) -> dict:
-    """Build a failure return dict from a caught exception.
-
-    Error type is left as None so the Debugger agent classifies it from
-    the raw message rather than inheriting a hardcoded assumption.
-    """
+def _error_result(error_msg: str, *, node_name: str = "unknown") -> dict:
+    """Build a failure return dict from a caught exception."""
     return {
         "execution_result": ExecutionResult(
             status="error", execution_id="", data=None,
-            error={"type": None, "node_name": "unknown",
+            error={"type": None, "node_name": node_name,
                    "message": error_msg, "description": None,
                    "line_number": None, "stack": None},
         ),
         "status": "fixing",
-        "messages": [HumanMessage(content=f"[Test] Error: {error_msg}")],
+        "messages": [HumanMessage(content=f"[Test] Error ({node_name}): {error_msg}")],
     }
-
-
-def _extract_webhook_path(workflow_json: dict) -> str:
-    """Find the webhook path from workflow nodes."""
-    for node in workflow_json.get("nodes", []):
-        if "webhook" in node.get("type", "").lower():
-            return node.get("parameters", {}).get("path", "test-webhook")
-    return "test-webhook"
 
 
 def _parse_execution(execution: dict) -> ExecutionResult:
@@ -90,11 +102,7 @@ def _parse_execution(execution: dict) -> ExecutionResult:
 
 
 def _extract_error_from_rundata(run_data: dict) -> dict | None:
-    """Find the failing node in runData and extract raw error info.
-
-    Type is intentionally left as None — the Debugger agent classifies it
-    from the message and stack so routing reflects the actual error category.
-    """
+    """Find the failing node in runData and extract raw error info."""
     for node_name, entries in run_data.items():
         for entry in entries:
             if entry.get("executionStatus") == "error":
