@@ -5,6 +5,7 @@ export type WorkflowStatus =
   | 'building'
   | 'testing'
   | 'fixing'
+  | 'replanning'
   | 'done'
   | 'failed'
 
@@ -47,11 +48,6 @@ export interface BuildBlueprint {
 // API response shapes — aligned with 3-phase API
 export interface StartConversationResponse {
   conversation_id: string
-}
-
-export interface PreflightResponse {
-  preflight_job_id: string
-  status: string
 }
 
 export interface BuildResponse {

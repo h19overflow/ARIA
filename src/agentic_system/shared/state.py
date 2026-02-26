@@ -100,3 +100,8 @@ class ARIAState(TypedDict):
 
     # LLM-generated explanation shown to the user during a HITL pause.
     hitl_explanation: str | None
+
+    # Conversational orchestrator internal fields
+    orchestrator_decision: str
+    pending_question: str
+    orchestrator_turns: int
