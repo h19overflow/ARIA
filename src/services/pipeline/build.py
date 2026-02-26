@@ -1,6 +1,6 @@
 """Phase 2 — Build service.
 
-Reads the BuildBlueprint from a committed preflight in Redis,
+Reads the BuildBlueprint from a committed conversation in Redis,
 streams the build cycle LangGraph subgraph, and handles HITL interrupts.
 """
 from __future__ import annotations
@@ -13,7 +13,7 @@ from langgraph.types import Command
 from redis.asyncio import Redis
 
 from src.agentic_system.graph import ARIAPipeline  # noqa: TC002
-from src.agentic_system.preflight.state import PreflightState
+from src.agentic_system.conversation.state import ConversationState, get_state
 from src.agentic_system.shared.state import ARIAState, BuildBlueprint, WorkflowTopology
 from src.api.schemas import JobState, SSEEvent
 from src.services.pipeline._sse_helpers import (
@@ -24,14 +24,16 @@ from src.services.pipeline._sse_helpers import (
 log = logging.getLogger("aria.build")
 
 
-async def validate_preflight(preflight_id: str, redis: Redis) -> None:
-    """Raise ValueError if preflight is missing or not committed."""
-    raw = await redis.get(f"preflight:{preflight_id}")
+async def validate_conversation_for_build(conversation_id: str, redis: Redis) -> None:
+    """Raise ValueError if conversation is missing, not committed, or credentials not ready."""
+    raw = await redis.get(f"conversation:{conversation_id}")
     if raw is None:
-        raise ValueError(f"Preflight {preflight_id!r} not found")
-    state = PreflightState.model_validate_json(raw)
+        raise ValueError(f"Conversation {conversation_id!r} not found")
+    state = ConversationState.model_validate_json(raw)
     if not state.committed:
-        raise ValueError("Preflight is not committed — complete Phase 1 first")
+        raise ValueError("Conversation requirements not committed")
+    if not state.notes.credentials_committed:
+        raise ValueError("Credentials not committed — complete credential gathering first")
 
 
 def _extract_interrupt_value(snapshot: object) -> dict | None:
@@ -50,15 +52,15 @@ def _extract_interrupt_value(snapshot: object) -> dict | None:
 
 
 async def run_build(
-    job_id: str, preflight_id: str, redis: Redis, pipeline: ARIAPipeline,
+    job_id: str, conversation_id: str, redis: Redis, pipeline: ARIAPipeline,
 ) -> None:
     """Background task. Reads BuildBlueprint from Redis, runs build cycle, handles HITL."""
-    log.info("[%s] Build job started | preflight_id=%s", job_id, preflight_id)
+    log.info("[%s] Build job started | conversation_id=%s", job_id, conversation_id)
     try:
-        preflight_state = await _load_state_for_build(preflight_id, redis)
+        aria_state = await _load_state_for_build(conversation_id, redis)
         config = {"configurable": {"thread_id": job_id}}
         await write_job(redis, job_id, JobState(job_id=job_id, status="building"))
-        final = await _stream_build(job_id, preflight_state, config, redis, pipeline)
+        final = await _stream_build(job_id, aria_state, config, redis, pipeline)
         log.info("[%s] Build complete | status=%s", job_id, final.get("status"))
         await publish(redis, job_id, SSEEvent(type="done", aria_state=serialize(final)))
         await write_job(redis, job_id, JobState(job_id=job_id, status="done", aria_state=serialize(final)))
@@ -69,22 +71,23 @@ async def run_build(
         await write_job(redis, job_id, JobState(job_id=job_id, status="failed", error=tb))
 
 
-async def _load_state_for_build(preflight_id: str, redis: Redis) -> ARIAState:
-    """Load committed PreflightState from Redis and convert to ARIAState."""
-    raw = await redis.get(f"preflight:{preflight_id}")
+async def _load_state_for_build(conversation_id: str, redis: Redis) -> ARIAState:
+    """Load committed ConversationState from Redis and convert to ARIAState."""
+    raw = await redis.get(f"conversation:{conversation_id}")
     if raw is None:
-        raise ValueError(f"Preflight {preflight_id!r} not found")
-    state = PreflightState.model_validate_json(raw)
+        raise ValueError(f"Conversation {conversation_id!r} not found")
+    state = ConversationState.model_validate_json(raw)
     if not state.committed:
-        raise ValueError("Preflight is not committed — complete Phase 1 first")
-    return _preflight_to_aria_state(state)
+        raise ValueError("Conversation requirements not committed")
+    if not state.notes.credentials_committed:
+        raise ValueError("Credentials not committed — complete credential gathering first")
+    return _conversation_to_aria_state(state)
 
 
-def _preflight_to_aria_state(state: PreflightState) -> ARIAState:
-    """Convert PreflightState (new chat agent) to ARIAState for the build cycle."""
+def _conversation_to_aria_state(state: ConversationState) -> ARIAState:
+    """Convert ConversationState to ARIAState for the build cycle."""
     notes = state.notes
-    # Use the actual workflow description — not the credential resolution summary
-    workflow_intent = notes.workflow_description or notes.summary or "Build the requested workflow"
+    workflow_intent = notes.summary or "Build the requested workflow"
     empty_topology: WorkflowTopology = {
         "nodes": [], "edges": [], "entry_node": "", "branch_nodes": [],
     }

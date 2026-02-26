@@ -88,41 +88,10 @@ class ErrorResponse(BaseModel):
     error: ErrorDetail
 
 
-# Phase 1 — Preflight (legacy job-based)
-
-class PreflightRequest(BaseModel):
-    description: str | None = None
-    conversation_id: str | None = None
-
-
-class PreflightResponse(BaseModel):
-    preflight_job_id: str
-    status: str  # "planning"
-
-
-# Phase 1 — Preflight (conversational)
-
-class StartPreflightRequest(BaseModel):
-    conversation_id: str
-
-
-class StartPreflightResponse(BaseModel):
-    preflight_id: str
-
-
-class PreflightMessageRequest(BaseModel):
-    message: str
-
-
-class PreflightStatusResponse(BaseModel):
-    committed: bool
-    notes: dict
-
-
 # Phase 2 — Build
 
 class BuildRequest(BaseModel):
-    preflight_id: str
+    conversation_id: str
 
 
 class BuildResponse(BaseModel):
