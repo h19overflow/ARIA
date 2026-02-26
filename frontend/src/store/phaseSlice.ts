@@ -12,7 +12,10 @@ export const createPhaseSlice: StateCreator<AppStore, [], [], PhaseSlice> = (set
   },
 
   goToBuild: () => {
-    set({ phase: 1 });
+    const { conversationId, isCommitted, notes } = get();
+    if (conversationId && isCommitted && notes.credentials_committed) {
+      set({ phase: 1 });
+    }
   },
 
   setBuildJobId: (id) => set({ buildJobId: id }),

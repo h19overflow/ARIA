@@ -24,16 +24,10 @@ export function dispatchConversationEvent(
     appendActivity(actions, 'tool_start', data);
   } else if (data.type === 'tool_end') {
     appendActivity(actions, 'tool_end', data);
-  } else if (data.type === 'note_taken') {
-    handleNoteTaken(data, actions);
-  } else if (data.type === 'committed') {
-    handleCommitted(data, actions);
-  } else if (data.type === 'done') {
-    actions.setIsStreaming(false);
-    actions.resetAssistantMsgId();
   } else if (data.type === 'error') {
     const errPayload = data.error as { message?: string } | undefined;
-    actions.setError(errPayload?.message ?? 'Unknown error');
+    const message = errPayload?.message ?? String(data.content ?? 'Unknown error');
+    actions.setError(message);
     actions.setIsStreaming(false);
   }
 }
@@ -94,17 +88,3 @@ function appendActivity(actions: StoreActions, type: 'tool_start' | 'tool_end', 
   });
 }
 
-function handleNoteTaken(data: Record<string, unknown>, actions: StoreActions): void {
-  const payload = data.payload as { key: string; value: unknown } | undefined;
-  if (payload) {
-    actions.setNotes((prev) => applyNoteTaken(prev, payload.key, payload.value));
-  }
-}
-
-function handleCommitted(data: Record<string, unknown>, actions: StoreActions): void {
-  actions.setIsCommitted(true);
-  const payload = data.payload as { summary?: string } | undefined;
-  if (payload?.summary) {
-    actions.setNotes((prev) => ({ ...prev, summary: payload.summary }));
-  }
-}

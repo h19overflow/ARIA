@@ -1,6 +1,6 @@
 import type { ARIAState } from './state'
 
-export type EventStage = 'preflight' | 'build' | 'test' | 'fix' | 'system'
+export type EventStage = 'build' | 'test' | 'fix' | 'system'
 export type EventStatus = 'running' | 'success' | 'error' | 'warning'
 export type FeedEventType = 'node_start' | 'node_done' | 'interrupt' | 'done' | 'error' | 'info'
 

@@ -173,6 +173,7 @@ export function RequirementsPanel({
           <CredentialStatusCard
             allCredentialTypes={allCredentialTypes}
             resolvedIds={notes.resolved_credential_ids}
+            credentialsCommitted={notes.credentials_committed}
           />
         )}
       </div>
@@ -205,9 +206,11 @@ export function RequirementsPanel({
 function CredentialStatusCard({
   allCredentialTypes,
   resolvedIds,
+  credentialsCommitted,
 }: {
   allCredentialTypes: string[];
   resolvedIds?: Record<string, string>;
+  credentialsCommitted?: boolean;
 }) {
   return (
     <div className={clsx('req-field-card')}
@@ -216,7 +219,9 @@ function CredentialStatusCard({
         Connections
       </span>
       {allCredentialTypes.length === 0 ? (
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Scanning...</span>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+          {credentialsCommitted ? 'No credentials needed' : 'Scanning...'}
+        </span>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {allCredentialTypes.map((type) => {
