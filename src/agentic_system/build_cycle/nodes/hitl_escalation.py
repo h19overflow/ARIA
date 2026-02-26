@@ -3,8 +3,48 @@ from __future__ import annotations
 
 from langchain_core.messages import HumanMessage
 from langgraph.types import interrupt
+from pydantic import BaseModel
 
+from src.agentic_system.shared.base_agent import BaseAgent
 from src.agentic_system.shared.state import ARIAState
+
+
+class _Explanation(BaseModel):
+    explanation: str
+
+
+_explainer: BaseAgent[_Explanation] = BaseAgent(
+    prompt=(
+        "You are ARIA. An n8n workflow build failed and the auto-fix budget is exhausted. "
+        "Write 2-3 sentences explaining what went wrong in plain English — no jargon, no markdown. "
+        "Be specific: name the node, describe what the error means, and suggest the most likely cause. "
+        "End with what the user should check or do before retrying."
+    ),
+    schema=_Explanation,
+    name="HITLExplainer",
+)
+
+
+async def _generate_explanation(error: dict, fix_attempts: int) -> str:
+    """Ask LLM to produce a plain-English explanation of the build failure."""
+    node_name = error.get("node_name", "unknown node")
+    message = error.get("message", "no error message")
+    error_type = error.get("type", "unknown")
+    prompt = (
+        f"Node: {node_name}\n"
+        f"Error type: {error_type}\n"
+        f"Error message: {message}\n"
+        f"Fix attempts made: {fix_attempts}\n"
+        f"Description: {error.get('description') or 'none'}"
+    )
+    try:
+        result: _Explanation = await _explainer.invoke([HumanMessage(content=prompt)])
+        return result.explanation
+    except Exception:
+        return (
+            f"The '{node_name}' node failed after {fix_attempts} fix attempt(s). "
+            f"Error: {message}"
+        )
 
 
 async def hitl_fix_escalation_node(state: ARIAState) -> dict:
@@ -18,21 +58,19 @@ async def hitl_fix_escalation_node(state: ARIAState) -> dict:
     error = state.get("classified_error") or {}
     fix_attempts = state.get("fix_attempts", 0)
     workflow_id = state.get("n8n_workflow_id")
-
     n8n_url = f"http://localhost:5678/workflow/{workflow_id}" if workflow_id else "the n8n UI"
+
+    explanation = await _generate_explanation(error, fix_attempts)
 
     user_decision: dict = interrupt({
         "type": "fix_exhausted",
         "paused_for_input": True,
+        "explanation": explanation,
         "error": error,
         "fix_attempts": fix_attempts,
         "workflow_id": workflow_id,
+        "n8n_url": n8n_url,
         "options": ["retry", "replan", "abort"],
-        "instructions": (
-            f"ARIA could not auto-fix the error after {fix_attempts} attempt(s). "
-            f"Please open {n8n_url}, fix the '{error.get('node_name', 'unknown')}' node manually, "
-            f"then choose 'retry' to let ARIA retest, 'replan' to start over, or 'abort' to cancel."
-        ),
     })
 
     return _handle_user_decision(user_decision, state)
