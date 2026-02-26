@@ -10,18 +10,18 @@ import { useBuild } from '@/hooks/useBuild'
 import { PageGuide } from '@/components/shared/PageGuide'
 import { BUILD_GUIDE } from '@/components/shared/guide-content'
 interface BuildPageProps {
-  preflightJobId: string
+  preflightId: string
 }
 
-export function BuildPage({ preflightJobId }: BuildPageProps) {
+export function BuildPage({ preflightId }: BuildPageProps) {
   const { state, start, resume, reset } = useBuild()
   const { status, ariaState, interrupt, events, error } = state
 
   useEffect(() => {
-    start(preflightJobId)
+    start(preflightId)
     return () => reset()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preflightJobId])
+  }, [preflightId])
 
   const topology = ariaState?.topology
   const hasTopology = Boolean(topology?.nodes?.length)
@@ -56,7 +56,7 @@ export function BuildPage({ preflightJobId }: BuildPageProps) {
               <BuildEmptyState
                 status={status}
                 error={error}
-                onRetry={() => start(preflightJobId)}
+                onRetry={() => start(preflightId)}
               />
             )}
 

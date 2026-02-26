@@ -37,8 +37,9 @@ export interface ARIAState {
 export interface BuildBlueprint {
   intent: string
   required_nodes: string[]
-  resolved_credential_ids: Record<string, string>
-  topology_hint?: string
+  credential_ids: Record<string, string>
+  topology?: import('./topology').Topology
+  user_description?: string
 }
 
 // API response shapes — aligned with 3-phase API
@@ -84,8 +85,6 @@ export interface PreflightStatusResponse {
 export interface PhaseState {
   activePhase: PhaseId
   conversationId: string | null
-  preflightJobId: string | null
+  preflightId: string | null
   buildJobId: string | null
-  preflightAriaState: ARIAState | null
-  buildAriaState: ARIAState | null
 }

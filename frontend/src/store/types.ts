@@ -27,7 +27,7 @@ export interface ConversationNotes {
 
 export interface PhaseSlice {
   phase: 0 | 1 | 2;
-  preflightJobId: string | null;
+  preflightId: string | null;
   buildJobId: string | null;
   goToPhase: (n: 0 | 1 | 2) => void;
   goToPhase1: () => void;

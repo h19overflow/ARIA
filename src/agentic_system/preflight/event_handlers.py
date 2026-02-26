@@ -38,7 +38,9 @@ async def handle_tool_end_state(
     result_str = extract_result_string(tool_result)
 
     if tool_name == "scan_credentials":
-        yield {"type": "tool_event", "tool": "scan_credentials", "data": _parse_json_safe(result_str)}
+        scan_data = _parse_json_safe(result_str)
+        _apply_scan_to_notes(state, scan_data)
+        yield {"type": "tool_event", "tool": "scan_credentials", "data": scan_data}
 
     elif tool_name == "save_credential":
         update_notes_on_save_credential(state, tool_args)
@@ -116,3 +118,13 @@ def _parse_json_safe(s: Any) -> dict:
         return json.loads(str(s))
     except (json.JSONDecodeError, TypeError):
         return {"raw": str(s)}
+
+
+def _apply_scan_to_notes(state: PreflightState, scan_data: dict) -> None:
+    """Sync pending/resolved lists from a scan_credentials result into state.notes."""
+    pending = scan_data.get("pending", [])
+    if isinstance(pending, list) and pending:
+        state.notes.pending_credential_types = pending
+    for item in scan_data.get("resolved", []):
+        if isinstance(item, dict) and item.get("type") and item.get("id"):
+            state.notes.resolved_credential_ids[item["type"]] = item["id"]

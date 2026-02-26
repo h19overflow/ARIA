@@ -29,8 +29,8 @@ export const startPreflight = (
   request('/preflight', { method: 'POST', body: JSON.stringify(params) })
 
 // Phase 2 — Build
-export const startBuild = (preflightJobId: string): Promise<BuildResponse> =>
-  request('/build', { method: 'POST', body: JSON.stringify({ preflight_job_id: preflightJobId }) })
+export const startBuild = (preflightId: string): Promise<BuildResponse> =>
+  request('/build', { method: 'POST', body: JSON.stringify({ preflight_id: preflightId }) })
 
 // Jobs (all types)
 export const getJobStatus = (jobId: string): Promise<JobStatusResponse> =>

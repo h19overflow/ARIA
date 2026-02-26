@@ -31,14 +31,14 @@ function PhaseFallback() {
   );
 }
 
-function BuildPhaseWrapper({ preflightJobId }: { preflightJobId: string }) {
-  return <BuildPage preflightJobId={preflightJobId} />;
+function BuildPhaseWrapper({ preflightId }: { preflightId: string }) {
+  return <BuildPage preflightId={preflightId} />;
 }
 
 export function AppShell() {
   const phase = useAppStore((s) => s.phase);
   const conversationId = useAppStore((s) => s.conversationId);
-  const preflightJobId = useAppStore((s) => s.preflightJobId);
+  const preflightId = useAppStore((s) => s.preflightId);
   const goToPhase = useAppStore((s) => s.goToPhase);
   const goToPhase1 = useAppStore((s) => s.goToPhase1);
   const goToPhase2 = useAppStore((s) => s.goToPhase2);
@@ -81,8 +81,8 @@ export function AppShell() {
               onStartBuild={handleStartBuild}
             />
           )}
-          {phase === 2 && preflightJobId && (
-            <BuildPhaseWrapper preflightJobId={preflightJobId} />
+          {phase === 2 && preflightId && (
+            <BuildPhaseWrapper preflightId={preflightId} />
           )}
         </Suspense>
       </main>

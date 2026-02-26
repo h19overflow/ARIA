@@ -16,7 +16,7 @@ from .event_handlers import (
 )
 from .prompts import PHASE_1_SYSTEM_PROMPT
 from .state import PreflightNotes, PreflightState, get_preflight_state, save_preflight_state
-from .tools import commit_preflight, save_credential, scan_credentials
+from .tools import commit_preflight, make_scan_credentials, save_credential
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,10 @@ class PreflightAgent(BaseAgent):
     """Phase 1 Preflight Agent -- credential gathering and saving."""
 
     def __init__(self, name: str = "PreflightAgent"):
+        # scan_credentials is session-specific; start with a no-op placeholder list.
+        # rebind_tools() is called per process_message with actual required_nodes.
         super().__init__(
-            tools=[scan_credentials, save_credential, commit_preflight],
+            tools=[make_scan_credentials([]), save_credential, commit_preflight],
             prompt=PHASE_1_SYSTEM_PROMPT,
             name=name,
             model_name="gemini-3-flash-preview",
@@ -67,6 +69,11 @@ class PreflightAgent(BaseAgent):
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """Process a user message, stream tokens, execute tools, save state."""
         state = await self._load_or_fail(preflight_id)
+        self.rebind_tools([
+            make_scan_credentials(state.notes.required_nodes),
+            save_credential,
+            commit_preflight,
+        ])
         state.messages.append({"role": "user", "content": user_message})
         lc_messages = build_lc_messages(state.messages)
 

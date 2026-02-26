@@ -62,7 +62,7 @@ class BaseAgent(Generic[S]):
         self._recursion_limit = recursion_limit
         self.name = name or self.__class__.__name__
 
-        model = ChatGoogleGenerativeAI(
+        self._model = ChatGoogleGenerativeAI(
             model=model_name or settings.gemini_model,
             api_key=settings.gemini_api_key or settings.google_api_key,
             temperature=temperature,
@@ -72,7 +72,7 @@ class BaseAgent(Generic[S]):
 
         self._tools_list: list[BaseTool] = tools or []
         self._agent = create_agent(
-            model=model,
+            model=self._model,
             tools=self._tools_list,
             system_prompt=prompt,
             response_format=schema,
@@ -108,6 +108,17 @@ class BaseAgent(Generic[S]):
             wait=wait_exponential(multiplier=1, min=1, max=10),
             stop=stop_after_attempt(self._max_retries),
             reraise=True,
+        )
+
+    def rebind_tools(self, tools: list[BaseTool]) -> None:
+        """Recreate the agent with a new tool list (e.g. per-call factory tools)."""
+        self._tools_list = tools
+        self._agent = create_agent(
+            model=self._model,
+            tools=tools,
+            system_prompt=self._system_prompt,
+            response_format=self._output_schema,
+            name=self.name,
         )
 
     # ── Public API ────────────────────────────────────────────────────────

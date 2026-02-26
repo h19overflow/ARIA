@@ -3,14 +3,14 @@ import type { AppStore, PhaseSlice } from './types';
 
 export const createPhaseSlice: StateCreator<AppStore, [], [], PhaseSlice> = (set, get) => ({
   phase: 0,
-  preflightJobId: null,
+  preflightId: null,
   buildJobId: null,
 
   goToPhase: (n) => {
-    const { conversationId, preflightJobId } = get();
+    const { conversationId, preflightId } = get();
     if (n === 0) { set({ phase: 0 }); return; }
     if (n === 1 && conversationId) { set({ phase: 1 }); return; }
-    if (n === 2 && preflightJobId) { set({ phase: 2 }); return; }
+    if (n === 2 && preflightId) { set({ phase: 2 }); return; }
   },
 
   goToPhase1: () => {
@@ -18,7 +18,7 @@ export const createPhaseSlice: StateCreator<AppStore, [], [], PhaseSlice> = (set
   },
 
   goToPhase2: (preflightId) => {
-    set({ preflightJobId: preflightId, phase: 2 });
+    set({ preflightId: preflightId, phase: 2 });
   },
 
   setBuildJobId: (id) => set({ buildJobId: id }),
@@ -26,7 +26,7 @@ export const createPhaseSlice: StateCreator<AppStore, [], [], PhaseSlice> = (set
   resetPhase: () => {
     set({
       phase: 0,
-      preflightJobId: null,
+      preflightId: null,
       buildJobId: null,
       // Also reset conversation state on full reset
       conversationId: null,

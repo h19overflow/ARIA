@@ -179,6 +179,8 @@ def _backfill_credential_data(user_data: dict, schema: dict) -> dict:
         field_name = prop["name"]
         if field_name in result:
             continue
+        if prop.get("conditional"):
+            continue  # skip fields gated by a boolean — adding them violates allOf else branch
         field_type = prop.get("type", "string")
         if field_type in _BACKFILL_DEFAULTS and not prop.get("enum"):
             result[field_name] = _BACKFILL_DEFAULTS[field_type]

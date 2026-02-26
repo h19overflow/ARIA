@@ -60,7 +60,7 @@ class ARIAState(TypedDict):
     # Conversation
     messages: Annotated[list[BaseMessage], add_messages]
 
-    # Pre-Flight owned
+    # Preflight context — set by Phase 1 agent and carried into build cycle
     intent: str
     required_nodes: list[str]
     resolved_credential_ids: dict[str, str]
@@ -68,7 +68,7 @@ class ARIAState(TypedDict):
     credential_guide_payload: dict | None
     build_blueprint: BuildBlueprint | None
 
-    # Topology (written by orchestrator on commit, copied into build_blueprint by handoff)
+    # Topology — seeded as empty stub by build adapter, populated by phase_planner
     topology: WorkflowTopology | None
     user_description: str
 

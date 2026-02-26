@@ -122,7 +122,7 @@ class PreflightStatusResponse(BaseModel):
 # Phase 2 — Build
 
 class BuildRequest(BaseModel):
-    preflight_job_id: str
+    preflight_id: str
 
 
 class BuildResponse(BaseModel):

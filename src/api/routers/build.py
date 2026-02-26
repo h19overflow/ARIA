@@ -29,12 +29,16 @@ async def start_build(
     redis: Redis = Depends(get_redis),
     pipeline: ARIAPipeline = Depends(get_pipeline),
 ) -> BuildResponse:
-    await build.load_preflight_state(body.preflight_job_id, redis)
+    try:
+        await build.validate_preflight(body.preflight_id, redis)
+    except ValueError as exc:
+        status = 404 if "not found" in str(exc) else 409
+        raise HTTPException(status_code=status, detail=str(exc)) from exc
     job_id = str(uuid4())
-    log.info("POST /build | job_id=%s | preflight_job_id=%s", job_id, body.preflight_job_id)
+    log.info("POST /build | job_id=%s | preflight_id=%s", job_id, body.preflight_id)
     initial = JobState(job_id=job_id, status="building")
     await redis.set(f"job:{job_id}", initial.model_dump_json(), ex=86_400)
-    asyncio.create_task(build.run_build(job_id, body.preflight_job_id, redis, pipeline))
+    asyncio.create_task(build.run_build(job_id, body.preflight_id, redis, pipeline))
     log.info("Build background task created | job_id=%s", job_id)
     return BuildResponse(build_job_id=job_id, status="building")
 

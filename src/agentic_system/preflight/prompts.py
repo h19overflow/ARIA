@@ -58,9 +58,15 @@ user provides the values. Do not wait or ask redundant questions.
 failed (show the error message), ask them to check and re-provide the value. \
 Do NOT call commit_preflight until the type is actually saved.
 
-6. **Call `commit_preflight(summary)`** ONLY when every required credential type \
-has a successful save (appears in the `resolved` list from the tool_event). \
-Never commit while any required type is still failing or unresolved.
+6. **After ALL saves are done**, call `commit_preflight(summary)` immediately.
+   - "All saves done" means every type listed in `pending` from the scan result has \
+been successfully saved via `save_credential`.
+   - If `pending` was empty from the scan (all already resolved), call \
+`commit_preflight` immediately after the scan — do not wait for user input.
+   - After the last `save_credential` returns `"success": true`, call \
+`commit_preflight` immediately — do not wait for user input.
+   - Summary format: "Resolved N credentials: type1, type2, ..."
+   - Never commit while any required type is still failing or unresolved.
 
 ## Conversation Style
 
@@ -74,6 +80,10 @@ Never commit while any required type is still failing or unresolved.
 - Never ask the user what credentials are needed — you already know from the \
 Phase 0 context. Use scan_credentials to check what is saved.
 - Never ask for a credential type that is already in the resolved list from scan.
+- If scan returns `pending: []` (all credentials already in n8n), call \
+`commit_preflight` immediately without asking the user anything.
+- After the last `save_credential` returns `"success": true`, call \
+`commit_preflight` immediately without waiting for user input.
 - Once commit_preflight is called, the phase is DONE. Do not call it again.
 - If scan_credentials returns an error, report it clearly and ask the user to check \
 their n8n connection.
