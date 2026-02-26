@@ -10,9 +10,8 @@
 
 - [The Problem \& ARIA's Solution](#the-problem--arias-solution)
 - [Pipeline Architecture](#pipeline-architecture)
-  - [Phase 0 — Conversation](#phase-0--conversation-requirements-gathering)
-  - [Phase 1 — Preflight](#phase-1--preflight-planning--auth)
-  - [Phase 2 — Build Cycle](#phase-2--build-cycle-execution--self-healing)
+  - [Phase 0 — Conversation](#phase-0--conversation-requirements--credentials)
+  - [Phase 1 — Build Cycle](#phase-1--build-cycle-execution--self-healing)
 - [Tech Stack \& Services](#tech-stack--services)
 - [Source Map — `src/` Module Guide](#source-map--src-module-guide)
   - [`agentic_system/`](#agentic_system--the-intelligence-engine)
@@ -23,7 +22,6 @@
   - [`streamlit_app/`](#streamlit_app--legacy-dev-console)
 - [Data Flow Walkthrough](#data-flow-walkthrough)
   - [Conversation Flow](#conversation-flow)
-  - [Preflight Flow](#preflight-flow)
   - [Build Cycle Flow](#build-cycle-flow)
 - [State Schema — `ARIAState`](#state-schema--ariastate)
 - [Redis Key Schema](#redis-key-schema)
@@ -43,7 +41,7 @@ ARIA abstracts this complexity away by turning plain English into fully deployed
 | The Friction        | ARIA's Automation                                                                                                            |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | **Discovery**       | Maps your natural language intent to the exact n8n node types required.                                                      |
-| **Credentials**     | Scans live n8n state; only interrupts to ask for missing credentials (OAuth2, API keys).                                     |
+| **Credentials**     | Scans live n8n state; asks for missing credentials conversationally and saves them in-chat.                                   |
 | **Build Stability** | Phase-based sequential building prevents massive single-shot generation failures.                                            |
 | **Self-Healing**    | On test failure, an AI Debugger automatically classifies the error, patches the node schema, and re-deploys (up to 3 times). |
 | **Observability**   | Real-time SSE streaming to the frontend provides granular visibility into the AI's thought process.                          |
@@ -52,102 +50,79 @@ ARIA abstracts this complexity away by turning plain English into fully deployed
 
 ## Pipeline Architecture
 
-ARIA's engine is built on **LangGraph** and is split into three distinct execution phases to prevent context bloat and ensure reliable Human-in-the-Loop (HITL) interruptions. Each phase is a separate compiled graph with its own checkpointer.
+ARIA's engine is split into two execution phases. Phase 0 is a standalone conversational agent that gathers requirements and resolves credentials in a single chat session. Phase 1 is a LangGraph build cycle that deploys, tests, and self-heals the workflow.
 
 ```
-User ──► Phase 0: Conversation ──► Phase 1: Preflight ──► Phase 2: Build Cycle ──► Live Workflow
-            (requirements)          (plan + creds)         (build + test + fix)
+User ──► Phase 0: Conversation ──► Phase 1: Build Cycle ──► Live Workflow
+         (requirements + creds)    (build + test + fix)
 ```
 
-### Phase 0 — Conversation (Requirements Gathering)
+### Phase 0 — Conversation (Requirements + Credentials)
 
-The Conversation phase is a free-form chat powered by a Gemini-backed agent. It probes the user for workflow details — trigger type, integrations, data transformations, constraints — and structures them into `ConversationNotes`. When the agent has enough context, it calls `commit_notes` to finalize the summary.
+The Conversation phase is a free-form chat powered by a Gemini-backed agent. It operates in two sequential modes within a single chat session:
+
+1. **Requirements Gathering** — Probes the user for workflow details (trigger type, integrations, data transformations, constraints) and structures them into `ConversationNotes`. When the agent has enough context, it calls `commit_notes` to finalize the summary.
+2. **Credential Gathering** — After notes are committed, the agent automatically scans n8n for existing credentials via `scan_credentials`, identifies gaps, and guides the user through saving missing credentials in-chat via `save_credential`. Once all credentials are resolved, `commit_preflight` marks the conversation as build-ready.
+
+The agent creates a **per-request agent graph** when in credential mode (post-commit). This avoids mutating the singleton agent and adds credential tools (`scan_credentials`, `get_credential_schema`, `save_credential`, `commit_preflight`) alongside the base conversation tools.
 
 ```mermaid
 flowchart TD
     U([User Message]) --> CA[Conversation Agent]
-    CA -->|Needs Details| Q[Ask Probing Question]
-    Q --> U
-    CA -->|take_note| N[Update ConversationNotes]
-    N --> CA
-    CA -->|commit_notes| C([Notes Committed — Ready for Preflight])
+
+    subgraph Requirements Mode
+        CA -->|Needs Details| Q[Ask Probing Question]
+        Q --> U
+        CA -->|take_note| N[Update ConversationNotes]
+        N --> CA
+        CA -->|commit_notes| CM([Notes Committed])
+    end
+
+    CM --> CRED[Credential Mode]
+
+    subgraph Credential Mode
+        CRED -->|scan_credentials| SC[Scan n8n Credentials]
+        SC -->|All Found| CP[commit_preflight]
+        SC -->|Missing| ASK[Ask User for Credentials]
+        ASK --> U
+        CA -->|save_credential| SV[Save to n8n]
+        SV --> SC
+        CP --> DONE([Ready for Build])
+    end
 
     style CA fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
     style Q fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
     style N fill:#bae6fd,stroke:#0284c7,stroke-width:2px,color:#0f172a
-    style C fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#0f172a
+    style CM fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#0f172a
+    style SC fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
+    style ASK fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
+    style SV fill:#bae6fd,stroke:#0284c7,stroke-width:2px,color:#0f172a
+    style CP fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#0f172a
+    style DONE fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#0f172a
 ```
 
 **Key files:**
 
-| File                                     | Responsibility                                                                         |
-| ---------------------------------------- | -------------------------------------------------------------------------------------- |
-| `agentic_system/conversation/agent.py`   | `ConversationAgent` — streams LLM responses, manages tool calls, saves state to Redis  |
-| `agentic_system/conversation/state.py`   | `ConversationState` — messages list, notes, committed flag; Redis persistence          |
-| `agentic_system/conversation/schemas.py` | `ConversationNotes` — structured output: trigger, destination, transforms, constraints |
-| `agentic_system/conversation/tools.py`   | `take_note(key, value)`, `commit_notes(summary)` — LangChain tools                     |
-| `agentic_system/conversation/prompts.py` | System prompt with taxonomy of note keys and probing rules                             |
+| File                                                | Responsibility                                                                              |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `agentic_system/conversation/agent.py`              | `ConversationAgent` — streams LLM responses, manages tool calls, per-request credential graph |
+| `agentic_system/conversation/state.py`              | `ConversationState` — messages, notes, committed flag; Redis persistence with 24h TTL        |
+| `agentic_system/conversation/schemas.py`            | `ConversationNotes` — structured output: trigger, destination, transforms, constraints, credential fields |
+| `agentic_system/conversation/tools.py`              | `take_note`, `batch_notes`, `commit_notes` + re-exports credential tools                     |
+| `agentic_system/conversation/credential_tools.py`   | `scan_credentials` (factory), `get_credential_schema`, `save_credential`, `commit_preflight` |
+| `agentic_system/conversation/schema_helpers.py`     | `is_secret_field`, `fields_from_schema`, `fetch_pending_details` — credential schema parsing |
+| `agentic_system/conversation/prompts.py`            | System prompt with taxonomy of note keys, probing rules, and credential gathering section    |
+| `agentic_system/conversation/notes_updater.py`      | State mutation helpers for all tools                                                         |
+| `agentic_system/conversation/event_handlers.py`     | SSE event handling, tool_call_id tracking                                                    |
+| `agentic_system/conversation/message_builders.py`   | LangChain message construction                                                               |
 
-### Phase 1 — Preflight (Planning & Auth)
+### Phase 1 — Build Cycle (Execution & Self-Healing)
 
-The Preflight phase orchestrates intent extraction and credential resolution. It ensures ARIA completely understands what to build and that all required n8n credentials exist before writing any workflow JSON.
-
-```mermaid
-flowchart TD
-    Start([User Request]) --> O[Orchestrator Agent]
-
-    O -->|Needs Info| HC[HITL Clarify]
-    HC -->|User Answer| O
-
-    O -->|Intent Clear| CS[Credential Scanner]
-
-    CS -->|Missing Creds| CG[Credential Guide]
-    CG --> CSV[Credential Saver]
-    CSV -->|Interrupts User| CS
-
-    CS -->|Ambiguous Creds| AMB[Ambiguity Resolver]
-    AMB -->|User Selects| CS
-
-    CS -->|All Resolved| HO([Handoff → BuildBlueprint])
-
-    style O fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
-    style HC fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
-    style CS fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
-    style CG fill:#bae6fd,stroke:#0284c7,stroke-width:2px,color:#0f172a
-    style CSV fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
-    style AMB fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
-    style HO fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#0f172a
-```
-
-**Graph nodes and their roles:**
-
-| Node                 | Agent                              | What It Does                                                                                                  |
-| -------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `orchestrator`       | `BaseAgent[OrchestratorOutput]`    | Parses `ConversationNotes` → extracts `intent_summary`, `required_nodes`, `topology`, `user_description`      |
-| `credential_scanner` | `BaseAgent[ScannerOutput]`         | Compares required node types against live n8n credentials → produces `resolved`, `pending`, `ambiguous` lists |
-| `credential_guide`   | `BaseAgent[CredentialGuideOutput]` | For each pending credential type, researches the schema and generates human-readable setup instructions       |
-| `credential_saver`   | _(no LLM)_                         | Calls `interrupt()` to pause for user input → saves credentials to n8n via `N8nClient.save_credential()`      |
-| `handoff`            | _(pure function)_                  | Assembles `BuildBlueprint` from the finalized state → sets `status="building"`                                |
-
-**Key files:**
-
-| File                                                   | Responsibility                                                                       |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| `agentic_system/preflight/graph.py`                    | `build_preflight_graph()` — wires nodes into a LangGraph `StateGraph`                |
-| `agentic_system/preflight/nodes/orchestrator.py`       | Intent extraction with `search_n8n_nodes` and `lookup_node_credential_types` tools   |
-| `agentic_system/preflight/nodes/credential_scanner.py` | Credential diffing with `list_saved_credentials`, `check_credentials_resolved` tools |
-| `agentic_system/preflight/nodes/credential_guide.py`   | Guide generation with `get_credential_schema`, `search_n8n_nodes` tools              |
-| `agentic_system/preflight/nodes/credential_saver.py`   | HITL interrupt → `N8nClient.save_credential()` for each provided credential          |
-| `agentic_system/preflight/tools/n8n_tools.py`          | Four `@tool` functions wrapping `N8nClient` and the static credential map            |
-| `agentic_system/preflight/tools/rag_tools.py`          | `search_n8n_nodes(query)` — hybrid retrieval from ChromaDB                           |
-
-### Phase 2 — Build Cycle (Execution & Self-Healing)
-
-Once the blueprint is finalized, the Build Cycle takes over. It builds the workflow **phase-by-phase** (e.g., Trigger → Data Processing → Output), testing and self-healing at each step.
+Once the conversation is fully committed (both `committed` and `credentials_committed` are true), the Build Cycle takes over. It reads the `ConversationNotes` from the `conversation:{id}` Redis key and builds the workflow **phase-by-phase** (e.g., Trigger → Data Processing → Output), testing and self-healing at each step.
 
 ```mermaid
 flowchart TD
-    Start([BuildBlueprint]) --> RAG[RAG Retriever]
+    Start([ConversationNotes]) --> RAG[RAG Retriever]
     RAG --> PP[Phase Planner]
     PP --> ENG[Engineer Agent]
 
@@ -238,16 +213,16 @@ graph LR
     LG <-->|Deploy & Test| N8N
 ```
 
-| Component        | Role                                                                                                 |
-| ---------------- | ---------------------------------------------------------------------------------------------------- |
-| **React / Vite** | Frontend with real-time graph visualization, event feeds, and inline HITL prompts.                   |
-| **FastAPI**      | Async API layer — routes, DI, SSE broadcasting, CORS. Zero business logic.                           |
-| **Redis**        | Job state storage (24h TTL) and Pub/Sub channels for SSE events and HITL resume signals.             |
-| **LangGraph**    | Orchestrates multi-agent graphs with checkpointed state and `interrupt()` support.                   |
-| **Gemini**       | Powers Orchestrator, Engineer, Phase Planner, Debugger, Credential Scanner, and Conversation agents. |
-| **ChromaDB**     | Vector store for hybrid search (BM25 + semantic RRF fusion) over 559+ n8n node docs.                 |
-| **n8n**          | Target runtime — workflows are deployed, activated, webhook-triggered, and tested here.              |
-| **W&B Weave**    | LLM call observability and tracing (auto-initialized by `BaseAgent`).                                |
+| Component        | Role                                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------------------------ |
+| **React / Vite** | Frontend with real-time graph visualization, event feeds, and inline HITL prompts.                     |
+| **FastAPI**      | Async API layer — routes, DI, SSE broadcasting, CORS. Zero business logic.                             |
+| **Redis**        | Job state storage (24h TTL) and Pub/Sub channels for SSE events and HITL resume signals.               |
+| **LangGraph**    | Orchestrates the Build Cycle graph with checkpointed state and `interrupt()` support.                  |
+| **Gemini**       | Powers the Conversation Agent (requirements + credentials), Engineer, Phase Planner, and Debugger.     |
+| **ChromaDB**     | Vector store for hybrid search (BM25 + semantic RRF fusion) over 559+ n8n node docs.                   |
+| **n8n**          | Target runtime — workflows are deployed, activated, webhook-triggered, and tested here.                |
+| **W&B Weave**    | LLM call observability and tracing (auto-initialized by `BaseAgent`).                                  |
 
 ---
 
@@ -256,17 +231,18 @@ graph LR
 ```
 src/
 ├── agentic_system/           # All LangGraph agents and graphs
-│   ├── conversation/         # Phase 0: requirements gathering
-│   ├── preflight/            # Phase 1: intent + credential resolution
-│   ├── build_cycle/          # Phase 2: RAG → plan → build → deploy → test → fix
+│   ├── conversation/         # Phase 0: requirements gathering + credential resolution
+│   ├── build_cycle/          # Phase 1: RAG → plan → build → deploy → test → fix
 │   └── shared/               # ARIAState, BaseAgent, errors, utilities
 ├── api/                      # FastAPI HTTP layer
 │   ├── routers/              # Endpoint handlers per domain
-│   ├── lifespan/             # Singleton lifecycle (Redis, Chroma, Pipeline, Conversation)
+│   ├── lifespan/             # Singleton lifecycle (Redis, Chroma, N8n, Pipeline, Conversation)
 │   ├── main.py               # App factory, CORS, router mounting
 │   ├── settings.py           # Pydantic Settings (.env)
 │   └── schemas.py            # All request/response Pydantic models
 ├── services/                 # Use-case orchestration (bridges API → agents)
+│   ├── pipeline/             # Build service + SSE helpers
+│   └── rag/                  # Ingestion + retrieval services
 ├── boundary/                 # External I/O adapters (no business logic)
 │   ├── n8n/                  # n8n REST client
 │   ├── chroma/               # ChromaDB vector store + BM25 + hybrid search
@@ -289,24 +265,20 @@ The core of ARIA. Contains all LLM-powered agents, graph definitions, and the sh
 | `state.py`               | `ARIAState` TypedDict — the master state object shared across all graph nodes. Also defines `WorkflowTopology`, `BuildBlueprint`, `ClassifiedError`, `ExecutionResult`, `PhaseEntry`.    |
 | `base_agent.py`          | `BaseAgent[S]` — generic wrapper around `ChatGoogleGenerativeAI` (Gemini). Handles structured output extraction, streaming, retry with exponential backoff (3 attempts), and Weave init. |
 | `errors.py`              | Exception hierarchy: `AgentError` → `ExtractionError`, `CredentialError`, `DeployError`, `ExecutionError`, `FixExhaustedError`, `ClassificationError`.                                   |
-| `node_credential_map.py` | Static map of 30 n8n node types → credential type names. Used by preflight tools.                                                                                                        |
+| `node_credential_map.py` | Static map of 30 n8n node types → credential type names. Used by credential tools.                                                                                                       |
 | `weave_logger.py`        | Singleton W&B Weave initializer for LLM observability.                                                                                                                                   |
 
 #### `conversation/` — Phase 0
 
-A standalone agent (not a LangGraph graph). Streams token-by-token over SSE. Uses `take_note` / `commit_notes` tools to structure requirements into `ConversationNotes`. State persisted to Redis with in-memory fallback.
+A standalone agent (not a LangGraph graph) that handles both requirements gathering and credential resolution in a single chat session. Streams token-by-token over SSE. In requirements mode, uses `take_note` / `batch_notes` / `commit_notes` tools to structure requirements into `ConversationNotes`. After commit, switches to credential mode with a per-request agent graph that adds `scan_credentials`, `get_credential_schema`, `save_credential`, and `commit_preflight` tools. State persisted to Redis with 24h TTL and in-memory `OrderedDict` fallback.
 
-#### `preflight/` — Phase 1
-
-A LangGraph `StateGraph` compiled with `MemorySaver` checkpointer. Four agent nodes + one pure-function handoff. Uses `interrupt()` for HITL credential collection and ambiguity resolution.
-
-#### `build_cycle/` — Phase 2
+#### `build_cycle/` — Phase 1
 
 A LangGraph `StateGraph` with conditional routing for the fix loop. Eight nodes total: RAG retriever → phase planner → engineer → deploy → test → debugger → HITL escalation → activate. Max 3 fix attempts per phase.
 
 #### `graph.py` — `ARIAPipeline`
 
-The top-level entry point. Compiles preflight and build cycle as **independent graphs** (not nested — this was a deliberate architectural decision to avoid BUG-6 where a combined master graph caused checkpointer hangs). Exposes `run_preflight()`, `run_build_cycle()`, `resume_preflight()`, `resume_build_cycle()`.
+The top-level entry point for the Build Cycle. Compiles the build cycle as an independent LangGraph graph with a `MemorySaver` checkpointer. Exposes `run_build_cycle()` and `resume_build_cycle()`.
 
 ---
 
@@ -316,7 +288,7 @@ Strictly an interface layer — validation, routing, DI, response formatting. Ze
 
 #### `main.py`
 
-Creates the `FastAPI` app. Lifespan initializes singletons in order: ChromaStore → Redis → ConversationAgent → ARIAPipeline. CORS allows `localhost:3000` and `3001`. Mounts 5 routers.
+Creates the `FastAPI` app. Lifespan initializes singletons in order: ChromaStore → Redis → N8nClient → ConversationAgent → ARIAPipeline. CORS allows `localhost:3000` and `3001`. Mounts 5 routers.
 
 #### `settings.py`
 
@@ -326,13 +298,14 @@ Creates the `FastAPI` app. Lifespan initializes singletons in order: ChromaStore
 
 All Pydantic models grouped by domain:
 
-| Group            | Models                                                                                                                                         |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Ingestion**    | `IngestN8nResponse`, `IngestApiSpecRequest/Response`                                                                                           |
-| **Jobs**         | `JobState` (job_id, status, aria_state, error), `JobStatusResponse`, `ResumeRequest` (unified HITL: clarify/provide/select/retry/replan/abort) |
-| **SSE**          | `SSEEvent` (type: node/interrupt/done/error/ping, stage, node_name, message, payload, aria_state)                                              |
-| **Conversation** | `StartConversationResponse`, `MessageRequest`, `ErrorDetail/Response`                                                                          |
-| **Phases**       | `PreflightRequest/Response`, `BuildRequest/Response`                                                                                           |
+| Group            | Models                                                                                                                              |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Ingestion**    | `IngestN8nResponse`, `IngestApiSpecRequest/Response`                                                                                |
+| **Jobs**         | `JobState` (job_id, status, aria_state, error), `JobStatusResponse`, `ResumeRequest` (HITL: retry/replan/abort)                     |
+| **SSE**          | `SSEEvent` (type: node/interrupt/done/error/ping, stage, node_name, message, payload, aria_state)                                   |
+| **Conversation** | `StartConversationResponse`, `MessageRequest`, `ErrorDetail/Response`                                                               |
+| **Build**        | `BuildRequest` (conversation_id), `BuildResponse` (build_job_id)                                                                    |
+| **Credentials**  | `SaveCredentialRequest` (credential_type, name, data), `SaveCredentialResponse`                                                     |
 
 #### `lifespan/` — Singleton Lifecycle
 
@@ -342,17 +315,18 @@ Each module follows the same pattern: `startup()` / `shutdown()` / `get_X(reques
 | ----------------- | -------------------- | ------------------------------------------------------------------ |
 | `redis.py`        | `Redis` async client | Connection to `redis://localhost:6379`                             |
 | `chroma.py`       | `ChromaStore`        | Manages Chroma connection lifecycle                                |
-| `pipeline.py`     | `ARIAPipeline`       | Compiles both LangGraph subgraphs with `MemorySaver` checkpointers |
-| `conversation.py` | `ConversationAgent`  | The Phase 0 chat agent                                             |
+| `n8n.py`          | `N8nClient`          | Async HTTP client for n8n REST API                                 |
+| `pipeline.py`     | `ARIAPipeline`       | Compiles the Build Cycle LangGraph graph with `MemorySaver`        |
+| `conversation.py` | `ConversationAgent`  | The Phase 0 chat agent (requirements + credentials)                |
 
 #### `routers/`
 
 | Router            | Endpoints                                                                       | Purpose                                              |
 | ----------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `preflight.py`    | `POST /preflight` (202), `GET /preflight/{id}/stream` (SSE)                     | Kicks off Phase 1 as background task; streams events |
-| `build.py`        | `POST /build` (202), `GET /build/{id}/stream` (SSE)                             | Kicks off Phase 2 from a completed preflight job     |
-| `jobs.py`         | `GET /jobs/{id}`, `POST /jobs/{id}/resume` (204)                                | Job status polling and HITL resume via Redis pub/sub |
 | `conversation.py` | `POST /conversation/start`, `POST /conversation/{id}/message` (SSE)             | Phase 0 chat with token-by-token streaming           |
+| `build.py`        | `POST /build` (202), `GET /build/{id}/stream` (SSE)                             | Kicks off Phase 1 build from a completed conversation |
+| `jobs.py`         | `GET /jobs/{id}`, `POST /jobs/{id}/resume` (204)                                | Job status polling and HITL resume via Redis pub/sub |
+| `credentials.py`  | `POST /credentials`                                                             | Direct credential saving to n8n (bypasses agent)     |
 | `ingestion.py`    | `POST /ingest/n8n/nodes`, `POST /ingest/n8n/workflows`, `POST /ingest/api-spec` | Populates ChromaDB collections                       |
 
 ---
@@ -361,23 +335,22 @@ Each module follows the same pattern: `startup()` / `shutdown()` / `get_X(reques
 
 Bridges API routers to the agentic system. Contains all background-task logic, SSE publishing, and interrupt handling.
 
-| File                   | Responsibility                                                                                                                      |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `preflight_service.py` | `run_preflight()` — background task that streams preflight graph, handles `GraphInterrupt`, publishes SSE events, manages job state |
-| `build_service.py`     | `load_preflight_state()` + `run_build()` — validates preflight completion, runs build cycle with same interrupt loop                |
-| `ingestion_service.py` | `ingest_n8n_nodes()`, `ingest_n8n_workflow_templates()`, `ingest_api_spec()` — scrapes and upserts docs into ChromaDB               |
-| `retrieval_service.py` | Six search functions: semantic and hybrid (BM25+RRF) for nodes, templates, and API endpoints                                        |
-| `pipeline_service.py`  | Legacy monolithic runner (sequential preflight→build in one function). Kept for backward compatibility.                             |
-| `_sse_helpers.py`      | Shared utilities: `build_initial_state()`, `detect_interrupt()`, `publish()`, `write_job()`, `wait_resume()`, `apply_chunk()`       |
+| File                          | Responsibility                                                                                                              |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `pipeline/build.py`           | `validate_conversation_for_build()` + `run_build()` — reads from `conversation:{id}`, validates `committed` AND `credentials_committed`, runs build cycle with HITL interrupt loop |
+| `pipeline/_sse_helpers.py`    | Shared utilities: `apply_build_chunk()`, `detect_interrupt()`, `publish()`, `write_job()`, `wait_resume()`, `coerce_state()` |
+| `pipeline/_node_events.py`    | Node-level SSE event generation during build cycle                                                                          |
+| `rag/ingestion.py`            | `ingest_n8n_nodes()`, `ingest_n8n_workflow_templates()`, `ingest_api_spec()` — scrapes and upserts docs into ChromaDB       |
+| `rag/retrieval.py`            | Search functions: semantic and hybrid (BM25+RRF) for nodes, templates, and API endpoints                                     |
 
-**Interrupt Loop Pattern** (used by both preflight and build services):
+**Interrupt Loop Pattern** (used by build service):
 
 ```
 while True:
     async for chunk in pipeline.astream(state, config):
         apply_chunk(chunk)            # merge into state, publish SSE
     if GraphInterrupt caught:
-        detect_interrupt(state)       # classify: credential / clarify / ambiguity / escalation
+        detect_interrupt(state)       # classify: fix_exhausted escalation
         publish(interrupt SSE event)
         write_job(status="interrupted")
         resume_value = await wait_resume(redis, job_id)  # blocks on pub/sub
@@ -472,10 +445,13 @@ sequenceDiagram
     participant CA as ConversationAgent
     participant R as Redis
     participant LLM as Gemini
+    participant N8N as n8n API
 
     U->>API: POST /conversation/start
-    API->>R: SET conversation:{id}
+    API->>R: SET conversation:{id} (24h TTL)
     API-->>U: { conversation_id }
+
+    Note over U,LLM: Requirements Gathering Mode
 
     U->>API: POST /conversation/{id}/message (SSE)
     API->>R: GET conversation:{id}
@@ -483,58 +459,26 @@ sequenceDiagram
     CA->>LLM: stream_events(messages)
     LLM-->>CA: token deltas + tool calls
     CA-->>API: yield { type: "token", content }
-    CA->>CA: take_note → update notes
+    CA->>CA: take_note / batch_notes → update notes
     CA->>CA: commit_notes → state.committed = true
     CA->>R: SET conversation:{id}
     API-->>U: SSE stream (tokens + tool events)
-```
 
-### Preflight Flow
+    Note over U,N8N: Credential Gathering Mode (post-commit)
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant API as FastAPI
-    participant SVC as PreflightService
-    participant PF as Preflight Graph
-    participant R as Redis
-    participant N8N as n8n API
+    U->>API: POST /conversation/{id}/message (SSE)
+    API->>CA: process_message() [credential graph]
+    CA->>N8N: scan_credentials (list_credentials)
+    CA-->>API: yield scan results + pending list
+    CA->>LLM: ask user about missing credentials
+    LLM-->>CA: guidance for user
+    API-->>U: SSE stream
 
-    U->>API: POST /preflight { description }
-    API->>R: SET job:{id} status=planning
-    API->>SVC: create_task(run_preflight)
-    API-->>U: 202 { job_id }
-
-    U->>API: GET /preflight/{id}/stream
-    API->>R: SUBSCRIBE sse:{id}
-
-    SVC->>PF: astream(state)
-    PF->>PF: orchestrator → extract intent
-    SVC->>R: PUBLISH sse:{id} (node event)
-
-    PF->>PF: credential_scanner → check n8n creds
-    PF->>N8N: list_credentials()
-
-    alt Missing Credentials
-        PF->>PF: credential_guide → generate instructions
-        PF->>PF: credential_saver → interrupt()
-        SVC->>R: PUBLISH sse:{id} (interrupt event)
-        SVC->>R: SET job:{id} status=interrupted
-        R-->>API: SSE interrupt event
-        API-->>U: interrupt: provide credentials
-
-        U->>API: POST /jobs/{id}/resume { action: "provide", credentials }
-        API->>R: PUBLISH resume:{id}
-        SVC->>R: SUBSCRIBE resume:{id} → unblocks
-        SVC->>PF: Command(resume=credentials)
-        PF->>N8N: save_credential() for each
-    end
-
-    PF->>PF: handoff → BuildBlueprint
-    SVC->>R: PUBLISH sse:{id} (done event)
-    SVC->>R: SET job:{id} status=done, aria_state
-    R-->>API: SSE done
-    API-->>U: done + full aria_state
+    U->>API: POST /conversation/{id}/message (SSE)
+    CA->>N8N: save_credential(type, name, data)
+    CA->>CA: commit_preflight → credentials_committed = true
+    CA->>R: SET conversation:{id}
+    API-->>U: SSE stream (ready for build)
 ```
 
 ### Build Cycle Flow
@@ -549,13 +493,13 @@ sequenceDiagram
     participant CH as ChromaDB
     participant N8N as n8n
 
-    U->>API: POST /build { preflight_job_id }
-    API->>R: GET job:{preflight_id} → validate done
+    U->>API: POST /build { conversation_id }
+    API->>R: GET conversation:{id} → validate committed + credentials_committed
     API->>R: SET job:{id} status=building
     API->>SVC: create_task(run_build)
-    API-->>U: 202 { job_id }
+    API-->>U: 202 { build_job_id }
 
-    SVC->>BC: astream(preflight_state)
+    SVC->>BC: astream(state from conversation notes)
     BC->>CH: hybrid_query per node type
     BC->>BC: rag_retriever → node_templates
     BC->>BC: phase_planner → PhasePlan
@@ -590,21 +534,30 @@ sequenceDiagram
 
 ## State Schema — `ARIAState`
 
-The `ARIAState` TypedDict (defined in `agentic_system/shared/state.py`) is the single source of truth shared across all graph nodes. Fields are grouped by phase:
+The `ARIAState` TypedDict (defined in `agentic_system/shared/state.py`) is the single source of truth shared across all build cycle graph nodes. Conversation state is stored separately in `ConversationState` (Redis).
+
+**ConversationState fields** (stored in `conversation:{uuid}`):
+
+| Field                      | Type             | Set By                          |
+| -------------------------- | ---------------- | ------------------------------- |
+| `messages`                 | `list[dict]`     | Each conversation turn          |
+| `committed`                | `bool`           | `commit_notes` tool             |
+| `notes.summary`            | `str`            | `commit_notes` tool             |
+| `notes.trigger`            | `str`            | `take_note` / `batch_notes`     |
+| `notes.destination`        | `str`            | `take_note` / `batch_notes`     |
+| `notes.required_integrations` | `list[str]`   | `take_note` / `batch_notes`     |
+| `notes.constraints`        | `list[str]`      | `take_note` / `batch_notes`     |
+| `notes.required_nodes`     | `list[str]`      | `scan_credentials`              |
+| `notes.resolved_credential_ids` | `dict[str, str]` | `scan_credentials` / `save_credential` |
+| `notes.pending_credential_types` | `list[str]` | `scan_credentials`              |
+| `notes.credentials_committed` | `bool`        | `commit_preflight`              |
+
+**ARIAState fields** (used by Build Cycle graph):
 
 | Group            | Field                      | Type                             | Set By                           |
 | ---------------- | -------------------------- | -------------------------------- | -------------------------------- |
-| **Conversation** | `messages`                 | `list[AnyMessage]` (add-reducer) | All nodes that interact with LLM |
-| **Preflight**    | `intent`                   | `str`                            | User input                       |
-|                  | `required_nodes`           | `list[str]`                      | Orchestrator                     |
-|                  | `resolved_credential_ids`  | `dict[str, str]`                 | Credential Scanner / Saver       |
-|                  | `pending_credential_types` | `list[str]`                      | Credential Scanner               |
-|                  | `credential_guide_payload` | `dict`                           | Credential Guide                 |
-|                  | `build_blueprint`          | `BuildBlueprint`                 | Handoff                          |
-|                  | `topology`                 | `WorkflowTopology`               | Orchestrator                     |
-|                  | `user_description`         | `str`                            | Orchestrator                     |
-|                  | `intent_summary`           | `str`                            | Orchestrator                     |
-|                  | `conversation_notes`       | `dict`                           | Router (from Redis)              |
+| **Messages**     | `messages`                 | `list[AnyMessage]` (add-reducer) | All nodes that interact with LLM |
+| **Blueprint**    | `intent`                   | `str`                            | Build service (from notes)       |
 | **Build Cycle**  | `node_templates`           | `list[dict]`                     | RAG Retriever                    |
 |                  | `workflow_json`            | `dict`                           | Engineer / Debugger              |
 |                  | `n8n_workflow_id`          | `str`                            | Deploy                           |
@@ -623,45 +576,44 @@ The `ARIAState` TypedDict (defined in `agentic_system/shared/state.py`) is the s
 
 ## Redis Key Schema
 
-| Key Pattern           | Value                                                 | TTL                  | Used By                                  |
-| --------------------- | ----------------------------------------------------- | -------------------- | ---------------------------------------- |
-| `job:{uuid}`          | `JobState` JSON (job_id, status, aria_state, error)   | 24 hours             | All services, job router                 |
-| `conversation:{uuid}` | `ConversationState` JSON (messages, notes, committed) | None (Redis default) | Conversation agent, preflight router     |
-| `sse:{uuid}`          | Pub/Sub channel                                       | Ephemeral            | Services publish, SSE routers subscribe  |
-| `resume:{uuid}`       | Pub/Sub channel                                       | Ephemeral            | Job router publishes, services subscribe |
+| Key Pattern           | Value                                                                                           | TTL      | Used By                                 |
+| --------------------- | ----------------------------------------------------------------------------------------------- | -------- | --------------------------------------- |
+| `job:{uuid}`          | `JobState` JSON (job_id, status, aria_state, error)                                             | 24 hours | Build service, job router               |
+| `conversation:{uuid}` | `ConversationState` JSON (messages, notes with credential fields, committed, credentials_committed) | 24 hours | Conversation agent, build service       |
+| `sse:{uuid}`          | Pub/Sub channel                                                                                 | Ephemeral | Services publish, SSE routers subscribe |
+| `resume:{uuid}`       | Pub/Sub channel                                                                                 | Ephemeral | Job router publishes, services subscribe |
 
 ---
 
 ## API Endpoints
 
-| Method | Path                         | Status | Description                                              |
-| ------ | ---------------------------- | ------ | -------------------------------------------------------- |
-| `POST` | `/conversation/start`        | 200    | Initialize a new conversation session                    |
-| `POST` | `/conversation/{id}/message` | SSE    | Send a message, receive streamed response                |
-| `POST` | `/preflight`                 | 202    | Start preflight (accepts description or conversation_id) |
-| `GET`  | `/preflight/{id}/stream`     | SSE    | Stream preflight events in real-time                     |
-| `POST` | `/build`                     | 202    | Start build cycle from a completed preflight job         |
-| `GET`  | `/build/{id}/stream`         | SSE    | Stream build cycle events in real-time                   |
-| `GET`  | `/jobs/{id}`                 | 200    | Poll job status and current state                        |
-| `POST` | `/jobs/{id}/resume`          | 204    | Resume an interrupted job with user input                |
-| `POST` | `/ingest/n8n/nodes`          | 200    | Scrape and ingest all n8n node documentation             |
-| `POST` | `/ingest/n8n/workflows`      | 200    | Scrape and ingest n8n workflow templates                 |
-| `POST` | `/ingest/api-spec`           | 200    | Parse and ingest an OpenAPI/Swagger/Postman spec         |
+| Method | Path                         | Status | Description                                                      |
+| ------ | ---------------------------- | ------ | ---------------------------------------------------------------- |
+| `POST` | `/conversation/start`        | 200    | Initialize a new conversation session                            |
+| `POST` | `/conversation/{id}/message` | SSE    | Send a message, receive streamed response (requirements + creds) |
+| `POST` | `/build`                     | 202    | Start build cycle from a completed conversation                  |
+| `GET`  | `/build/{id}/stream`         | SSE    | Stream build cycle events in real-time                           |
+| `GET`  | `/jobs/{id}`                 | 200    | Poll job status and current state                                |
+| `POST` | `/jobs/{id}/resume`          | 204    | Resume an interrupted job with user input                        |
+| `POST` | `/credentials`               | 200    | Save a credential directly to n8n (bypasses agent)               |
+| `POST` | `/ingest/n8n/nodes`          | 200    | Scrape and ingest all n8n node documentation                     |
+| `POST` | `/ingest/n8n/workflows`      | 200    | Scrape and ingest n8n workflow templates                         |
+| `POST` | `/ingest/api-spec`           | 200    | Parse and ingest an OpenAPI/Swagger/Postman spec                 |
 
 ---
 
 ## Human-in-the-Loop (HITL)
 
-ARIA uses LangGraph's `interrupt()` primitive to pause graph execution and wait for user input. All HITL interactions flow through a unified `POST /jobs/{id}/resume` endpoint with a `ResumeRequest` body.
+ARIA uses two HITL mechanisms:
 
-| Interrupt Type         | Triggered By                                       | Resume Action | Payload                                        |
-| ---------------------- | -------------------------------------------------- | ------------- | ---------------------------------------------- |
-| `credential_ambiguity` | Credential Scanner finds multiple matches          | `select`      | `{ selections: { node_type: credential_id } }` |
-| `credential_request`   | Credential Saver needs user to provide credentials | `provide`     | `{ credentials: { type: { name, data } } }`    |
-| `credential_request`   | User configured credentials in n8n UI directly     | `resume`      | _(empty)_                                      |
-| `fix_exhausted`        | Debugger exceeded 3 fix attempts                   | `retry`       | _(empty — resets fix budget)_                  |
-| `fix_exhausted`        | User wants to start over                           | `replan`      | _(clears build state)_                         |
-| `fix_exhausted`        | User wants to stop                                 | `abort`       | _(marks job as failed)_                        |
+1. **Conversational HITL** (Phase 0) — The Conversation Agent asks the user for missing credentials directly in chat. No `interrupt()` or resume endpoint needed; the user simply replies with the required information and the agent calls `save_credential`.
+2. **Graph HITL** (Phase 1 Build Cycle) — LangGraph's `interrupt()` primitive pauses execution when the fix budget is exhausted. All graph HITL interactions flow through `POST /jobs/{id}/resume`.
+
+| Interrupt Type    | Triggered By                       | Resume Action | Payload                          |
+| ----------------- | ---------------------------------- | ------------- | -------------------------------- |
+| `fix_exhausted`   | Debugger exceeded 3 fix attempts   | `retry`       | _(empty — resets fix budget)_   |
+| `fix_exhausted`   | User wants to start over           | `replan`      | _(clears build state)_          |
+| `fix_exhausted`   | User wants to stop                 | `abort`       | _(marks job as failed)_         |
 
 ---
 
