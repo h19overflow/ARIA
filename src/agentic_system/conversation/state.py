@@ -37,7 +37,7 @@ async def save_state(state: ConversationState) -> None:
     key = f"conversation:{state.conversation_id}"
     
     try:
-        await redis_client.set(key, state_json)
+        await redis_client.set(key, state_json, ex=86_400)
         # If successfully saved to Redis, remove from fallback cache if it exists
         if state.conversation_id in _FALLBACK_CACHE:
             del _FALLBACK_CACHE[state.conversation_id]

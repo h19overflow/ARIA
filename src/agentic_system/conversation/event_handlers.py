@@ -4,6 +4,7 @@ Extracted event-handling helpers for ConversationAgent.
 Keeps the agent module focused on orchestration while this module
 owns message construction, tool-state updates, and result extraction.
 """
+import json
 from typing import Any, AsyncGenerator, Dict, List
 
 from langchain_core.messages import AIMessage, ToolMessage
@@ -11,7 +12,12 @@ from langchain_core.messages import AIMessage, ToolMessage
 from pydantic import BaseModel
 
 from .state import ConversationState
-from .notes_updater import update_notes_state
+from .notes_updater import (
+    update_notes_state,
+    update_notes_on_scan_credentials,
+    update_notes_on_save_credential_result,
+    update_notes_on_credentials_commit,
+)
 
 
 def _to_dict(obj: Any) -> Dict[str, Any]:
@@ -30,9 +36,20 @@ def extract_result_string(tool_result: Any) -> str:
     return str(tool_result)
 
 
+def _parse_json_safe(s: Any) -> dict:
+    """Best-effort JSON parse; returns {"raw": ...} on failure."""
+    if isinstance(s, dict):
+        return s
+    try:
+        return json.loads(str(s))
+    except (json.JSONDecodeError, TypeError):
+        return {"raw": str(s)}
+
+
 async def handle_tool_end_state(
     state: ConversationState,
     tool_name: str,
+    tool_result: Any,
     current_tool_calls: List[Dict[str, Any]],
 ) -> AsyncGenerator[Dict[str, Any], None]:
     """Yield tool_event SSE and mutate state for known tools."""
@@ -71,6 +88,33 @@ async def handle_tool_end_state(
                 "tool": "commit_notes",
                 "data": tool_args,
             }
+    elif tool_name == "scan_credentials":
+        scan_data = _parse_json_safe(extract_result_string(tool_result))
+        update_notes_on_scan_credentials(state, scan_data)
+        yield {"type": "tool_event", "tool": "scan_credentials", "data": scan_data}
+    elif tool_name == "save_credential":
+        result_str = extract_result_string(tool_result)
+        update_notes_on_save_credential_result(state, result_str)
+        result_data = _parse_json_safe(result_str)
+        yield {
+            "type": "tool_event",
+            "tool": "save_credential",
+            "data": {
+                "credential_type": tool_args.get("credential_type", ""),
+                "success": result_data.get("success", False),
+                "id": result_data.get("id", ""),
+                "resolved": dict(state.notes.resolved_credential_ids),
+                "pending": list(state.notes.pending_credential_types),
+            },
+        }
+    elif tool_name == "commit_preflight":
+        summary = tool_args.get("summary", "")
+        update_notes_on_credentials_commit(state, summary)
+        yield {
+            "type": "tool_event",
+            "tool": "commit_preflight",
+            "data": {"summary": summary, "committed": True},
+        }
 
 
 def capture_ai_message(

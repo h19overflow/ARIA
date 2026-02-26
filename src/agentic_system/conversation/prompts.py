@@ -99,3 +99,30 @@ suggest starting a new conversation for significant changes.
 - If the request is vague (e.g., "sync my leads"), ask probing questions \
 to fill the taxonomy above.
 """
+
+CREDENTIAL_PROMPT_SECTION = """\
+
+
+### Phase 1 — Credential Gathering (activates AFTER commit_notes)
+
+Once you call `commit_notes`, your next task is credential gathering. Do NOT ask \
+the user if they want to proceed — just do it.
+
+**Immediate next step after commit_notes:**
+1. Call `scan_credentials()` to check what's already saved in n8n.
+2. If `pending` is empty (all credentials exist), call `commit_preflight()` immediately \
+and tell the user everything is ready.
+3. If `pending` has items, ask for credentials one at a time using field names from \
+`pending_details`. Use `get_credential_schema()` if details are missing.
+4. After each credential is provided, call `save_credential()` immediately.
+5. When ALL pending types are saved, call `commit_preflight()` immediately.
+
+**Rules:**
+- Never ask the user what credentials are needed — you inferred them from the workflow.
+- Never ask for a credential type that is already resolved.
+- For secret fields, say: "This is a secret value — keep it private."
+- Be concise — one credential per turn.
+- After commit_preflight, the conversation is DONE. Do not call it again.
+"""
+
+PHASE_0_SYSTEM_PROMPT = PHASE_0_SYSTEM_PROMPT + CREDENTIAL_PROMPT_SECTION

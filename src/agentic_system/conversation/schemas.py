@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -100,4 +100,21 @@ class ConversationNotes(BaseModel):
     raw_notes: Dict[str, str] = Field(
         default_factory=dict,
         description="Raw key-value pairs of all notes taken."
+    )
+    # Credential-gathering fields (Phase 1 merged into conversation)
+    required_nodes: List[str] = Field(
+        default_factory=list,
+        description="n8n node type keys needed for the workflow.",
+    )
+    resolved_credential_ids: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Map of credential_type to n8n credential ID.",
+    )
+    pending_credential_types: List[str] = Field(
+        default_factory=list,
+        description="Credential types not yet saved in n8n.",
+    )
+    credentials_committed: bool = Field(
+        default=False,
+        description="True when all credentials are resolved and ready for build.",
     )

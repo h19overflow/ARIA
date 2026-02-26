@@ -3,10 +3,14 @@ import logging
 from typing import AsyncGenerator, Any, Dict, List
 
 from src.agentic_system.shared.base_agent import BaseAgent
+from src.agentic_system.shared.node_credential_map import NODE_CREDENTIAL_MAP
 from .state import get_state, save_state, ConversationState
 from .schemas import ConversationNotes
 from .prompts import PHASE_0_SYSTEM_PROMPT
-from .tools import batch_notes, take_note, commit_notes
+from .tools import (
+    batch_notes, take_note, commit_notes,
+    make_scan_credentials, get_credential_schema, save_credential, commit_preflight,
+)
 from .message_builders import build_lc_messages
 from .event_handlers import (
     handle_tool_end_state,
@@ -18,6 +22,17 @@ from .event_handlers import (
 logger = logging.getLogger(__name__)
 
 
+def _integrations_to_node_keys(integrations: list[str]) -> list[str]:
+    """Map service names (e.g. 'Telegram') to n8n node keys."""
+    lookup = {k.lower(): k for k in NODE_CREDENTIAL_MAP}
+    result = []
+    for name in integrations:
+        key = name.lower().replace(" ", "").replace("-", "")
+        if key in lookup:
+            result.append(lookup[key])
+    return result
+
+
 class ConversationAgent(BaseAgent):
     """
     Phase 0 Conversation Agent.
@@ -26,7 +41,11 @@ class ConversationAgent(BaseAgent):
 
     def __init__(self, name: str = "ConversationAgent"):
         super().__init__(
-            tools=[batch_notes, take_note, commit_notes],
+            tools=[
+                batch_notes, take_note, commit_notes,
+                make_scan_credentials([]),
+                get_credential_schema, save_credential, commit_preflight,
+            ],
             prompt=PHASE_0_SYSTEM_PROMPT,
             name=name,
             model_name="gemini-3-flash-preview",
@@ -51,6 +70,15 @@ class ConversationAgent(BaseAgent):
         """
         state = await self._load_or_create_state(conversation_id)
         state.messages.append({"role": "user", "content": user_message})
+
+        if state.committed and not state.notes.credentials_committed:
+            required_nodes = _integrations_to_node_keys(state.notes.required_integrations)
+            self.rebind_tools([
+                batch_notes, take_note, commit_notes,
+                make_scan_credentials(required_nodes),
+                get_credential_schema, save_credential, commit_preflight,
+            ])
+
         lc_messages = build_lc_messages(state.messages)
 
         try:
@@ -111,7 +139,7 @@ class ConversationAgent(BaseAgent):
             result_str = extract_result_string(tool_result)
             yield {"type": "tool_end", "tool": tool_name, "result": result_str}
             async for sse in handle_tool_end_state(
-                state, tool_name, current_tool_calls
+                state, tool_name, tool_result, current_tool_calls
             ):
                 yield sse
 

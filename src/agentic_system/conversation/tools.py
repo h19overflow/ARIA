@@ -75,3 +75,12 @@ async def commit_notes(summary: str) -> str:
     Record any final notes AND commit in the same turn when possible.
     """
     return f"Action recorded: Committed notes with summary '{summary}'."
+
+
+# Re-export credential tools (merged from Phase 1 Preflight)
+from .credential_tools import (  # noqa: E402, F401
+    make_scan_credentials,
+    get_credential_schema,
+    save_credential,
+    commit_preflight,
+)
