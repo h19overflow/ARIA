@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from src.boundary.n8n.client import N8nClient
 from src.agentic_system.shared.node_credential_map import NODE_CREDENTIAL_MAP
+from .schema_helpers import fetch_pending_details, fields_from_schema
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +39,10 @@ def make_scan_credentials(required_nodes: list[str]):
     async def scan_credentials() -> str:
         """Check n8n for already-saved credentials for the required integrations.
 
-        Returns JSON: {"resolved": [...], "pending": [...]}
+        Returns JSON: {"resolved": [...], "pending": [...], "pending_details": {...}}
         - resolved: credentials already saved in n8n that match required types
         - pending: required credential types not yet saved
+        - pending_details: field schemas for each pending type (use these to ask the user)
         Always call this FIRST at the start of every preflight session.
         """
         client = N8nClient()
@@ -48,12 +50,14 @@ def make_scan_credentials(required_nodes: list[str]):
         try:
             saved = await client.list_credentials()
             resolved, pending = _classify_credentials(saved, required_nodes)
-            return json.dumps({"resolved": resolved, "pending": pending})
         except Exception as e:
             logger.error("scan_credentials failed: %s", e)
             return json.dumps({"error": str(e), "resolved": [], "pending": []})
         finally:
             await client.disconnect()
+
+        pending_details = await fetch_pending_details(pending)
+        return json.dumps({"resolved": resolved, "pending": pending, "pending_details": pending_details})
 
     return scan_credentials
 
@@ -61,11 +65,7 @@ def make_scan_credentials(required_nodes: list[str]):
 def _classify_credentials(
     saved: list[dict], required_nodes: list[str]
 ) -> tuple[list[dict], list[str]]:
-    """Split saved credentials into resolved/pending against required_nodes.
-
-    required_nodes are node keys (e.g. "telegram"); saved uses credential
-    type names (e.g. "telegramApi"). NODE_CREDENTIAL_MAP bridges the gap.
-    """
+    """Split saved credentials into resolved/pending against required_nodes."""
     saved_types = {c.get("type", "") for c in saved}
     resolved = []
     pending = []
@@ -77,9 +77,32 @@ def _classify_credentials(
             matches = [c for c in saved if c.get("type", "") in cred_types]
             resolved.extend(matches)
         else:
-            # Report the primary (first) credential type as pending
             pending.append(cred_types[0])
     return resolved, pending
+
+
+@tool("get_credential_schema")
+async def get_credential_schema(credential_type: str) -> str:
+    """Fetch the live field schema for a credential type from n8n.
+
+    Returns JSON: {
+      "credential_type": str,
+      "fields": [{"name": str, "required": bool, "is_secret": bool, "description": str}]
+    }
+    Call this before asking the user for a credential to know exactly what fields to request.
+    Use when pending_details is missing a type or you need to confirm field names.
+    """
+    client = N8nClient()
+    await client.connect()
+    try:
+        schema = await client.get_credential_schema(credential_type)
+    except Exception as e:
+        logger.error("get_credential_schema failed type=%s: %s", credential_type, e)
+        return json.dumps({"error": str(e), "credential_type": credential_type, "fields": []})
+    finally:
+        await client.disconnect()
+
+    return json.dumps({"credential_type": credential_type, "fields": fields_from_schema(schema)})
 
 
 @tool("save_credential", args_schema=SaveCredentialInput)
