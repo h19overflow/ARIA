@@ -7,9 +7,9 @@ from langchain.agents import create_agent
 from src.agentic_system.shared.base_agent import BaseAgent
 from src.agentic_system.shared.node_credential_map import NODE_CREDENTIAL_MAP
 from .state import get_state, save_state, ConversationState
-from .schemas import ConversationNotes
+from ..models.schemas import ConversationNotes
 from .prompts import CONVERSATION_SYSTEM_PROMPT
-from .tools import (
+from ..tools.tools import (
     batch_notes, take_note, commit_notes,
     make_scan_credentials, get_credential_schema, save_credential, commit_preflight,
 )

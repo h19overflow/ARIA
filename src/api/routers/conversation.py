@@ -6,7 +6,7 @@ from typing import AsyncGenerator
 from fastapi import APIRouter, Depends, Request, Response, HTTPException, status
 from fastapi.responses import StreamingResponse
 
-from src.agentic_system.conversation.agent import ConversationAgent
+from src.agentic_system.conversation.core.agent import ConversationAgent
 from src.api.lifespan.conversation import get_conversation_agent
 from src.api.schemas import StartConversationResponse, MessageRequest, ErrorResponse
 

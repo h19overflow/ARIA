@@ -7,7 +7,7 @@ import redis.asyncio as redis
 from pydantic import BaseModel
 from redis.exceptions import RedisError
 
-from .schemas import ConversationNotes
+from ..models.schemas import ConversationNotes
 
 logger = logging.getLogger(__name__)
 

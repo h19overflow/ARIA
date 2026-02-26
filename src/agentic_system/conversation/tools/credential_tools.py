@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from src.boundary.n8n.client import N8nClient
 from src.agentic_system.shared.node_credential_map import NODE_CREDENTIAL_MAP
-from .schema_helpers import fetch_pending_details, fields_from_schema
+from ..models.schema_helpers import fetch_pending_details, fields_from_schema
 
 logger = logging.getLogger(__name__)
 

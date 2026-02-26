@@ -12,7 +12,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from pydantic import BaseModel
 
 from .state import ConversationState
-from .notes_updater import (
+from ..tools.notes_updater import (
     update_notes_state,
     update_notes_on_scan_credentials,
     update_notes_on_save_credential_result,

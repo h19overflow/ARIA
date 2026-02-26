@@ -1,6 +1,6 @@
 from fastapi import Request
 
-from src.agentic_system.conversation.agent import ConversationAgent
+from src.agentic_system.conversation.core.agent import ConversationAgent
 
 _agent: ConversationAgent | None = None
 
