@@ -1,4 +1,4 @@
-"""Build Cycle Node Planner — LLM-driven flat DAG decomposition with cycle validation."""
+"""Build Cycle Node Planner — LLM-driven flat DAG decomposition with tool-based RAG."""
 from __future__ import annotations
 
 import json
@@ -12,6 +12,8 @@ from src.agentic_system.shared.state import ARIAState, WorkflowTopology
 from src.agentic_system.build_cycle.schemas.node_plan import NodePlan, PlannedEdge
 from src.agentic_system.build_cycle.prompts.node_planner import NODE_PLANNER_SYSTEM_PROMPT
 from src.agentic_system.build_cycle.nodes._credential_resolver import resolve_node_credentials
+from src.agentic_system.build_cycle.tools import search_n8n_nodes
+from src.boundary.n8n.node_discovery import discover_installed_node_prefixes
 from src.services.pipeline.event_bus import get_event_bus
 
 logger = logging.getLogger(__name__)
@@ -22,6 +24,8 @@ _agent = BaseAgent[NodePlan](
     prompt=NODE_PLANNER_SYSTEM_PROMPT,
     schema=NodePlan,
     name="NodePlanner",
+    tools=[search_n8n_nodes],
+    recursion_limit=40,
 )
 
 
@@ -36,7 +40,6 @@ async def node_planner_node(state: ARIAState) -> dict:
     topology: WorkflowTopology | None = blueprint.get("topology")
     intent: str = blueprint.get("intent") or state.get("intent", "")
     cred_ids: dict = state.get("resolved_credential_ids", {})
-    templates: list[dict] = state.get("node_templates", [])
 
     if not topology and not state.get("required_nodes"):
         elapsed = int((time.monotonic() - start) * 1000)
@@ -44,8 +47,8 @@ async def node_planner_node(state: ARIAState) -> dict:
             await bus.emit_complete("plan", "Node Planner", "success", "No nodes to plan", duration_ms=elapsed)
         return _empty_plan()
 
-    available_packages: list[str] = state.get("available_node_packages", [])
-    prompt = _build_planner_prompt(intent, topology, cred_ids, templates, available_packages)
+    available_packages = await discover_installed_node_prefixes()
+    prompt = _build_planner_prompt(intent, topology, cred_ids, sorted(available_packages))
     plan = await _invoke_with_cycle_retry(prompt)
 
     if plan is None:
@@ -61,7 +64,7 @@ async def node_planner_node(state: ARIAState) -> dict:
             "plan", "Node Planner", "success",
             f"Planned {len(plan.nodes)} nodes", duration_ms=elapsed,
         )
-    return _plan_to_state_update(plan, cred_ids)
+    return _plan_to_state_update(plan, cred_ids, sorted(available_packages))
 
 
 # ── LLM invocation with cycle-detection retry ──────────────────────────────────
@@ -124,7 +127,6 @@ def _build_planner_prompt(
     intent: str,
     topology: WorkflowTopology | None,
     cred_ids: dict,
-    templates: list[dict],
     available_packages: list[str] | None = None,
 ) -> str:
     sections = [f"## Intent\n{intent}"]
@@ -140,31 +142,19 @@ def _build_planner_prompt(
         sections.append(
             f"## Available node packages (installed on this n8n instance)\n"
             f"{json.dumps(available_packages, indent=2)}\n"
-            f"ONLY use node types from these packages. "
+            f"You MUST ONLY use node types from these packages. "
             f"Example: if 'n8n-nodes-base' is listed, you can use 'n8n-nodes-base.gmail', "
-            f"'n8n-nodes-base.code', etc."
+            f"'n8n-nodes-base.code', etc. "
+            f"If no dedicated node exists for a capability, use "
+            f"'n8n-nodes-base.httpRequest' or 'n8n-nodes-base.code' as a fallback."
         )
-
-    if templates:
-        summaries = _summarise_templates(templates)
-        sections.append(f"## RAG context (node template summaries)\n{summaries}")
 
     return "\n\n".join(sections)
 
 
-def _summarise_templates(templates: list[dict]) -> str:
-    """One-line summary per template — capped at 12 to avoid prompt bloat."""
-    lines: list[str] = []
-    for template in templates[:12]:
-        node_type = template.get("node_type") or template.get("name", "unknown")
-        doc = template.get("document", "")[:120].replace("\n", " ")
-        lines.append(f"- {node_type}: {doc}")
-    return "\n".join(lines)
-
-
 # ── State conversion ───────────────────────────────────────────────────────────
 
-def _plan_to_state_update(plan: NodePlan, resolved_credential_ids: dict) -> dict:
+def _plan_to_state_update(plan: NodePlan, resolved_credential_ids: dict, available_packages: list[str]) -> dict:
     nodes = [spec.model_dump() for spec in plan.nodes]
     resolve_node_credentials(nodes, resolved_credential_ids)
     node_names = ", ".join(spec.node_name for spec in plan.nodes)
@@ -172,6 +162,7 @@ def _plan_to_state_update(plan: NodePlan, resolved_credential_ids: dict) -> dict
         "nodes_to_build": nodes,
         "planned_edges": [edge.model_dump() for edge in plan.edges],
         "node_build_results": [],
+        "available_node_packages": available_packages,
         "messages": [HumanMessage(
             content=f"[Planner] {plan.overall_strategy} → {len(plan.nodes)} nodes queued: {node_names}"
         )],
