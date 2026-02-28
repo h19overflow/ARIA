@@ -83,6 +83,9 @@ class ARIAState(TypedDict):
     webhook_url: str | None
     status: str  # "planning" | "building" | "testing" | "fixing" | "done" | "failed" | "replanning"
 
+    # Node availability — populated by rag_retriever at build start
+    available_node_packages: list[str]
+
     # Parallel build — fan-out/fan-in via LangGraph Send
     nodes_to_build: Annotated[list, operator.add]       # NodeSpec dicts from planner; reducer concatenates Send batches
     planned_edges: list                                  # all edges from planner (no reducer needed)

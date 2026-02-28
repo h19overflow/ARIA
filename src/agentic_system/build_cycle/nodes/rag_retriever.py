@@ -5,6 +5,7 @@ from langchain_core.messages import HumanMessage
 
 from src.agentic_system.shared.state import ARIAState
 from src.boundary.chroma.store import ChromaStore
+from src.boundary.n8n.node_discovery import discover_installed_node_prefixes
 
 
 async def rag_retriever_node(state: ARIAState) -> dict:
@@ -18,6 +19,8 @@ async def rag_retriever_node(state: ARIAState) -> dict:
     document content, then appends a single combined query over the full
     intent string to surface relevant workflow-level context.
     """
+    installed_prefixes = await discover_installed_node_prefixes()
+
     blueprint = state.get("build_blueprint") or {}
     intent: str = blueprint.get("intent") or state.get("intent", "")
     required_nodes: list[str] = blueprint.get("required_nodes") or state.get("required_nodes", [])
@@ -31,6 +34,7 @@ async def rag_retriever_node(state: ARIAState) -> dict:
 
     return {
         "node_templates": templates,
+        "available_node_packages": sorted(installed_prefixes),
         "status": "building",
         "messages": [HumanMessage(
             content=(
