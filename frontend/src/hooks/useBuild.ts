@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { startBuild, submitResume } from '@/lib/api'
 import { subscribeSSE } from '@/lib/sse'
-import type { ARIAState, WorkflowStatus, FeedEvent, SSEEnvelope, SSEInterruptEvent, SSEFixEscalationEvent } from '@/types'
+import type { ARIAState, WorkflowStatus, FeedEvent, SSEEnvelope, SSEInterruptEvent, SSEFixEscalationEvent, EventStage, EventStatus } from '@/types'
 
 type BuildInterrupt =
   | { kind: 'clarify' | 'credential'; payload: SSEInterruptEvent['payload'] }
@@ -45,13 +45,55 @@ export function useBuild(): UseBuild {
     unsubRef.current?.()
     unsubRef.current = subscribeSSE<SSEEnvelope>(`/api/build/${jobId}/stream`, {
       onMessage: (envelope) => {
+        if (envelope.type === 'node_start') {
+          const event: FeedEvent = {
+            id: makeId(),
+            stage: envelope.stage ?? 'build',
+            message: envelope.message ?? `${envelope.node_name} started`,
+            timestamp: new Date(),
+            status: 'running',
+            nodeName: envelope.node_name,
+            eventType: 'node_start',
+            tools: envelope.tools,
+            progress: envelope.progress,
+          }
+          setState((prev) => ({
+            ...prev,
+            events: [event, ...prev.events].slice(0, 200),
+          }))
+          return
+        }
+
+        if (envelope.type === 'warning' || (envelope.type === 'node' && envelope.status === 'warning')) {
+          const stage = (envelope.type === 'warning' || envelope.type === 'node') ? envelope.stage : 'system'
+          const nodeName = (envelope.type === 'warning' || envelope.type === 'node') ? envelope.node_name : undefined
+          const event: FeedEvent = {
+            id: makeId(),
+            stage: (stage ?? 'system') as EventStage,
+            message: envelope.message ?? 'Warning',
+            timestamp: new Date(),
+            status: 'warning',
+            nodeName,
+            eventType: 'info',
+          }
+          setState((prev) => ({
+            ...prev,
+            events: [event, ...prev.events].slice(0, 200),
+          }))
+          return
+        }
+
         if (envelope.type === 'node') {
           const event: FeedEvent = {
             id: makeId(),
-            stage: envelope.stage,
+            stage: (envelope.stage ?? 'build') as EventStage,
             message: envelope.message ?? `${envelope.node_name} completed`,
             timestamp: new Date(),
-            status: envelope.status,
+            status: (envelope.status ?? 'running') as EventStatus,
+            nodeName: envelope.node_name,
+            durationMs: envelope.duration_ms,
+            progress: envelope.progress,
+            eventType: 'node_done',
           }
           setState((prev) => {
             const nextState = envelope.aria_state
@@ -65,7 +107,10 @@ export function useBuild(): UseBuild {
               events: [event, ...prev.events].slice(0, 200),
             }
           })
-        } else if (envelope.type === 'interrupt') {
+          return
+        }
+
+        if (envelope.type === 'interrupt') {
           setState((prev) => ({
             ...prev,
             interrupt: envelope as BuildInterrupt,
