@@ -32,6 +32,7 @@ def fan_out_nodes(state: ARIAState) -> list[Send]:
             "node_spec": spec,
             "node_templates": state.get("node_templates", []),
             "resolved_credential_ids": state.get("resolved_credential_ids", {}),
+            "job_id": state.get("job_id", ""),
         })
         for spec in nodes_to_build
     ]

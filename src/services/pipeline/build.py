@@ -58,6 +58,7 @@ async def run_build(
     log.info("[%s] Build job started | conversation_id=%s", job_id, conversation_id)
     try:
         aria_state = await _load_state_for_build(conversation_id, redis)
+        aria_state["job_id"] = job_id
         config = {"configurable": {"thread_id": job_id}}
         await write_job(redis, job_id, JobState(job_id=job_id, status="building"))
         final = await _stream_build(job_id, aria_state, config, redis, pipeline)
@@ -124,6 +125,7 @@ def _conversation_to_aria_state(state: ConversationState) -> ARIAState:
         "node_build_results": [],
         "paused_for_input": False,
         "hitl_explanation": None,
+        "job_id": "",
     }
 
 

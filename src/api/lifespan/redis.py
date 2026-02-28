@@ -28,3 +28,10 @@ def get_redis(request: Request) -> Redis:  # noqa: ARG001
     if _client is None:
         raise RuntimeError("Redis client not initialised — lifespan not running")
     return _client
+
+
+def get_redis_instance() -> Redis:
+    """Module-level accessor for build nodes that lack FastAPI request context."""
+    if _client is None:
+        raise RuntimeError("Redis client not initialised — lifespan not running")
+    return _client

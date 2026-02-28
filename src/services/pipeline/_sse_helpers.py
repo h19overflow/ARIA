@@ -41,7 +41,8 @@ def build_initial_state(description: str, conversation_notes: dict | None = None
         "n8n_execution_id": None, "execution_result": None, "classified_error": None,
         "fix_attempts": 0, "webhook_url": None, "nodes_to_build": [],
         "planned_edges": [], "node_build_results": [], "paused_for_input": False,
-        "hitl_explanation": None, "conversation_notes": conversation_notes,
+        "hitl_explanation": None, "job_id": "",
+        "conversation_notes": conversation_notes,
     }
 
 

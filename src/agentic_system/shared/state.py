@@ -98,6 +98,9 @@ class ARIAState(TypedDict):
     # LLM-generated explanation shown to the user during a HITL pause.
     hitl_explanation: str | None
 
+    # Job identifier — used by EventBus to publish SSE events from nodes
+    job_id: str
+
     # Conversational orchestrator internal fields
     orchestrator_decision: str
     pending_question: str
