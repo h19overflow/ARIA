@@ -45,6 +45,7 @@ export interface ConversationSlice {
   activities: AgentActivity[];
   isStreaming: boolean;
   isCommitted: boolean;
+  isDiscoveringCredentials: boolean;
   error: string | null;
   assistantMsgId: string | null;
   setConversationId: (id: string) => void;
@@ -55,6 +56,7 @@ export interface ConversationSlice {
   clearActivities: () => void;
   setIsStreaming: (v: boolean) => void;
   setIsCommitted: (v: boolean) => void;
+  setIsDiscoveringCredentials: (v: boolean) => void;
   setError: (err: string | null) => void;
   resetAssistantMsgId: () => void;
   updateNote: (key: string, value: string | null) => void;

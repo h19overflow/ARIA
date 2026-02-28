@@ -11,6 +11,7 @@ export const createConversationSlice: StateCreator<AppStore, [], [], Conversatio
   activities: [],
   isStreaming: false,
   isCommitted: false,
+  isDiscoveringCredentials: false,
   error: null,
   assistantMsgId: null,
 
@@ -56,6 +57,8 @@ export const createConversationSlice: StateCreator<AppStore, [], [], Conversatio
   setIsStreaming: (v) => set({ isStreaming: v }),
 
   setIsCommitted: (v) => set({ isCommitted: v }),
+
+  setIsDiscoveringCredentials: (v) => set({ isDiscoveringCredentials: v }),
 
   setError: (err) => set({ error: err }),
 

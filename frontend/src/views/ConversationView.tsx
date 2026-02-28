@@ -21,6 +21,7 @@ export function ConversationView({ onStartBuild, isStarting, workflowError }: Co
   const activities = useAppStore((s) => s.activities);
   const isStreaming = useAppStore((s) => s.isStreaming);
   const isCommitted = useAppStore((s) => s.isCommitted);
+  const isDiscoveringCredentials = useAppStore((s) => s.isDiscoveringCredentials);
   const error = useAppStore((s) => s.error);
   const updateNote = useAppStore((s) => s.updateNote);
 
@@ -38,6 +39,7 @@ export function ConversationView({ onStartBuild, isStarting, workflowError }: Co
         isStreaming={isStreaming}
         isCommitted={isCommitted}
         isStarting={isStarting}
+        isDiscoveringCredentials={isDiscoveringCredentials}
         onUpdate={updateNote}
         onStartBuild={onStartBuild}
       />
