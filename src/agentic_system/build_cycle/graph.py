@@ -1,11 +1,10 @@
-"""Build Cycle LangGraph subgraph -- RAG, plan, build, deploy, test, debug, activate."""
+"""Build Cycle LangGraph subgraph -- plan, build, deploy, test, debug, activate."""
 from __future__ import annotations
 
 from langgraph.graph import StateGraph, END
 from langgraph.types import Send
 
 from src.agentic_system.shared.state import ARIAState
-from src.agentic_system.build_cycle.nodes.rag_retriever import rag_retriever_node
 from src.agentic_system.build_cycle.nodes.node_planner import node_planner_node
 from src.agentic_system.build_cycle.nodes.node_worker import node_worker_node
 from src.agentic_system.build_cycle.nodes.assembler import assembler_node
@@ -30,7 +29,6 @@ def fan_out_nodes(state: ARIAState) -> list[Send]:
     return [
         Send("node_worker", {
             "node_spec": spec,
-            "node_templates": state.get("node_templates", []),
             "resolved_credential_ids": state.get("resolved_credential_ids", {}),
             "job_id": state.get("job_id", ""),
         })
@@ -106,7 +104,6 @@ def build_build_cycle_graph() -> StateGraph:
 
 
 def _register_nodes(graph: StateGraph) -> None:
-    graph.add_node("rag_retriever", rag_retriever_node)
     graph.add_node("node_planner", node_planner_node)
     graph.add_node("node_worker", node_worker_node)
     graph.add_node("assembler", assembler_node)
@@ -120,8 +117,7 @@ def _register_nodes(graph: StateGraph) -> None:
 
 
 def _wire_edges(graph: StateGraph) -> None:
-    graph.set_entry_point("rag_retriever")
-    graph.add_edge("rag_retriever", "node_planner")
+    graph.set_entry_point("node_planner")
     graph.add_conditional_edges("node_planner", fan_out_nodes, ["node_worker"])
     graph.add_edge("node_worker", "assembler")
     graph.add_edge("assembler", "deploy")
