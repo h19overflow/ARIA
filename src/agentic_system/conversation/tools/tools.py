@@ -79,7 +79,8 @@ async def commit_notes(summary: str) -> str:
 
 # Re-export credential tools (merged from Phase 1 Preflight)
 from .credential_tools import (  # noqa: E402, F401
-    make_scan_credentials,
+    scan_credentials,
+    set_shared_required_nodes,
     get_credential_schema,
     save_credential,
     commit_preflight,

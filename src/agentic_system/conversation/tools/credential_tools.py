@@ -32,38 +32,46 @@ class CommitPreflightInput(BaseModel):
     )
 
 
-def make_scan_credentials(required_nodes: list[str]):
-    """Create a scan_credentials tool bound to the required node types."""
+_shared_required_nodes: list[str] = []
 
-    @tool("scan_credentials")
-    async def scan_credentials() -> str:
-        """Check n8n for already-saved credentials for the required integrations.
 
-        Returns JSON: {"resolved": [...], "pending": [...], "pending_details": {...}}
-        - resolved: credentials already saved in n8n that match required types
-        - pending: required credential types not yet saved
-        - pending_details: field schemas for each pending type (use these to ask the user)
-        Always call this FIRST at the start of credential gathering.
-        """
-        client = N8nClient()
-        await client.connect()
-        try:
-            saved = await client.list_credentials()
-            resolved, pending = _classify_credentials(saved, required_nodes)
-        except Exception as e:
-            logger.error("scan_credentials failed: %s", e)
-            return json.dumps({"error": str(e), "resolved": [], "pending": []})
-        finally:
-            await client.disconnect()
+def set_shared_required_nodes(nodes: list[str]) -> None:
+    """Update the shared required_nodes list used by scan_credentials."""
+    _shared_required_nodes.clear()
+    _shared_required_nodes.extend(nodes)
 
-        pending_details = await fetch_pending_details(pending)
-        return json.dumps({
-            "resolved": resolved,
-            "pending": pending,
-            "pending_details": pending_details,
-        })
 
-    return scan_credentials
+@tool("scan_credentials")
+async def scan_credentials() -> str:
+    """Check n8n for already-saved credentials for the required integrations.
+
+    Returns JSON: {"resolved": [...], "pending": [...], "pending_details": {...}}
+    - resolved: credentials already saved in n8n that match required types
+    - pending: required credential types not yet saved
+    - pending_details: field schemas for each pending type (use these to ask the user)
+    Always call this FIRST at the start of credential gathering.
+    """
+    required_nodes = list(_shared_required_nodes)
+    if not required_nodes:
+        return json.dumps({"error": "required_nodes is empty — commit notes with required_integrations first", "resolved": [], "pending": []})
+
+    client = N8nClient()
+    await client.connect()
+    try:
+        saved = await client.list_credentials()
+        resolved, pending = _classify_credentials(saved, required_nodes)
+    except Exception as e:
+        logger.error("scan_credentials failed: %s", e)
+        return json.dumps({"error": str(e), "resolved": [], "pending": []})
+    finally:
+        await client.disconnect()
+
+    pending_details = await fetch_pending_details(pending)
+    return json.dumps({
+        "resolved": resolved,
+        "pending": pending,
+        "pending_details": pending_details,
+    })
 
 
 def _classify_credentials(
