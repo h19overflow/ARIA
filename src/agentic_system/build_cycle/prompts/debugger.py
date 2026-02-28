@@ -13,6 +13,7 @@ full workflow JSON. In a single response you must:
 | "missing field", "invalid JSON", "unexpected token", JSON parse errors | schema |
 | "401", "403", "invalid credentials", "token expired", "unauthorized" | auth |
 | "429", "rate limit exceeded", "too many requests" | rate_limit |
+| "unknown node type", "unrecognized node", "node not found", package name not in n8n-nodes-base | missing_node |
 | Wrong output values, logic flow errors, unexpected data shape | logic |
 
 ## Fix rules
@@ -23,6 +24,8 @@ full workflow JSON. In a single response you must:
 - For logic errors: correct expressions or type mismatches
 - For auth or rate_limit errors: set fixed_parameters = null and explanation = null
   (these are escalated to a human, not auto-fixed)
+- For missing_node errors: set fixed_parameters = null and explanation = null
+  (these require node substitution or package installation, not parameter fixes)
 
 ## Output fields
 - error_type: exactly one classification

@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 class ClassifiedErrorOutput(BaseModel):
     """Structured output from the Error Classifier agent."""
-    error_type: str = Field(description="One of: schema, auth, rate_limit, logic")
+    error_type: str = Field(description="One of: schema, auth, rate_limit, logic, missing_node")
     node_name: str = Field(description="Name of the failing n8n node")
     message: str = Field(description="Human-readable error summary")
     description: str | None = Field(default=None, description="Detailed error description")
@@ -18,7 +18,7 @@ class DebuggerOutput(BaseModel):
     Combines classification and fix into a single LLM call, halving
     latency and token cost on the critical recovery path.
     """
-    error_type: str = Field(description="One of: schema, auth, rate_limit, logic")
+    error_type: str = Field(description="One of: schema, auth, rate_limit, logic, missing_node")
     node_name: str = Field(description="Name of the failing n8n node")
     message: str = Field(description="Human-readable error summary")
     description: str | None = Field(default=None)
