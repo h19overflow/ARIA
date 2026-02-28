@@ -6,6 +6,7 @@ from src.agentic_system.build_cycle.nodes.deploy import deploy_node
 from src.agentic_system.build_cycle.nodes.test import test_node
 from src.agentic_system.build_cycle.nodes.debugger import debugger_node
 from src.agentic_system.build_cycle.nodes.activate import activate_node
+from src.agentic_system.build_cycle.nodes.node_substituter import node_substituter_node
 from src.agentic_system.build_cycle.nodes.hitl_escalation import hitl_fix_escalation_node
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "test_node",
     "debugger_node",
     "activate_node",
+    "node_substituter_node",
     "hitl_fix_escalation_node",
 ]
