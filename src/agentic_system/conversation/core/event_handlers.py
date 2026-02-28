@@ -94,6 +94,7 @@ async def handle_tool_end_state(
     elif tool_name == "scan_credentials":
         scan_data = _parse_json_safe(extract_result_string(tool_result))
         update_notes_on_scan_credentials(state, scan_data)
+        scan_data["required_nodes"] = list(state.notes.required_nodes)
         yield {"type": "tool_event", "tool": "scan_credentials", "data": scan_data}
     elif tool_name == "save_credential":
         result_str = extract_result_string(tool_result)
