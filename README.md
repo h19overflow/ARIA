@@ -164,7 +164,7 @@ src/
 │   └── scraper/              # n8n docs scraper + API spec parser
 ├── core/                     # Reserved — future business logic stubs
 ├── jobs/                     # Reserved — future job queue stubs
-└── streamlit_app/            # Legacy dev console (Streamlit)
+
 ```
 
 ---
@@ -332,20 +332,6 @@ Two LangChain Chroma collections (`n8n_documents`, `api_specs`) with Google Gene
 | ------- | ------------------------------------------------- | --------------------------------------------------------------- |
 | `core/` | `intent_parser.py`, `subflow_composer.py` (stubs) | Reserved for future extracted business logic                    |
 | `jobs/` | `models.py`, `queue.py`, `worker.py` (stubs)      | Reserved for a future job queue replacing `asyncio.create_task` |
-
----
-
-### `streamlit_app/` — Legacy Dev Console
-
-A Streamlit-based developer UI that predates the React frontend. Uses synchronous wrappers around the async pipeline via `threading + asyncio.new_event_loop()`.
-
-| File                 | What It Does                                                                  |
-| -------------------- | ----------------------------------------------------------------------------- |
-| `app.py`             | 5-tab layout: Chat, Blueprint, Phases, State, Logs                            |
-| `state_manager.py`   | `SessionState` — wraps `st.session_state` with typed properties               |
-| `pipeline_runner.py` | `PipelineRunner` — runs async coroutines in dedicated threads                 |
-| `design_tokens.py`   | CSS color tokens and status-to-color mappings                                 |
-| `components/`        | Six render functions: sidebar, chat, blueprint, phases, raw state, log viewer |
 
 ---
 
