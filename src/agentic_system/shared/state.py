@@ -87,7 +87,7 @@ class ARIAState(TypedDict):
     available_node_packages: list[str]
 
     # Parallel build — fan-out/fan-in via LangGraph Send
-    nodes_to_build: Annotated[list, operator.add]       # NodeSpec dicts from planner; reducer concatenates Send batches
+    nodes_to_build: list                                 # NodeSpec dicts from planner; replaced on each write
     planned_edges: list                                  # all edges from planner (no reducer needed)
     node_build_results: Annotated[list, operator.add]   # NodeResult dicts aggregated from parallel workers
 
