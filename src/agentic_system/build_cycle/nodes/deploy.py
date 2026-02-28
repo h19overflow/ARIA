@@ -24,7 +24,7 @@ async def deploy_node(state: ARIAState) -> dict:
         else:
             result = await client.deploy_workflow(payload)
     except httpx.HTTPStatusError as exc:
-        return _handle_deploy_error(exc)
+        return _handle_deploy_error(exc, workflow_json)
     finally:
         await client.disconnect()
 
@@ -36,7 +36,9 @@ async def deploy_node(state: ARIAState) -> dict:
     }
 
 
-def _handle_deploy_error(exc: httpx.HTTPStatusError) -> dict:
+def _handle_deploy_error(
+    exc: httpx.HTTPStatusError, workflow_json: dict,
+) -> dict:
     """Parse n8n deploy error into execution_result for the debugger."""
     body = {}
     try:
@@ -45,6 +47,13 @@ def _handle_deploy_error(exc: httpx.HTTPStatusError) -> dict:
         pass
 
     error_msg = body.get("message", str(exc))
+    node_name = _extract_node_name_from_error(body, error_msg, workflow_json)
+    node_type = _extract_node_type_from_error(error_msg, workflow_json, node_name)
+
+    description = f"Deploy failed with HTTP {exc.response.status_code}"
+    if node_type:
+        description += f". Node type: {node_type}"
+
     return {
         "execution_result": {
             "status": "error",
@@ -52,13 +61,54 @@ def _handle_deploy_error(exc: httpx.HTTPStatusError) -> dict:
             "data": None,
             "error": {
                 "type": None,
-                "node_name": "unknown",
+                "node_name": node_name,
                 "message": error_msg,
-                "description": f"Deploy failed with HTTP {exc.response.status_code}",
+                "description": description,
                 "line_number": None,
                 "stack": None,
             },
         },
         "status": "fixing",
-        "messages": [HumanMessage(content=f"[Deploy] Failed: {error_msg}")],
+        "messages": [HumanMessage(content=f"[Deploy] Failed ({node_name}): {error_msg}")],
     }
+
+
+def _extract_node_name_from_error(
+    body: dict, error_msg: str, workflow_json: dict,
+) -> str:
+    """Try to extract the failing node name from n8n's error response."""
+    # n8n sometimes includes context.nodeName
+    node_name = body.get("context", {}).get("nodeName", "")
+    if node_name:
+        return node_name
+
+    # Top-level nodeName (some n8n error shapes)
+    node_name = body.get("nodeName", "")
+    if node_name:
+        return node_name
+
+    # Scan workflow nodes — if error message mentions a node type, find its name
+    for node in workflow_json.get("nodes", []):
+        node_type = node.get("type", "")
+        if node_type and node_type in error_msg:
+            return node.get("name", node_type)
+
+    return "unknown"
+
+
+def _extract_node_type_from_error(
+    error_msg: str, workflow_json: dict, node_name: str,
+) -> str:
+    """Extract the n8n node type string for better error reporting."""
+    # If we found the node by name, return its type
+    for node in workflow_json.get("nodes", []):
+        if node.get("name") == node_name:
+            return node.get("type", "")
+
+    # Look for node type patterns in the error message
+    for node in workflow_json.get("nodes", []):
+        node_type = node.get("type", "")
+        if node_type and node_type in error_msg:
+            return node_type
+
+    return ""
