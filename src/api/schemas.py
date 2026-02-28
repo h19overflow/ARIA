@@ -61,11 +61,13 @@ class ResumeRequest(BaseModel):
     Fix retry:            {"action": "retry"}
     Fix replan:           {"action": "replan"}
     Fix abort:            {"action": "abort"}
+    Discuss:              {"action": "discuss", "message": "<user question>"}
     """
     action: str
     value: str | None = None
     credentials: dict | None = None
     selections: dict[str, str] | None = None
+    message: str | None = None
 
 
 # Phase 0 — Conversation

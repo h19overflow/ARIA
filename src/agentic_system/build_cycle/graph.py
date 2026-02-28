@@ -82,6 +82,8 @@ def _route_hitl_decision(state: ARIAState) -> str:
     status = state.get("status", "failed")
     if status == "building":
         return "deploy"
+    if status == "testing":
+        return "test"
     return "fail"
 
 
@@ -154,5 +156,5 @@ def _wire_edges(graph: StateGraph) -> None:
     graph.add_conditional_edges(
         "hitl_fix_escalation",
         _route_hitl_decision,
-        {"deploy": "deploy", "fail": "fail"},
+        {"deploy": "deploy", "test": "test", "fail": "fail"},
     )
