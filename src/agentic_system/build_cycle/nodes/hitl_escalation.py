@@ -29,11 +29,34 @@ _explainer: BaseAgent[_Explanation] = BaseAgent(
 )
 
 
+def _missing_node_explanation(error: dict) -> str:
+    """Generate install instructions for a missing n8n node package."""
+    node_name = error.get("node_name", "unknown node")
+    message = error.get("message", "")
+
+    return (
+        f"The '{node_name}' step failed because it uses a node type that isn't installed "
+        f"on your n8n instance. ARIA tried to substitute it with a built-in alternative "
+        f"but couldn't find a suitable replacement.\n\n"
+        f"To fix this, install the required package in your n8n instance:\n"
+        f"  1. Open n8n Settings → Community Nodes\n"
+        f"  2. Search for the package name shown in the error\n"
+        f"  3. Click Install\n"
+        f"  4. Come back here and choose 'Retry'\n\n"
+        f"Alternatively, if you're running n8n via Docker, add the package to your Dockerfile:\n"
+        f"  RUN npm install -g <package-name>\n\n"
+        f"Error details: {message}"
+    )
+
+
 async def _generate_explanation(error: dict, fix_attempts: int) -> str:
     """Ask LLM to produce a plain-English explanation of the build failure."""
+    error_type = error.get("type", "unknown")
+    if error_type == "missing_node":
+        return _missing_node_explanation(error)
+
     node_name = error.get("node_name", "unknown node")
     message = error.get("message", "no error message")
-    error_type = error.get("type", "unknown")
     prompt = (
         f"Node: {node_name}\n"
         f"Error type: {error_type}\n"
