@@ -61,6 +61,8 @@ def _route_debugger_result(state: ARIAState) -> str:
         return "test"
     if error_type in _FIXABLE_TYPES and has_budget and state.get("workflow_json"):
         return "deploy"
+    if error_type == "auth" and has_budget and state.get("workflow_json"):
+        return "deploy"
     return "hitl_fix_escalation"
 
 
