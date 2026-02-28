@@ -3,6 +3,7 @@ Normalise raw scraped data into a uniform N8nDocument shape
 ready for embedding and storage in ChromaDB.
 """
 
+import json
 from dataclasses import dataclass, field
 
 
@@ -26,10 +27,22 @@ def normalize_node(raw: dict) -> N8nDocument:
     operations = raw.get("operations", [])
     parameters = raw.get("parameters", [])
     ops_text = ", ".join(operations) if operations else ""
+    node_type = raw.get("node_type", "")
+
+    # Construct a prototypical node JSON structure to embed
+    node_template = {
+        "parameters": {},
+        "name": name,
+        "type": node_type,
+        "typeVersion": raw.get("type_version", 1),
+        "position": [0, 0]
+    }
+    template_json_str = json.dumps(node_template, indent=2)
 
     text = f"Node: {name}. {description}"
     if ops_text:
         text += f" Operations: {ops_text}."
+    text += f"\n\nJSON Template:\n```json\n{template_json_str}\n```"
 
     return N8nDocument(
         id=f"node::{raw.get('node_type', name).lower().replace(' ', '_')}",
@@ -50,16 +63,24 @@ def normalize_node(raw: dict) -> N8nDocument:
 def normalize_workflow_template(raw: dict) -> N8nDocument:
     """
     Normalise a scraped workflow template into an N8nDocument.
-    Expected raw keys: id, name, description, nodes_used, url
+    Expected raw keys: id, name, description, nodes_used, url, nodes, connections
     """
     name = raw.get("name", "")
     description = raw.get("description", "")
     nodes_used = raw.get("nodes_used", [])
     nodes_text = ", ".join(nodes_used) if nodes_used else ""
 
+    # Construct the JSON structure for the workflow nodes and connections
+    workflow_json = {
+        "nodes": raw.get("nodes", []),
+        "connections": raw.get("connections", {}),
+    }
+    workflow_json_str = json.dumps(workflow_json, indent=2)
+
     text = f"Workflow template: {name}. {description}"
     if nodes_text:
         text += f" Uses nodes: {nodes_text}."
+    text += f"\n\nWorkflow JSON:\n```json\n{workflow_json_str}\n```"
 
     return N8nDocument(
         id=f"template::{raw.get('id', name.lower().replace(' ', '_'))}",

@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     # Google / Gemini
     google_api_key: str = ""
     gemini_api_key: str = ""  # alias — same key, different env var name
-    gemini_model: str = "gemini-3.1-pro-preview"
+    gemini_model: str = "gemini-3-flash-preview"
     embedding_model: str = "models/gemini-embedding-001"
 
     # Weights & Biases / Weave

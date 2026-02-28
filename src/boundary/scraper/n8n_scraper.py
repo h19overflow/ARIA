@@ -181,7 +181,7 @@ async def _fetch_one_template(
             resp.raise_for_status()
             data = resp.json().get("workflow", {})
             nodes_used = list({
-                n["type"] for n in data.get("workflow", {}).get("nodes", [])
+                n["type"] for n in data.get("nodes", [])
                 if n.get("type")
             })
             return normalize_workflow_template({
@@ -190,6 +190,8 @@ async def _fetch_one_template(
                 "description": data.get("description", ""),
                 "nodes_used": nodes_used,
                 "url": TEMPLATES_PAGE_URL.format(id=wf_id),
+                "nodes": data.get("nodes", []),
+                "connections": data.get("connections", {}),
             })
         except Exception:
             return None

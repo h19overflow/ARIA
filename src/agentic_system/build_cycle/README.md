@@ -8,16 +8,15 @@ Takes the `BuildBlueprint` from Preflight and incrementally builds, deploys, tes
 
 ```mermaid
 flowchart TD
-    IN([BuildBlueprint from Preflight]) --> RAG
+    IN([BuildBlueprint from Preflight]) --> PLAN
 
-    RAG[RAG Retriever]
-    RAG --> PLAN[Node Planner]
+    PLAN["Node Planner<br/>(+ search_n8n_nodes tool)"]
     PLAN --> FO["Fan-Out<br/>(Send API)"]
 
     subgraph PARALLEL ["Parallel Execution"]
-        W1["Node Worker 1"]
-        W2["Node Worker 2"]
-        WN["Node Worker N"]
+        W1["Node Worker 1<br/>(+ search tool)"]
+        W2["Node Worker 2<br/>(+ search tool)"]
+        WN["Node Worker N<br/>(+ search tool)"]
         W1 ~~~ W2 ~~~ WN
     end
 
@@ -44,7 +43,6 @@ flowchart TD
 
     ACT --> DONE([Live workflow and webhook URL])
 
-    style RAG fill:#f0fdf4,stroke:#16a34a,color:#14532d
     style PLAN fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
     style FO fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
     style W1 fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
@@ -63,7 +61,7 @@ flowchart TD
     style FAIL fill:#fef2f2,stroke:#dc2626,color:#7f1d1d
 ```
 
-**🤖 Blue = Agentic (LLM call)** · **⏸️ Yellow = Pauses for user input** · **🟢 Green = Deterministic / API call**
+**Blue = Agentic (LLM call + tool use)** · **Yellow = Pauses for user input** · **Green = Deterministic / API call**
 
 ---
 
@@ -71,16 +69,39 @@ flowchart TD
 
 | Node | Agentic? | Pauses? | What it does |
 |---|---|---|---|
-| **RAG Retriever** | No | No | Hybrid BM25 + semantic search over ChromaDB (559 n8n node docs). Returns templates per node type plus workflow-level context. Also discovers installed n8n packages via introspection or config fallback. |
-| **Node Planner** | 🤖 Yes | No | Reasons over the full topology, intent, credential boundaries, and RAG summaries to produce a flat `NodePlan` with a list of `NodeSpec` objects and `PlannedEdge` connections. Detects and corrects cycles. |
-| **Node Worker** (parallel) | 🤖 Yes | No | Spawned in parallel via Send API. Builds a single n8n node JSON from its `NodeSpec`, applies credential IDs, generates UUIDs, and calculates canvas position. |
-| **Assembler** | 🤖 Yes | No | Fan-in: collects all `node_build_results`, validates them (short-circuits to debugger if any fail), checks for dangling edges, and merges nodes + connections into final `workflow_json`. |
+| **Node Planner** | Yes (+ `search_n8n_nodes` tool) | No | Calls `discover_installed_node_prefixes()` to get available packages, then reasons over intent, topology, and credentials. Uses the `search_n8n_nodes` tool on-demand to query ChromaDB for node docs before selecting types. Produces a flat `NodePlan` with `NodeSpec` objects and `PlannedEdge` connections. Detects and corrects cycles. MUST ONLY use installed packages — falls back to `httpRequest` or `code` otherwise. |
+| **Node Worker** (parallel) | Yes (+ `search_n8n_nodes` tool) | No | Spawned in parallel via Send API. Uses `search_n8n_nodes` tool to look up parameter schemas for its node type, then builds a single n8n node JSON from its `NodeSpec`. Applies credential IDs, generates UUIDs, and calculates canvas position. |
+| **Assembler** | Yes | No | Fan-in: collects all `node_build_results`, validates them (short-circuits to debugger if any fail), checks for dangling edges, and merges nodes + connections into final `workflow_json`. |
 | **Deploy** | No | No | Creates (POST) or updates (PUT) the workflow in n8n via the REST API. Catches HTTP errors and routes to Debugger instead of crashing. |
 | **Test** | No | No | Activates the workflow. Webhook → fire + poll execution. Non-webhook → activation success = pass. |
-| **Debugger** | 🤖 Yes | No | Classifies the error (`schema`, `auth`, `rate_limit`, `logic`, `missing_node`) and applies a targeted fix in one LLM call. Routes `missing_node` to the Node Substituter. |
-| **Node Substituter** | 🤖 Yes | No | LLM-powered recovery for unavailable node types. Replaces missing nodes with `n8n-nodes-base.*` built-in alternatives (typically `httpRequest` or `code`). Escalates to HITL if no substitution is possible. |
+| **Debugger** | Yes | No | Classifies the error (`schema`, `auth`, `rate_limit`, `logic`, `missing_node`) and applies a targeted fix in one LLM call. Routes `missing_node` to the Node Substituter. |
+| **Node Substituter** | Yes | No | LLM-powered recovery for unavailable node types. Replaces missing nodes with `n8n-nodes-base.*` built-in alternatives (typically `httpRequest` or `code`). Escalates to HITL if no substitution is possible. |
 | **Activate** | No | No | Permanently activates the workflow, returns the live webhook URL (None for non-webhook). |
-| **HITL Escalation** | No | ⏸️ Yes | Fix budget exhausted — generates plain-English explanation, pauses for user: retry / replan / abort. For `missing_node` errors, provides deterministic install instructions instead of LLM-generated explanation. |
+| **HITL Escalation** | No | Yes | Fix budget exhausted — generates plain-English explanation, pauses for user: retry / replan / abort. For `missing_node` errors, provides deterministic install instructions instead of LLM-generated explanation. |
+
+---
+
+## RAG Retrieval — Tool-Based (search_n8n_nodes)
+
+Previously, RAG retrieval was a dedicated graph node (`rag_retriever_node`) that pre-fetched all templates into state before planning. This caused two problems:
+
+1. **Context bloat** — all templates were dumped into `ARIAState.node_templates` and carried through every subsequent node
+2. **No iterative search** — the planner saw only 12 compressed summaries and couldn't search for alternatives when a node type wasn't installed
+
+Now, RAG retrieval is an on-demand LangChain tool (`search_n8n_nodes`) bound to both the Node Planner and Node Worker agents. The tool wraps `ChromaStore.hybrid_query_n8n_documents()` (BM25 + semantic RRF fusion) and returns up to 5 results per query.
+
+**Tool interface:**
+```python
+@tool(args_schema=SearchInput)
+async def search_n8n_nodes(query: str, doc_type: str | None = "node") -> str:
+    """Search the n8n knowledge base for node documentation and parameter templates."""
+```
+
+**How agents use it:**
+- **Planner:** Searches for each node type before selecting it, verifies it exists in an installed package, searches for alternatives if needed
+- **Worker:** Searches for the specific node type it's building to get parameter schemas
+
+**Location:** `src/agentic_system/build_cycle/tools/search_nodes.py`
 
 ---
 
@@ -92,19 +113,27 @@ flowchart TD
 sequenceDiagram
     participant S as ARIAState
     participant NP as Node Planner
+    participant T as search_n8n_nodes tool
     participant LLM as Gemini LLM
 
-    S->>NP: intent, topology{nodes,edges,branch_nodes},\ncredential_ids, node_templates
-    NP->>NP: _build_planner_prompt()<br/>cap templates at 12 summaries
+    S->>NP: intent, topology, credential_ids
+    NP->>NP: discover_installed_node_prefixes()
+    NP->>NP: _build_planner_prompt()
     NP->>LLM: structured call → NodePlan schema
+    LLM->>T: search_n8n_nodes("n8n-nodes-base.gmail")
+    T-->>LLM: node docs + parameter schemas
+    LLM->>T: search_n8n_nodes("send Telegram message")
+    T-->>LLM: matching results
     LLM-->>NP: NodePlan{nodes[], edges[], overall_strategy}
-    NP->>NP: _detect_cycle(edges)<br/>retry up to 3 times if cycle found
-    NP-->>S: nodes_to_build[], planned_edges[]
+    NP->>NP: _detect_cycle(edges) — retry up to 3 times
+    NP-->>S: nodes_to_build[], planned_edges[], available_node_packages[]
 ```
 
 **Planning rules:**
 - Output a flat list of `NodeSpec` objects (no phases)
-- Never mix nodes from different external services
+- MUST ONLY use node types from installed packages
+- Use `search_n8n_nodes` tool before selecting any node type
+- Fall back to `n8n-nodes-base.httpRequest` or `n8n-nodes-base.code` when no dedicated node exists
 - Include conditional branch hints (IF/Switch)
 - Preserve all topology edges
 - Ensure no cycles in planned edges
@@ -141,20 +170,23 @@ PlannedEdge {
 sequenceDiagram
     participant FO as Fan-Out Router
     participant W as Node Worker
+    participant T as search_n8n_nodes tool
     participant LLM as Gemini LLM
 
-    FO->>W: {node_spec, node_templates[], credential_ids}
-    W->>W: _filter_templates_for_node()
+    FO->>W: {node_spec, credential_ids}
     W->>W: _build_worker_prompt()
     W->>LLM: structured call → WorkerOutput schema
+    LLM->>T: search_n8n_nodes("n8n-nodes-base.gmail")
+    T-->>LLM: parameter schema + docs
     LLM-->>W: WorkerOutput{parameters, typeVersion}
-    W->>W: _assemble_node_json()<br/>inject UUID, webhookId (if webhook),\ncredentials, position
-    W-->>FO: NodeResult{node_name, node_json,\nvalidation_passed, validation_errors[]}
+    W->>W: _assemble_node_json()<br/>inject UUID, webhookId (if webhook),<br/>credentials, position
+    W-->>FO: NodeResult{node_name, node_json,<br/>validation_passed, validation_errors[]}
 ```
 
 **Each worker:**
-- Receives one `NodeSpec` and relevant RAG templates
-- Calls LLM once to generate complete `parameters`
+- Receives one `NodeSpec` and credential IDs
+- Uses `search_n8n_nodes` tool to look up parameter schemas on-demand
+- Calls LLM to generate complete `parameters`
 - Wraps parameters into full n8n node JSON
 - Returns a `NodeResult` with pass/fail status
 - Runs in parallel with all other workers
@@ -204,7 +236,7 @@ sequenceDiagram
 
     S->>DB: execution_result.error, workflow_json, fix_attempts
     DB->>LLM: "Attempt N/3\nError: {...}\nWorkflow: {...}"<br/>structured call → DebuggerOutput schema
-    LLM-->>DB: DebuggerOutput{error_type, node_name,\nfixed_parameters, explanation}
+    LLM-->>DB: DebuggerOutput{error_type, node_name,<br/>fixed_parameters, explanation}
     alt error_type in {schema, logic} AND fixed_parameters not null
         DB->>DB: _apply_fix() — patch node.parameters in workflow_json
         DB-->>S: workflow_json (patched), classified_error, fix_attempts+1
@@ -243,7 +275,7 @@ sequenceDiagram
     S->>HE: classified_error, fix_attempts, n8n_workflow_id
     HE->>LLM: node_name, error_type, message, fix_attempts
     LLM-->>HE: plain-English explanation (2-3 sentences)
-    HE->>FE: interrupt({type:"fix_exhausted", explanation, error,\nfix_attempts, n8n_url, options:["retry","replan","abort"]})
+    HE->>FE: interrupt({type:"fix_exhausted", explanation, error,<br/>fix_attempts, n8n_url, options:["retry","replan","abort"]})
     note over FE: Graph is PAUSED — user sees explanation + options
     FE-->>HE: resume({action: "retry"|"replan"|"abort"})
     alt action = retry
@@ -291,10 +323,10 @@ flowchart TD
 
 ```
 BuildBlueprint
-    ↓ RAG Retriever      → node_templates[], available_node_packages[]
-    ↓ Node Planner       → nodes_to_build[], planned_edges[] (prefers installed packages)
+    ↓ Node Planner       → discover_installed_node_prefixes(), search_n8n_nodes tool,
+    ↓                       nodes_to_build[], planned_edges[], available_node_packages[]
     ↓ Fan-Out (Send)     → spawn parallel Node Workers
-    ↓ Node Workers       → node_build_results[] (parallel)
+    ↓ Node Workers       → search_n8n_nodes tool, node_build_results[] (parallel)
     ↓ Assembler          → workflow_json (merged + validated), status="building"
     ↓ Deploy             → n8n_workflow_id
     ↓ Test               → execution_result → "done" | "fixing"
@@ -312,7 +344,6 @@ BuildBlueprint
 
 | Event | What the UI sees | Type |
 |---|---|---|
-| RAG Retriever fires | `"Retrieved N templates for M nodes via hybrid search"` | Per-node update |
 | Node Planner fires | `"Strategy: X → N nodes queued: [node], [node]..."` | Per-node update |
 | Node Workers fire (parallel) | `"Building NodeA..."`, `"Building NodeB..."` (one per worker) | Per-node update |
 | Assembler fires | `"Assembled N nodes into workflow."` | Per-node update |
@@ -339,50 +370,6 @@ Detection scans `workflow_json.nodes` for known type strings:
 - `"webhook"` → type contains `"webhook"` (e.g. `n8n-nodes-base.webhook`)
 - `"schedule"` → `n8n-nodes-base.scheduletrigger`, `n8n-nodes-base.cron`, or type contains `"schedule"` / `"cron"`
 - `"other"` → anything else
-
----
-
-## Bugs Fixed (2026-02-27)
-
-### Bug 1 — Phase-based sequential loop → Parallel fan-out/fan-in refactor
-**Files:** `graph.py`, `nodes/node_planner.py`, `nodes/node_worker.py`, `nodes/assembler.py`
-**Root cause:** Previous architecture split workflows into sequential phases (Phase 0, Phase 1, etc.), requiring an Engineer to build all nodes in a phase, then Advance Phase, then repeat. This serialized build time and was inflexible when node dependencies were lightweight.
-**Fix:** Replaced phase planner with flat Node Planner that produces a DAG of all nodes + edges (with cycle detection). Use LangGraph's Send API to spawn parallel Node Workers for each node, then Fan-In with Assembler to validate and merge results before Deploy.
-
----
-
-### Bug 2 — Test node swallowed activation errors, losing the real node name
-**File:** `nodes/test.py`
-**Root cause:** `activate_workflow()` raises `httpx.HTTPStatusError` (n8n 400) when a workflow has malformed parameters. This was caught by a broad `except Exception` which set `node_name: "unknown"` and discarded n8n's JSON error body. The Debugger received no useful signal and exhausted all 3 fix attempts without ever targeting the right node.
-**Fix:** Added a specific `except httpx.HTTPStatusError` handler before the broad catch. Extracts `response.json()` from n8n's error body and reads `context.nodeName` and `message` to populate the error result with the real failing node.
-
----
-
-### Bug 3 — Test node always fired a webhook, even for Schedule Trigger workflows
-**File:** `nodes/test.py`
-**Root cause:** After activation, the test unconditionally called `trigger_webhook(webhook_path)`. For Schedule Trigger workflows there is no webhook — `_extract_webhook_path` returned the fallback `"test-webhook"`, the POST to `/webhook/test-webhook` returned 404, and all 3 fix attempts were burned on a non-existent problem.
-**Fix:** Test node now calls `detect_trigger_type()` first and branches:
-- Webhook → `_test_webhook()`: activate + POST to webhook path + poll execution
-- Schedule/other → `_test_activation_only()`: activate only — a clean activation is the pass condition
-
----
-
-## What's Next
-
-### 1. `detect_trigger_type` scans all nodes, not just the entry trigger
-**Symptom:** A workflow containing a Webhook Response node after a Schedule Trigger will be misclassified as `"webhook"`.
-**Fix needed:** Use `build_blueprint.topology.entry_node` to restrict detection to the trigger node only, rather than scanning all nodes.
-
-### 2. Node Worker prompt tuning for large workflows
-**Symptom:** Parallel workers may struggle with large parameter sets or ambiguous node types when RAG templates are insufficient.
-**Fix needed:** Enhance Node Worker prompt with multi-shot examples and fallback strategies for rare or undocumented node types.
-
-### 3. Medium and large fixture coverage
-The benchmark currently passes 2/3 simple fixtures. Next step is to run the medium tier (3–4 node workflows with branching) and fix failures as they appear. Large fixtures (6–8 nodes, merge nodes) come after medium is stable.
-
-### 4. Cycle detection stress testing
-**Symptom:** Node Planner detects cycles but only retries LLM up to 3 times.
-**Fix needed:** Consider increasing retry budget or adding a fallback heuristic (e.g., topological sort with cycle-breaking) if LLM persistently produces cyclic plans.
 
 ---
 
