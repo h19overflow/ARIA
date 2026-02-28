@@ -34,6 +34,14 @@ NODE_CREDENTIAL_MAP: dict[str, list[str]] = {
     "microsoftOutlook": ["microsoftOutlookOAuth2Api"],
     "microsoftTeams": ["microsoftTeamsOAuth2Api"],
 
+    "googleGemini": ["googlePalmApi"],
+    "googleBigQuery": ["googleApi", "googleBigQueryOAuth2Api"],
+    "googleDocs": ["googleApi", "googleDocsOAuth2Api"],
+    "microsoftExcel": ["microsoftExcelOAuth2Api"],
+    "dropbox": ["dropboxApi", "dropboxOAuth2Api"],
+    "aws": ["aws"],
+    "openRouter": ["openRouterApi"],
+
     # Optional auth — can run unauthenticated
     "webhook": [],
     "httpRequest": ["httpBasicAuth", "httpHeaderAuth"],
