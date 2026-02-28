@@ -121,7 +121,7 @@ export function useBuild(): UseBuild {
     try {
       await submitResume(
         jobId,
-        kind as 'clarify' | 'provide' | 'resume' | 'retry' | 'replan' | 'abort',
+        kind as 'clarify' | 'provide' | 'resume' | 'retry' | 'replan' | 'abort' | 'discuss',
         value as string | Record<string, unknown>,
       )
     } catch (err) {

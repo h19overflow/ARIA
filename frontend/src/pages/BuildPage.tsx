@@ -39,8 +39,12 @@ export function BuildPage({ conversationId }: BuildPageProps) {
     return resume("provide", creds);
   }
 
-  function handleFixEscalationAction(action: "retry" | "replan" | "abort") {
-    resume(action, action);
+  function handleFixEscalationAction(action: "retry" | "replan" | "abort" | "discuss", message?: string) {
+    if (action === "discuss" && message) {
+      resume("discuss", message);
+    } else {
+      resume(action, action);
+    }
   }
 
   return (
@@ -57,7 +61,7 @@ export function BuildPage({ conversationId }: BuildPageProps) {
               storageKey="guide-phase2"
             />
           </div>
-          <div className="flex-1 overflow-hidden graph-canvas relative">
+          <div className="flex-1 overflow-hidden bg-graph-grid relative">
             {hasTopology ? (
               <NodeGraph
                 topology={ariaState?.topology ?? null}
