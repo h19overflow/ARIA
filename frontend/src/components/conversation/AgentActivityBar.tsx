@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Loader2, CheckCircle2, Pencil, Send } from 'lucide-react';
+import { Loader2, CheckCircle2, Pencil, Send, KeyRound } from 'lucide-react';
 import type { AgentActivity } from '@/types';
 
 interface AgentActivityBarProps {
@@ -18,12 +18,29 @@ function formatToolLabel(tool: string, args?: Record<string, unknown>): string {
     if (key) return `Clearing ${key}`;
     return 'Taking note';
   }
+  if (tool === 'batch_notes') {
+    const notes = args?.notes as unknown[] | undefined;
+    return `Recording ${notes?.length ?? ''} notes`;
+  }
   if (tool === 'commit_notes') return 'Committing requirements';
+  if (tool === 'scan_credentials') return 'Scanning credentials';
+  if (tool === 'get_credential_schema') {
+    const credType = args?.credential_type as string | undefined;
+    return credType ? `Fetching ${credType} schema` : 'Fetching credential schema';
+  }
+  if (tool === 'save_credential') {
+    const name = args?.name as string | undefined;
+    return name ? `Saving ${name}` : 'Saving credential';
+  }
+  if (tool === 'commit_preflight') return 'Finalizing credentials';
   return `Calling ${tool}`;
 }
 
+const CREDENTIAL_TOOLS = new Set(['scan_credentials', 'save_credential', 'get_credential_schema', 'commit_preflight']);
+
 function ToolIcon({ tool }: { tool: string }) {
   if (tool === 'commit_notes') return <Send size={11} style={{ flexShrink: 0, opacity: 0.7 }} />;
+  if (CREDENTIAL_TOOLS.has(tool)) return <KeyRound size={11} style={{ flexShrink: 0, opacity: 0.7 }} />;
   return <Pencil size={11} style={{ flexShrink: 0, opacity: 0.7 }} />;
 }
 
