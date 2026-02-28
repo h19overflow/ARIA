@@ -33,7 +33,8 @@ async def node_planner_node(state: ARIAState) -> dict:
     if not topology and not state.get("required_nodes"):
         return _empty_plan()
 
-    prompt = _build_planner_prompt(intent, topology, cred_ids, templates)
+    available_packages: list[str] = state.get("available_node_packages", [])
+    prompt = _build_planner_prompt(intent, topology, cred_ids, templates, available_packages)
     plan = await _invoke_with_cycle_retry(prompt)
 
     if plan is None:
@@ -104,6 +105,7 @@ def _build_planner_prompt(
     topology: WorkflowTopology | None,
     cred_ids: dict,
     templates: list[dict],
+    available_packages: list[str] | None = None,
 ) -> str:
     sections = [f"## Intent\n{intent}"]
 
@@ -113,6 +115,15 @@ def _build_planner_prompt(
         sections.append("## Topology\n(none — infer a linear plan from intent)")
 
     sections.append(f"## Available credentials\n{json.dumps(cred_ids, indent=2)}")
+
+    if available_packages:
+        sections.append(
+            f"## Available node packages (installed on this n8n instance)\n"
+            f"{json.dumps(available_packages, indent=2)}\n"
+            f"ONLY use node types from these packages. "
+            f"Example: if 'n8n-nodes-base' is listed, you can use 'n8n-nodes-base.gmail', "
+            f"'n8n-nodes-base.code', etc."
+        )
 
     if templates:
         summaries = _summarise_templates(templates)

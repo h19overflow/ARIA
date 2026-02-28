@@ -21,8 +21,13 @@ node is built concurrently once the plan is locked.
 6. **Parameter hints** — include as many concrete parameter values as you can
    infer from the intent and RAG templates. Empty dicts are acceptable when
    parameters cannot be determined without user input.
-7. **workflow_name** — derive a concise, meaningful name from the intent.
-8. **overall_strategy** — one sentence explaining the topology chosen.
+7. **Prefer installed packages** — if `available_node_packages` is provided, strongly
+   prefer node types from those packages (e.g. `n8n-nodes-base.gmail` over
+   `@n8n/n8n-nodes-langchain.lmChatGoogleGemini`). Using a node from an uninstalled
+   package will cause a deployment failure. If no built-in alternative exists,
+   use it anyway but flag it in `overall_strategy`.
+8. **workflow_name** — derive a concise, meaningful name from the intent.
+9. **overall_strategy** — one sentence explaining the topology chosen.
 
 ## Inputs you will receive
 
