@@ -12,6 +12,18 @@ from src.api.schemas import SSEEvent
 log = logging.getLogger("aria.event_bus")
 
 
+def get_event_bus(state: dict) -> BuildEventBus | None:
+    """Create a BuildEventBus from state, or None if job_id is missing."""
+    job_id = state.get("job_id", "")
+    if not job_id:
+        return None
+    from src.api.lifespan.redis import get_redis_instance
+    try:
+        return BuildEventBus(get_redis_instance(), job_id)
+    except RuntimeError:
+        return None
+
+
 class BuildEventBus:
     """Emit typed SSE events from any build cycle node."""
 

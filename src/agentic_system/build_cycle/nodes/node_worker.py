@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import time
 import uuid
 
 from langchain_core.messages import HumanMessage
@@ -9,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from src.agentic_system.shared.base_agent import BaseAgent
 from src.agentic_system.build_cycle.prompts.node_worker import NODE_WORKER_SYSTEM_PROMPT
+from src.services.pipeline.event_bus import get_event_bus
 
 _HORIZONTAL_SPACING_PX = 250
 _DEFAULT_Y_POSITION = 300
@@ -30,8 +32,15 @@ _agent = BaseAgent[WorkerOutput](
 
 async def node_worker_node(state: dict) -> dict:
     """Build one n8n node JSON from the NodeSpec in state and return a NodeResult."""
+    bus = get_event_bus(state)
+    node_spec: dict = state.get("node_spec", {})
+    node_name = node_spec.get("node_name", "unknown")
+
+    if bus:
+        await bus.emit_start("build", node_name, f"Building {node_name}...")
+    start = time.monotonic()
+
     try:
-        node_spec: dict = state["node_spec"]
         templates: list[dict] = state.get("node_templates", [])
         cred_ids: dict = state.get("resolved_credential_ids", {})
 
@@ -41,10 +50,21 @@ async def node_worker_node(state: dict) -> dict:
         output: WorkerOutput = await _agent.invoke([HumanMessage(content=prompt)])
         node_json = _assemble_node_json(node_spec, output)
 
+        elapsed = int((time.monotonic() - start) * 1000)
+        if bus:
+            await bus.emit_complete(
+                "build", node_name, "success",
+                f"{node_name} built successfully", duration_ms=elapsed,
+            )
         return {"node_build_results": [_success_result(node_spec["node_name"], node_json)]}
 
     except Exception as exc:
-        node_name = state.get("node_spec", {}).get("node_name", "unknown")
+        elapsed = int((time.monotonic() - start) * 1000)
+        if bus:
+            await bus.emit_complete(
+                "build", node_name, "error",
+                f"{node_name} failed: {exc}", duration_ms=elapsed,
+            )
         return {"node_build_results": [_failure_result(node_name, exc)]}
 
 

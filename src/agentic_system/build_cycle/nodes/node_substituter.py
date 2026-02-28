@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import json
-import uuid
 import logging
+import time
+import uuid
 
 from langchain_core.messages import HumanMessage
 
@@ -13,6 +14,7 @@ from src.agentic_system.build_cycle.schemas.node_plan import SubstitutionResult
 from src.agentic_system.build_cycle.prompts.node_substituter import (
     NODE_SUBSTITUTER_SYSTEM_PROMPT,
 )
+from src.services.pipeline.event_bus import get_event_bus
 
 logger = logging.getLogger(__name__)
 
@@ -25,14 +27,33 @@ _agent = BaseAgent[SubstitutionResult](
 
 async def node_substituter_node(state: ARIAState) -> dict:
     """Attempt to replace an unavailable node with built-in alternatives."""
+    bus = get_event_bus(state)
     error = state.get("classified_error") or {}
+    node_name = error.get("node_name", "unknown")
+
+    if bus:
+        await bus.emit_start("fix", "Node Substituter", f"Substituting {node_name}...")
+    start = time.monotonic()
+
     workflow_json = state.get("workflow_json")
 
     if not workflow_json:
+        elapsed = int((time.monotonic() - start) * 1000)
+        if bus:
+            await bus.emit_complete(
+                "fix", "Node Substituter", "error",
+                "No workflow JSON available", duration_ms=elapsed,
+            )
         return _escalate("No workflow JSON available for substitution.")
 
-    failing_node = _find_failing_node(workflow_json, error.get("node_name", ""))
+    failing_node = _find_failing_node(workflow_json, node_name)
     if not failing_node:
+        elapsed = int((time.monotonic() - start) * 1000)
+        if bus:
+            await bus.emit_complete(
+                "fix", "Node Substituter", "error",
+                f"Node '{node_name}' not found", duration_ms=elapsed,
+            )
         return _escalate(
             f"Could not find node '{error.get('node_name')}' in workflow."
         )
@@ -43,9 +64,22 @@ async def node_substituter_node(state: ARIAState) -> dict:
     )
 
     if not result.substitution_possible:
+        elapsed = int((time.monotonic() - start) * 1000)
+        if bus:
+            await bus.emit_complete(
+                "fix", "Node Substituter", "error",
+                f"Cannot substitute: {result.reason}", duration_ms=elapsed,
+            )
         return _escalate(result.reason, error=error)
 
     updated_workflow = _apply_substitution(workflow_json, result)
+    elapsed = int((time.monotonic() - start) * 1000)
+    if bus:
+        await bus.emit_complete(
+            "fix", "Node Substituter", "success",
+            f"Replaced '{result.removed_node_name}' with {len(result.replacement_nodes)} node(s)",
+            duration_ms=elapsed,
+        )
     return {
         "workflow_json": updated_workflow,
         "classified_error": None,

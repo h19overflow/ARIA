@@ -1,11 +1,14 @@
 """Build Cycle RAG Retriever — hybrid (BM25 + semantic) ChromaDB search."""
 from __future__ import annotations
 
+import time
+
 from langchain_core.messages import HumanMessage
 
 from src.agentic_system.shared.state import ARIAState
 from src.boundary.chroma.store import ChromaStore
 from src.boundary.n8n.node_discovery import discover_installed_node_prefixes
+from src.services.pipeline.event_bus import get_event_bus
 
 
 async def rag_retriever_node(state: ARIAState) -> dict:
@@ -19,6 +22,11 @@ async def rag_retriever_node(state: ARIAState) -> dict:
     document content, then appends a single combined query over the full
     intent string to surface relevant workflow-level context.
     """
+    bus = get_event_bus(state)
+    if bus:
+        await bus.emit_start("rag", "RAG Retriever", "Retrieving node templates...")
+    start = time.monotonic()
+
     installed_prefixes = await discover_installed_node_prefixes()
 
     blueprint = state.get("build_blueprint") or {}
@@ -31,6 +39,13 @@ async def rag_retriever_node(state: ARIAState) -> dict:
         templates = await _retrieve_templates(store, intent, required_nodes)
     finally:
         await store.disconnect()
+
+    elapsed = int((time.monotonic() - start) * 1000)
+    if bus:
+        await bus.emit_complete(
+            "rag", "RAG Retriever", "success",
+            f"Retrieved {len(templates)} templates", duration_ms=elapsed,
+        )
 
     return {
         "node_templates": templates,

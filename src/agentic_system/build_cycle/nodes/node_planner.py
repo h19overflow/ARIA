@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 
 from langchain_core.messages import HumanMessage
 
@@ -11,6 +12,7 @@ from src.agentic_system.shared.state import ARIAState, WorkflowTopology
 from src.agentic_system.build_cycle.schemas.node_plan import NodePlan, PlannedEdge
 from src.agentic_system.build_cycle.prompts.node_planner import NODE_PLANNER_SYSTEM_PROMPT
 from src.agentic_system.build_cycle.nodes._credential_resolver import resolve_node_credentials
+from src.services.pipeline.event_bus import get_event_bus
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,11 @@ _agent = BaseAgent[NodePlan](
 
 async def node_planner_node(state: ARIAState) -> dict:
     """Decompose workflow topology into a flat NodeSpec list and planned edges."""
+    bus = get_event_bus(state)
+    if bus:
+        await bus.emit_start("plan", "Node Planner", "Planning workflow nodes...")
+    start = time.monotonic()
+
     blueprint = state.get("build_blueprint") or {}
     topology: WorkflowTopology | None = blueprint.get("topology")
     intent: str = blueprint.get("intent") or state.get("intent", "")
@@ -32,6 +39,9 @@ async def node_planner_node(state: ARIAState) -> dict:
     templates: list[dict] = state.get("node_templates", [])
 
     if not topology and not state.get("required_nodes"):
+        elapsed = int((time.monotonic() - start) * 1000)
+        if bus:
+            await bus.emit_complete("plan", "Node Planner", "success", "No nodes to plan", duration_ms=elapsed)
         return _empty_plan()
 
     available_packages: list[str] = state.get("available_node_packages", [])
@@ -39,9 +49,18 @@ async def node_planner_node(state: ARIAState) -> dict:
     plan = await _invoke_with_cycle_retry(prompt)
 
     if plan is None:
+        elapsed = int((time.monotonic() - start) * 1000)
+        if bus:
+            await bus.emit_complete("plan", "Node Planner", "error", "Cycle detected after retries", duration_ms=elapsed)
         logger.error("[NodePlanner] Cycle detected after %d retries — escalating", MAX_CYCLE_RETRIES)
         return _error_plan()
 
+    elapsed = int((time.monotonic() - start) * 1000)
+    if bus:
+        await bus.emit_complete(
+            "plan", "Node Planner", "success",
+            f"Planned {len(plan.nodes)} nodes", duration_ms=elapsed,
+        )
     return _plan_to_state_update(plan, cred_ids)
 
 

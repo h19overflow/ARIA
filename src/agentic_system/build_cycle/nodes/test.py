@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 
 import httpx
 from langchain_core.messages import HumanMessage
@@ -13,6 +14,7 @@ from src.agentic_system.build_cycle.nodes._trigger_utils import (
     detect_trigger_type,
     extract_webhook_path,
 )
+from src.services.pipeline.event_bus import get_event_bus
 
 log = logging.getLogger("aria.test")
 
@@ -24,14 +26,28 @@ async def test_node(state: ARIAState) -> dict:
     Schedule/other: activate-only. n8n does not expose a manual-run API for
     non-webhook triggers, so a successful activation is treated as a pass.
     """
+    bus = get_event_bus(state)
+    if bus:
+        await bus.emit_start("test", "Test", "Testing workflow...")
+    start = time.monotonic()
+
     workflow_id = state["n8n_workflow_id"]
     workflow_json = state["workflow_json"]
     trigger_type = detect_trigger_type(workflow_json)
 
     if trigger_type != "webhook":
-        return await _test_activation_only(workflow_id, workflow_json)
+        result = await _test_activation_only(workflow_id, workflow_json)
+    else:
+        result = await _test_webhook(workflow_id, workflow_json)
 
-    return await _test_webhook(workflow_id, workflow_json)
+    elapsed = int((time.monotonic() - start) * 1000)
+    status = result.get("execution_result", {}).get("status", "error")
+    if bus:
+        await bus.emit_complete(
+            "test", "Test", status,
+            f"Test {status}", duration_ms=elapsed,
+        )
+    return result
 
 
 async def _test_activation_only(workflow_id: str, workflow_json: dict) -> dict:

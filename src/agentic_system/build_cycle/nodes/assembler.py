@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import logging
+import time
 
 from langchain_core.messages import HumanMessage
 
 from src.agentic_system.shared.state import ARIAState
+from src.services.pipeline.event_bus import get_event_bus
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +25,21 @@ def _branch_index(branch: str | None) -> int:
 
 async def assembler_node(state: ARIAState) -> dict:
     """Collect all node_build_results, validate, then assemble workflow JSON."""
+    bus = get_event_bus(state)
+    if bus:
+        await bus.emit_start("assemble", "Assembler", "Assembling workflow...")
+    start = time.monotonic()
+
     results = state.get("node_build_results", [])
     failed = _find_failed_results(results)
 
     if failed:
+        elapsed = int((time.monotonic() - start) * 1000)
+        if bus:
+            await bus.emit_complete(
+                "assemble", "Assembler", "error",
+                f"{len(failed)} node(s) failed validation", duration_ms=elapsed,
+            )
         return _build_validation_failure_output(failed)
 
     planned_edges: list[dict] = state.get("planned_edges", [])
@@ -34,11 +47,21 @@ async def assembler_node(state: ARIAState) -> dict:
 
     dangling_error = _find_dangling_edge(planned_edges, node_names)
     if dangling_error:
+        elapsed = int((time.monotonic() - start) * 1000)
+        if bus:
+            await bus.emit_complete("assemble", "Assembler", "error", dangling_error, duration_ms=elapsed)
         return _build_edge_error_output(dangling_error)
 
     workflow_name = _resolve_workflow_name(state)
     connections = _build_connections_from_edges(planned_edges, node_names)
     workflow_json = _assemble_workflow_json(workflow_name, results, connections)
+
+    elapsed = int((time.monotonic() - start) * 1000)
+    if bus:
+        await bus.emit_complete(
+            "assemble", "Assembler", "success",
+            f"Assembled {len(results)} nodes", duration_ms=elapsed,
+        )
 
     logger.info("[Assembler] Assembled %d nodes into workflow '%s'.", len(results), workflow_name)
     return {

@@ -1,15 +1,23 @@
 """Build Cycle Deploy — POST workflow to n8n."""
 from __future__ import annotations
 
+import time
+
 import httpx
 from langchain_core.messages import HumanMessage
 
 from src.agentic_system.shared.state import ARIAState
 from src.boundary.n8n.client import N8nClient
+from src.services.pipeline.event_bus import get_event_bus
 
 
 async def deploy_node(state: ARIAState) -> dict:
     """Deploy workflow JSON to n8n, capture workflow ID."""
+    bus = get_event_bus(state)
+    if bus:
+        await bus.emit_start("deploy", "Deploy", "Deploying workflow to n8n...")
+    start = time.monotonic()
+
     workflow_json = state["workflow_json"]
     existing_id = state.get("n8n_workflow_id")
 
@@ -24,11 +32,23 @@ async def deploy_node(state: ARIAState) -> dict:
         else:
             result = await client.deploy_workflow(payload)
     except httpx.HTTPStatusError as exc:
+        elapsed = int((time.monotonic() - start) * 1000)
+        if bus:
+            await bus.emit_complete(
+                "deploy", "Deploy", "error",
+                f"Deploy failed: {exc}", duration_ms=elapsed,
+            )
         return _handle_deploy_error(exc, workflow_json)
     finally:
         await client.disconnect()
 
     workflow_id = result["id"]
+    elapsed = int((time.monotonic() - start) * 1000)
+    if bus:
+        await bus.emit_complete(
+            "deploy", "Deploy", "success",
+            f"Deployed workflow {workflow_id}", duration_ms=elapsed,
+        )
     return {
         "n8n_workflow_id": workflow_id,
         "status": "testing",

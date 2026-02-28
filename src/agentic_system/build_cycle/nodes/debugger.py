@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 
 from langchain_core.messages import HumanMessage
 
@@ -19,6 +20,7 @@ from src.agentic_system.build_cycle.nodes._credential_resolver import (
     _find_matching_credential,
 )
 from src.agentic_system.shared.node_credential_map import NODE_CREDENTIAL_MAP
+from src.services.pipeline.event_bus import get_event_bus
 
 
 _agent = BaseAgent[DebuggerOutput](
@@ -32,10 +34,18 @@ _FIXABLE_TYPES = {"schema", "logic"}
 
 async def debugger_node(state: ARIAState) -> dict:
     """Classify execution error and apply fix in one LLM call."""
+    bus = get_event_bus(state)
     exec_result = state["execution_result"]
     workflow_json = state["workflow_json"]
     fix_attempts = state.get("fix_attempts", 0)
     error_data = exec_result.get("error") or {}
+
+    if bus:
+        await bus.emit_start(
+            "fix", "Debugger",
+            f"Fix attempt {fix_attempts + 1}/3 for {error_data.get('node_name', 'unknown')}",
+        )
+    start = time.monotonic()
 
     prompt = (
         f"Attempt: {fix_attempts + 1}/3\n"
@@ -58,6 +68,18 @@ async def debugger_node(state: ARIAState) -> dict:
         cred_ids = state.get("resolved_credential_ids", {})
         patched = await _try_attach_credentials(workflow_json, result.node_name, cred_ids)
         if patched:
+            if bus:
+                await bus.emit_warning(
+                    "fix", result.node_name,
+                    f"Auto-attached credentials for '{result.node_name}'",
+                )
+            elapsed = int((time.monotonic() - start) * 1000)
+            if bus:
+                await bus.emit_complete(
+                    "fix", "Debugger", "success",
+                    f"Auto-attached credentials for '{result.node_name}'",
+                    duration_ms=elapsed,
+                )
             return {
                 "classified_error": classified,
                 "fix_attempts": fix_attempts + 1,
@@ -82,6 +104,14 @@ async def debugger_node(state: ARIAState) -> dict:
         updates["messages"].append(HumanMessage(
             content=f"[Debugger] Fix applied to '{result.node_name}': {result.explanation}"
         ))
+
+    elapsed = int((time.monotonic() - start) * 1000)
+    fix_status = "success" if updates.get("status") == "building" else "error"
+    if bus:
+        await bus.emit_complete(
+            "fix", "Debugger", fix_status,
+            f"Debugger {result.error_type}: {result.message}", duration_ms=elapsed,
+        )
 
     return updates
 
