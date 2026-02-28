@@ -62,13 +62,31 @@ User ──► Phase 0: Conversation ──► Phase 1: Build Cycle ──► Li
 The Conversation phase is a free-form chat powered by a Gemini-backed agent. It operates in two sequential modes within a single chat session:
 
 1. **Requirements Gathering** — Probes the user for workflow details (trigger type, integrations, data transformations, constraints) and structures them into `ConversationNotes`. When the agent has enough context, it calls `commit_notes` to finalize the summary.
-2. **Credential Gathering** — After notes are committed, the agent automatically scans n8n for existing credentials via `scan_credentials`, identifies gaps, and guides the user through saving missing credentials in-chat via `save_credential`. Once all credentials are resolved, `commit_preflight` marks the conversation as build-ready.
+2. **Credential Gathering** — After notes are committed, the agent automatically uses a 5-step credential resolver (aliases → hardcoded map → convention guess → LLM fallback → skip) to discover required credential types, then scans n8n for existing credentials via `scan_credentials`, identifies gaps, and guides the user through saving missing credentials in-chat via `save_credential`. Once all credentials are resolved, `commit_preflight` marks the conversation as build-ready.
 
 The agent creates a **per-request agent graph** when in credential mode (post-commit). This avoids mutating the singleton agent and adds credential tools (`scan_credentials`, `get_credential_schema`, `save_credential`, `commit_preflight`) alongside the base conversation tools.
 
 <!-- mermaid-source-file:.mermaid/README_1772311073_133.mmd-->
 
 ![Mermaid Diagram](.mermaid/README_diagram_1772311073_133.svg)
+
+#### Credential Resolution Chain
+
+Once `commit_notes` is called, the agent enters credential mode and immediately uses a **5-step dynamic resolver** to discover what credential types are needed for the integration(s) the user specified. This resolver translates natural language integration names (e.g., "Zendesk", "Gmail") to the exact n8n credential type names, with fallback strategies for unknown integrations.
+
+<!-- mermaid-source-file:.mermaid/README_credential_resolver.mmd-->
+
+![Mermaid Diagram](.mermaid/README_credential_resolver.svg)
+
+| Step | Source | Latency | Example | File |
+|------|--------|---------|---------|------|
+| **1. Aliases** | `_INTEGRATION_ALIASES` dict (51 entries) | Instant | "google sheets" → `googleSheets` | `credential_resolver.py:26-51` |
+| **2. Hardcoded Map** | `NODE_CREDENTIAL_MAP` (30 n8n nodes) | Instant | `telegram` → `["telegramApi"]` | `node_credential_map.py` |
+| **3. Convention Guess** | Generate `{name}Api`, `{name}OAuth2Api` → validate against n8n `/credentials/schema/` | ~50ms per candidate | "zendesk" → `zendeskApi` (validated) | `credential_resolver.py:65-100` |
+| **4. LLM Fallback** | `BaseAgent[CredentialMatch]` structured output (when steps 1-3 fail) | ~1-2s | Unknown integration → LLM matches to saved types | `credential_llm_fallback.py` |
+| **5. Skip** | Warning logged, return empty list | Instant | Integration with no n8n equivalent | `credential_resolver.py:145-148` |
+
+Results from steps 3 and 4 are cached in a runtime dictionary and merged back into `NODE_CREDENTIAL_MAP` for the server's lifetime. This avoids re-resolving the same integrations on subsequent conversations.
 
 **Key files:**
 
@@ -78,12 +96,16 @@ The agent creates a **per-request agent graph** when in credential mode (post-co
 | `agentic_system/conversation/state.py`              | `ConversationState` — messages, notes, committed flag; Redis persistence with 24h TTL        |
 | `agentic_system/conversation/schemas.py`            | `ConversationNotes` — structured output: trigger, destination, transforms, constraints, credential fields |
 | `agentic_system/conversation/tools.py`              | `take_note`, `batch_notes`, `commit_notes` + re-exports credential tools                     |
-| `agentic_system/conversation/credential_tools.py`   | `scan_credentials` (factory), `get_credential_schema`, `save_credential`, `commit_preflight` |
+| `agentic_system/conversation/tools/credential_tools.py`   | `scan_credentials`, `get_credential_schema`, `save_credential`, `commit_preflight` |
 | `agentic_system/conversation/schema_helpers.py`     | `is_secret_field`, `fields_from_schema`, `fetch_pending_details` — credential schema parsing |
 | `agentic_system/conversation/prompts.py`            | System prompt with taxonomy of note keys, probing rules, and credential gathering section    |
 | `agentic_system/conversation/notes_updater.py`      | State mutation helpers for all tools                                                         |
 | `agentic_system/conversation/event_handlers.py`     | SSE event handling, tool_call_id tracking                                                    |
 | `agentic_system/conversation/message_builders.py`   | LangChain message construction                                                               |
+| `agentic_system/shared/credential_resolver.py`      | `resolve_credential_types` — 5-step resolution chain with runtime caching and LLM fallback  |
+| `agentic_system/shared/credential_llm_fallback.py`  | `llm_resolve` — BaseAgent-powered fallback for unknown integrations                          |
+| `agentic_system/shared/credential_utils.py`         | Helper utilities for credential validation and parsing                                      |
+| `agentic_system/shared/node_credential_map.py`      | `NODE_CREDENTIAL_MAP` — hardcoded mapping of 30 n8n node types to credential types           |
 
 ### Phase 1 — Build Cycle (Execution & Self-Healing)
 
@@ -180,7 +202,7 @@ The core of ARIA. Contains all LLM-powered agents, graph definitions, and the sh
 | `state.py`               | `ARIAState` TypedDict — the master state object shared across all graph nodes. Also defines `WorkflowTopology`, `BuildBlueprint`, `ClassifiedError`, `ExecutionResult`, `PhaseEntry`.    |
 | `base_agent.py`          | `BaseAgent[S]` — generic wrapper around `ChatGoogleGenerativeAI` (Gemini). Handles structured output extraction, streaming, retry with exponential backoff (3 attempts), and Weave init. |
 | `errors.py`              | Exception hierarchy: `AgentError` → `ExtractionError`, `CredentialError`, `DeployError`, `ExecutionError`, `FixExhaustedError`, `ClassificationError`.                                   |
-| `node_credential_map.py` | Static map of 30 n8n node types → credential type names. Used by credential tools.                                                                                                       |
+| `node_credential_map.py` | Static map of 30 n8n node types → credential type names. Used as step 2 of the credential resolver.                                                                                        |
 | `weave_logger.py`        | Singleton W&B Weave initializer for LLM observability.                                                                                                                                   |
 
 #### `conversation/` — Phase 0

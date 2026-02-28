@@ -1,6 +1,8 @@
 # Build Cycle Graph
 
-Takes the `BuildBlueprint` from Preflight and incrementally builds, deploys, tests, and activates a live n8n workflow using parallel node workers and fan-in assembly.
+Takes the `BuildBlueprint` from the completed Conversation (Phase 0) and incrementally builds, deploys, tests, and activates a live n8n workflow using parallel node workers and fan-in assembly.
+
+> **Upstream dependency:** The build cycle requires `committed=true` AND `credentials_committed=true` in the `conversation:{id}` Redis state. Credentials are resolved dynamically by Phase 0's [5-step credential resolver](../shared/credential_resolver.py) before reaching the build cycle.
 
 ---
 
@@ -165,6 +167,8 @@ PlannedEdge {
 ## State Flow Summary
 
 ```
+conversation:{id} (committed + credentials resolved)
+    ↓ Build Service      → validate_conversation_for_build(), convert to ARIAState
 BuildBlueprint
     ↓ Node Planner       → discover_installed_node_prefixes(), search_n8n_nodes tool,
     ↓                       nodes_to_build[], planned_edges[], available_node_packages[]
