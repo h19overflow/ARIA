@@ -1,0 +1,1 @@
+export { formatCredentialDisplayName } from './displayNames';
