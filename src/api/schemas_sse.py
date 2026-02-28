@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 
 class SSEEvent(BaseModel):
-    type: Literal["node", "node_start", "interrupt", "done", "error", "ping"]
+    type: Literal["node", "node_start", "interrupt", "done", "error", "ping", "warning"]
     stage: str | None = None
     node_name: str | None = None
     message: str | None = None
