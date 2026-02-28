@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant S as ARIAState
+    participant HE as HITL Escalation
+    participant LLM as Gemini LLM (HITLExplainer)
+    participant FE as Frontend
+
+    S->>HE: classified_error, fix_attempts, n8n_workflow_id
+    HE->>LLM: node_name, error_type, message, fix_attempts
+    LLM-->>HE: plain-English explanation (2-3 sentences)
+    HE->>FE: interrupt({type:"fix_exhausted", explanation, error,<br/>fix_attempts, n8n_url, options:["retry","replan","abort"]})
+    note over FE: Graph is PAUSED — user sees explanation + options
+    FE-->>HE: resume({action: "retry"|"replan"|"abort"})
+    alt action = retry
+        HE-->>S: fix_attempts=0, status="testing"
+        note right of S: routes → test (user fixed node in n8n UI)
+    else action = replan
+        HE-->>S: clear all build state, status="replanning"
+        note right of S: routes → fail (orchestrator restarts preflight)
+    else action = abort
+        HE-->>S: status="failed"
+    end

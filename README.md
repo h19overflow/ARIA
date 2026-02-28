@@ -66,40 +66,9 @@ The Conversation phase is a free-form chat powered by a Gemini-backed agent. It 
 
 The agent creates a **per-request agent graph** when in credential mode (post-commit). This avoids mutating the singleton agent and adds credential tools (`scan_credentials`, `get_credential_schema`, `save_credential`, `commit_preflight`) alongside the base conversation tools.
 
-```mermaid
-flowchart TD
-    U([User Message]) --> CA[Conversation Agent]
+<!-- mermaid-source-file:.mermaid\README_1772311073_133.mmd-->
 
-    subgraph Requirements Mode
-        CA -->|Needs Details| Q[Ask Probing Question]
-        Q --> U
-        CA -->|take_note| N[Update ConversationNotes]
-        N --> CA
-        CA -->|commit_notes| CM([Notes Committed])
-    end
-
-    CM --> CRED[Credential Mode]
-
-    subgraph Credential Mode
-        CRED -->|scan_credentials| SC[Scan n8n Credentials]
-        SC -->|All Found| CP[commit_preflight]
-        SC -->|Missing| ASK[Ask User for Credentials]
-        ASK --> U
-        CA -->|save_credential| SV[Save to n8n]
-        SV --> SC
-        CP --> DONE([Ready for Build])
-    end
-
-    style CA fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
-    style Q fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
-    style N fill:#bae6fd,stroke:#0284c7,stroke-width:2px,color:#0f172a
-    style CM fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#0f172a
-    style SC fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
-    style ASK fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
-    style SV fill:#bae6fd,stroke:#0284c7,stroke-width:2px,color:#0f172a
-    style CP fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#0f172a
-    style DONE fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#0f172a
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772311073_133.svg)
 
 **Key files:**
 
@@ -120,38 +89,9 @@ flowchart TD
 
 Once the conversation is fully committed (both `committed` and `credentials_committed` are true), the Build Cycle takes over. It reads the `ConversationNotes` from the `conversation:{id}` Redis key and builds the workflow **phase-by-phase** (e.g., Trigger → Data Processing → Output), testing and self-healing at each step.
 
-```mermaid
-flowchart TD
-    Start([ConversationNotes]) --> RAG[RAG Retriever]
-    RAG --> PP[Phase Planner]
-    PP --> ENG[Engineer Agent]
+<!-- mermaid-source-file:.mermaid\README_1772311073_134.mmd-->
 
-    ENG -->|Generates JSON| DEP[Deploy to n8n]
-    DEP --> TST[Execute Test]
-
-    TST -->|Pass| CHK{More Phases?}
-    CHK -->|Yes| ADV[Advance Phase] --> ENG
-    CHK -->|No| ACT([Workflow Activated])
-
-    TST -->|Fail| DBG[Debugger Agent]
-
-    DBG -->|Schema/Logic Fix| DEP
-    DBG -->|Rate Limit| TST
-
-    DBG -->|Unrecoverable| ESC[HITL Escalation]
-
-    ESC -->|Retry| DEP
-    ESC -->|Replan| FAIL([Replanning])
-    ESC -->|Abort| FAIL2([Failed])
-
-    style RAG fill:#c4b5fd,stroke:#7c3aed,stroke-width:2px,color:#0f172a
-    style PP fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
-    style ENG fill:#bae6fd,stroke:#0284c7,stroke-width:2px,color:#0f172a
-    style DBG fill:#fca5a5,stroke:#dc2626,stroke-width:2px,color:#0f172a
-    style ESC fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
-    style ACT fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#0f172a
-    style ADV fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772311073_134.svg)
 
 **Graph nodes and their roles:**
 
@@ -184,34 +124,9 @@ flowchart TD
 
 ## Tech Stack & Services
 
-```mermaid
-graph LR
-    subgraph Client [Frontend]
-        React[React / Vite]
-    end
+<!-- mermaid-source-file:.mermaid\README_1772311073_135.mmd-->
 
-    subgraph API [Backend API]
-        FA[FastAPI]
-        RD[(Redis)]
-    end
-
-    subgraph Engine [Intelligence]
-        LG[LangGraph Pipeline]
-        GM[Gemini]
-        CH[(ChromaDB)]
-    end
-
-    subgraph Runtime [Execution]
-        N8N[n8n Instance]
-    end
-
-    React <-->|REST & SSE| FA
-    FA <-->|Job State & Pub/Sub| RD
-    RD --> LG
-    LG <--> GM
-    LG <-->|Hybrid RAG| CH
-    LG <-->|Deploy & Test| N8N
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772311073_135.svg)
 
 | Component        | Role                                                                                                   |
 | ---------------- | ------------------------------------------------------------------------------------------------------ |
@@ -438,97 +353,15 @@ A Streamlit-based developer UI that predates the React frontend. Uses synchronou
 
 ### Conversation Flow
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant API as FastAPI
-    participant CA as ConversationAgent
-    participant R as Redis
-    participant LLM as Gemini
-    participant N8N as n8n API
+<!-- mermaid-source-file:.mermaid\README_1772311073_136.mmd-->
 
-    U->>API: POST /conversation/start
-    API->>R: SET conversation:{id} (24h TTL)
-    API-->>U: { conversation_id }
-
-    Note over U,LLM: Requirements Gathering Mode
-
-    U->>API: POST /conversation/{id}/message (SSE)
-    API->>R: GET conversation:{id}
-    API->>CA: process_message()
-    CA->>LLM: stream_events(messages)
-    LLM-->>CA: token deltas + tool calls
-    CA-->>API: yield { type: "token", content }
-    CA->>CA: take_note / batch_notes → update notes
-    CA->>CA: commit_notes → state.committed = true
-    CA->>R: SET conversation:{id}
-    API-->>U: SSE stream (tokens + tool events)
-
-    Note over U,N8N: Credential Gathering Mode (post-commit)
-
-    U->>API: POST /conversation/{id}/message (SSE)
-    API->>CA: process_message() [credential graph]
-    CA->>N8N: scan_credentials (list_credentials)
-    CA-->>API: yield scan results + pending list
-    CA->>LLM: ask user about missing credentials
-    LLM-->>CA: guidance for user
-    API-->>U: SSE stream
-
-    U->>API: POST /conversation/{id}/message (SSE)
-    CA->>N8N: save_credential(type, name, data)
-    CA->>CA: commit_preflight → credentials_committed = true
-    CA->>R: SET conversation:{id}
-    API-->>U: SSE stream (ready for build)
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772311073_136.svg)
 
 ### Build Cycle Flow
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant API as FastAPI
-    participant SVC as BuildService
-    participant BC as Build Cycle Graph
-    participant R as Redis
-    participant CH as ChromaDB
-    participant N8N as n8n
+<!-- mermaid-source-file:.mermaid\README_1772311073_137.mmd-->
 
-    U->>API: POST /build { conversation_id }
-    API->>R: GET conversation:{id} → validate committed + credentials_committed
-    API->>R: SET job:{id} status=building
-    API->>SVC: create_task(run_build)
-    API-->>U: 202 { build_job_id }
-
-    SVC->>BC: astream(state from conversation notes)
-    BC->>CH: hybrid_query per node type
-    BC->>BC: rag_retriever → node_templates
-    BC->>BC: phase_planner → PhasePlan
-
-    loop Each Phase
-        BC->>BC: engineer → workflow JSON
-        BC->>N8N: deploy_workflow / update_workflow
-        BC->>N8N: activate → trigger webhook → poll
-
-        alt Test Passes
-            BC->>BC: advance_phase (or activate if last)
-        else Test Fails (fix budget remaining)
-            BC->>BC: debugger → classify + patch
-            BC->>N8N: re-deploy patched workflow
-        else Fix Budget Exhausted
-            BC->>BC: hitl_fix_escalation → interrupt()
-            SVC->>R: PUBLISH sse:{id} (interrupt)
-            U->>API: POST /jobs/{id}/resume { action: "retry" }
-            API->>R: PUBLISH resume:{id}
-        end
-
-        SVC->>R: PUBLISH sse:{id} (node events)
-    end
-
-    SVC->>R: PUBLISH sse:{id} (done)
-    SVC->>R: SET job:{id} status=done
-    R-->>API: SSE done + webhook_url
-    API-->>U: workflow live!
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772311073_137.svg)
 
 ---
 
@@ -621,20 +454,9 @@ ARIA uses two HITL mechanisms:
 
 ARIA's RAG pipeline combines BM25 keyword search with semantic similarity for robust retrieval over n8n documentation.
 
-```mermaid
-flowchart LR
-    Q([Query]) --> AD[Alpha Detector]
-    AD -->|alpha| BM[BM25 Index]
-    AD -->|alpha| SEM[Semantic Search]
-    BM --> RRF[RRF Fusion]
-    SEM --> RRF
-    RRF --> TOP([Top-K Results])
+<!-- mermaid-source-file:.mermaid\README_1772311073_138.mmd-->
 
-    style AD fill:#c4b5fd,stroke:#7c3aed,stroke-width:2px,color:#0f172a
-    style BM fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
-    style SEM fill:#bae6fd,stroke:#0284c7,stroke-width:2px,color:#0f172a
-    style RRF fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772311073_138.svg)
 
 **Alpha detection** dynamically weights the two retrieval methods:
 

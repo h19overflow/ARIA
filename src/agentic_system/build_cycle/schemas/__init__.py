@@ -4,6 +4,7 @@ from src.agentic_system.build_cycle.schemas.execution import (
     HITLExplanation,
 )
 from src.agentic_system.build_cycle.schemas.node_plan import (
+    AssemblerOutput,
     NodePlan,
     NodeResult,
     NodeSpec,
@@ -15,6 +16,7 @@ from src.agentic_system.build_cycle.schemas.node_plan import (
 )
 
 __all__ = [
+    "AssemblerOutput",
     "DebuggerOutput",
     "HITLExplanation",
     "NodePlan",

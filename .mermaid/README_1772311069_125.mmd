@@ -1,0 +1,32 @@
+flowchart TD
+    U([User Message]) --> CA[Conversation Agent]
+
+    subgraph Requirements Mode
+        CA -->|Needs Details| Q[Ask Probing Question]
+        Q --> U
+        CA -->|take_note| N[Update ConversationNotes]
+        N --> CA
+        CA -->|commit_notes| CM([Notes Committed])
+    end
+
+    CM --> CRED[Credential Mode]
+
+    subgraph Credential Mode
+        CRED -->|scan_credentials| SC[Scan n8n Credentials]
+        SC -->|All Found| CP[commit_preflight]
+        SC -->|Missing| ASK[Ask User for Credentials]
+        ASK --> U
+        CA -->|save_credential| SV[Save to n8n]
+        SV --> SC
+        CP --> DONE([Ready for Build])
+    end
+
+    style CA fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
+    style Q fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
+    style N fill:#bae6fd,stroke:#0284c7,stroke-width:2px,color:#0f172a
+    style CM fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#0f172a
+    style SC fill:#e2e8f0,stroke:#64748b,stroke-width:2px,color:#0f172a
+    style ASK fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a
+    style SV fill:#bae6fd,stroke:#0284c7,stroke-width:2px,color:#0f172a
+    style CP fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#0f172a
+    style DONE fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#0f172a

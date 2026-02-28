@@ -1,0 +1,40 @@
+sequenceDiagram
+    participant U as User
+    participant API as FastAPI
+    participant CA as ConversationAgent
+    participant R as Redis
+    participant LLM as Gemini
+    participant N8N as n8n API
+
+    U->>API: POST /conversation/start
+    API->>R: SET conversation:{id} (24h TTL)
+    API-->>U: { conversation_id }
+
+    Note over U,LLM: Requirements Gathering Mode
+
+    U->>API: POST /conversation/{id}/message (SSE)
+    API->>R: GET conversation:{id}
+    API->>CA: process_message()
+    CA->>LLM: stream_events(messages)
+    LLM-->>CA: token deltas + tool calls
+    CA-->>API: yield { type: "token", content }
+    CA->>CA: take_note / batch_notes → update notes
+    CA->>CA: commit_notes → state.committed = true
+    CA->>R: SET conversation:{id}
+    API-->>U: SSE stream (tokens + tool events)
+
+    Note over U,N8N: Credential Gathering Mode (post-commit)
+
+    U->>API: POST /conversation/{id}/message (SSE)
+    API->>CA: process_message() [credential graph]
+    CA->>N8N: scan_credentials (list_credentials)
+    CA-->>API: yield scan results + pending list
+    CA->>LLM: ask user about missing credentials
+    LLM-->>CA: guidance for user
+    API-->>U: SSE stream
+
+    U->>API: POST /conversation/{id}/message (SSE)
+    CA->>N8N: save_credential(type, name, data)
+    CA->>CA: commit_preflight → credentials_committed = true
+    CA->>R: SET conversation:{id}
+    API-->>U: SSE stream (ready for build)

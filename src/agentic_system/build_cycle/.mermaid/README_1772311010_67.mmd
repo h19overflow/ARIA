@@ -1,0 +1,21 @@
+flowchart TD
+    T[test_node] --> D{detect_trigger_type}
+    D -->|webhook| W[_test_webhook]
+    D -->|schedule / other| A[_test_activation_only]
+
+    W --> W1[activate_workflow]
+    W1 --> W2[trigger_webhook POST /webhook/path]
+    W2 --> W3[poll_execution 30s timeout]
+    W3 -->|success| OK([status: done])
+    W3 -->|error| ERR([status: fixing])
+
+    A --> A1[activate_workflow]
+    A1 -->|success| OK2([status: done])
+    A1 -->|HTTPStatusError| ERR2([status: fixing\nwith real node_name from n8n body])
+
+    style W fill:#f0fdf4,stroke:#16a34a,color:#14532d
+    style A fill:#f0fdf4,stroke:#16a34a,color:#14532d
+    style OK fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
+    style OK2 fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
+    style ERR fill:#fef2f2,stroke:#dc2626,color:#7f1d1d
+    style ERR2 fill:#fef2f2,stroke:#dc2626,color:#7f1d1d

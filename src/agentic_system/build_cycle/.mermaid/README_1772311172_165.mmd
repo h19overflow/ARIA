@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant FO as Fan-Out Router
+    participant W as Node Worker
+    participant T as search_n8n_nodes tool
+    participant LLM as Gemini LLM
+
+    FO->>W: {node_spec, credential_ids}
+    W->>W: _build_worker_prompt()
+    W->>LLM: structured call → WorkerOutput schema
+    LLM->>T: search_n8n_nodes("n8n-nodes-base.gmail")
+    T-->>LLM: parameter schema + docs
+    LLM-->>W: WorkerOutput{parameters, typeVersion}
+    W->>W: _assemble_node_json()<br/>inject UUID, webhookId (if webhook),<br/>credentials, position
+    W-->>FO: NodeResult{node_name, node_json,<br/>validation_passed, validation_errors[]}

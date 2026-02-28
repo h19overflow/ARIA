@@ -6,68 +6,9 @@ A conversational agent plus a LangGraph build cycle that turn a plain-English re
 
 ## End-to-end flow
 
-```mermaid
-flowchart TD
-    U([User request]) --> CONV
+<!-- mermaid-source-file:.mermaid\README_1772311153_152.mmd-->
 
-    subgraph CONV [CONVERSATION]
-        direction TB
-        CA[Conversation Agent] -->|probe| Q[Ask user]
-        Q --> CA
-        CA -->|batch_notes / take_note| N[Update ConversationNotes]
-        N --> CA
-        CA -->|commit_notes| CRED[Credential Mode]
-        CRED -->|scan_credentials| SC[Check n8n]
-        SC -->|missing| ASK[Ask user for creds]
-        ASK -->|save_credential| SC
-        SC -->|all resolved| CP[commit_preflight]
-    end
-
-    CONV --> BC
-
-    subgraph BC [BUILD CYCLE]
-        direction TB
-        RAG[RAG Retriever] --> PP[Phase Planner]
-        PP --> ENG[Engineer]
-        ENG --> DEP[Deploy] --> TST[Test]
-        TST -->|more phases| ADV[Advance Phase] --> ENG
-        TST -->|error| DBG[Debugger]
-        DEP -->|HTTP error| DBG
-        DBG -->|fixed| DEP
-        DBG -->|missing node| SUB[Node Substituter]
-        SUB -->|replaced| DEP
-        SUB -->|can't replace| ESC
-        DBG -->|exhausted| ESC[HITL Escalation]
-        ESC -->|manual fix| DEP
-        ESC -->|replan or abort| FAIL[Fail]
-        TST -->|done| ACT[Activate]
-    end
-
-    ACT --> DONE([Live workflow and webhook URL])
-
-    style CA fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
-    style PP fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
-    style ENG fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
-    style DBG fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
-    style SUB fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
-    style Q fill:#fef9c3,stroke:#ca8a04,color:#713f12
-    style ASK fill:#fef9c3,stroke:#ca8a04,color:#713f12
-    style ESC fill:#fef9c3,stroke:#ca8a04,color:#713f12
-    style N fill:#f0fdf4,stroke:#16a34a,color:#14532d
-    style CRED fill:#f0fdf4,stroke:#16a34a,color:#14532d
-    style SC fill:#f0fdf4,stroke:#16a34a,color:#14532d
-    style CP fill:#f0fdf4,stroke:#16a34a,color:#14532d
-    style RAG fill:#f0fdf4,stroke:#16a34a,color:#14532d
-    style DEP fill:#f0fdf4,stroke:#16a34a,color:#14532d
-    style TST fill:#f0fdf4,stroke:#16a34a,color:#14532d
-    style ADV fill:#f0fdf4,stroke:#16a34a,color:#14532d
-    style ACT fill:#f0fdf4,stroke:#16a34a,color:#14532d
-    style FAIL fill:#fef2f2,stroke:#dc2626,color:#7f1d1d
-    style U fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
-    style DONE fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
-    style CONV fill:#f8fafc,stroke:#94a3b8
-    style BC fill:#f8fafc,stroke:#94a3b8
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772311153_152.svg)
 
 **Blue = Agentic (LLM)** | **Yellow = Pauses for user** | **Green = Deterministic / API call**
 
@@ -80,16 +21,9 @@ The system has two execution layers:
 1. **Conversation Agent** — a `BaseAgent` (not a LangGraph graph) that handles requirements gathering and credential resolution in a single streaming chat. State persisted to Redis.
 2. **Build Cycle Graph** — a LangGraph `StateGraph` compiled with `MemorySaver` that builds, deploys, tests, and self-heals the workflow.
 
-```mermaid
-flowchart LR
-    FE["Frontend\n(React)"] <-->|SSE stream| API["FastAPI"]
-    API --> CA["Conversation Agent\n(BaseAgent)"]
-    CA -->|state| RD[(Redis)]
-    RD --> BS["Build Service"]
-    BS -->|ARIAState| BCG["Build Cycle Graph\n(MemorySaver)"]
-    BCG -->|final state| API
-    API -->|resume_value| BCG
-```
+<!-- mermaid-source-file:.mermaid\README_1772311153_153.mmd-->
+
+![Mermaid Diagram](.mermaid\README_diagram_1772311153_153.svg)
 
 The build service reads the committed `ConversationState` from Redis (`conversation:{id}`), converts it to `ARIAState`, and streams the build cycle graph.
 

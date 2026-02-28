@@ -1,0 +1,8 @@
+flowchart LR
+    FE["Frontend\n(React)"] <-->|SSE stream| API["FastAPI"]
+    API --> CA["Conversation Agent\n(BaseAgent)"]
+    CA -->|state| RD[(Redis)]
+    RD --> BS["Build Service"]
+    BS -->|ARIAState| BCG["Build Cycle Graph\n(MemorySaver)"]
+    BCG -->|final state| API
+    API -->|resume_value| BCG

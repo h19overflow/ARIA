@@ -95,6 +95,17 @@ class WorkerOutput(BaseModel):
     parameters: dict = Field(description="Complete n8n node parameters")
 
 
+class AssemblerOutput(BaseModel):
+    """LLM output from the Assembler agent — complete n8n connections object."""
+    connections: dict = Field(
+        description=(
+            "Complete n8n connections dict. Format: "
+            "{nodeName: {main: [[{node: targetName, type: 'main', index: 0}]]}}. "
+            "Each output index is a separate list within 'main'."
+        ),
+    )
+
+
 class SearchInput(BaseModel):
     """Input for n8n node search tool."""
     query: str = Field(description="Search terms for node types")

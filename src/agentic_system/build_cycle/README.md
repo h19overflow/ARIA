@@ -6,60 +6,9 @@ Takes the `BuildBlueprint` from Preflight and incrementally builds, deploys, tes
 
 ## Workflow
 
-```mermaid
-flowchart TD
-    IN([BuildBlueprint from Preflight]) --> PLAN
+<!-- mermaid-source-file:.mermaid\README_1772311172_163.mmd-->
 
-    PLAN["Node Planner<br/>(+ search_n8n_nodes tool)"]
-    PLAN --> FO["Fan-Out<br/>(Send API)"]
-
-    subgraph PARALLEL ["Parallel Execution"]
-        W1["Node Worker 1<br/>(+ search tool)"]
-        W2["Node Worker 2<br/>(+ search tool)"]
-        WN["Node Worker N<br/>(+ search tool)"]
-        W1 ~~~ W2 ~~~ WN
-    end
-
-    FO --> PARALLEL
-    PARALLEL --> ASM[Assembler<br/>validation gate]
-
-    ASM --> DEP[Deploy]
-    DEP --> TST[Test]
-
-    TST -->|success| ACT[Activate]
-    TST -->|error| DBG[Debugger]
-    DEP -->|HTTP error| DBG
-
-    DBG -->|rate limit| TST
-    DBG -->|fixable + budget remaining| DEP
-    DBG -->|missing node + budget| SUB[Node Substituter]
-    DBG -->|unfixable or attempts exhausted| ESC[HITL Escalation - PAUSES]
-
-    SUB -->|substitution OK| DEP
-    SUB -->|cannot substitute| ESC
-
-    ESC -->|manual fix| DEP
-    ESC -->|replan or abort| FAIL([Failed])
-
-    ACT --> DONE([Live workflow and webhook URL])
-
-    style PLAN fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
-    style FO fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
-    style W1 fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
-    style W2 fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
-    style WN fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
-    style PARALLEL fill:#f8fafc,stroke:#cbd5e1
-    style ASM fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
-    style DBG fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
-    style DEP fill:#f0fdf4,stroke:#16a34a,color:#14532d
-    style TST fill:#f0fdf4,stroke:#16a34a,color:#14532d
-    style ACT fill:#f0fdf4,stroke:#16a34a,color:#14532d
-    style SUB fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
-    style ESC fill:#fef9c3,stroke:#ca8a04,color:#713f12
-    style IN fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
-    style DONE fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
-    style FAIL fill:#fef2f2,stroke:#dc2626,color:#7f1d1d
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772311172_163.svg)
 
 **Blue = Agentic (LLM call + tool use)** · **Yellow = Pauses for user input** · **Green = Deterministic / API call**
 
@@ -109,25 +58,9 @@ async def search_n8n_nodes(query: str, doc_type: str | None = "node") -> str:
 
 ### Node Planner
 
-```mermaid
-sequenceDiagram
-    participant S as ARIAState
-    participant NP as Node Planner
-    participant T as search_n8n_nodes tool
-    participant LLM as Gemini LLM
+<!-- mermaid-source-file:.mermaid\README_1772311172_164.mmd-->
 
-    S->>NP: intent, topology, credential_ids
-    NP->>NP: discover_installed_node_prefixes()
-    NP->>NP: _build_planner_prompt()
-    NP->>LLM: structured call → NodePlan schema
-    LLM->>T: search_n8n_nodes("n8n-nodes-base.gmail")
-    T-->>LLM: node docs + parameter schemas
-    LLM->>T: search_n8n_nodes("send Telegram message")
-    T-->>LLM: matching results
-    LLM-->>NP: NodePlan{nodes[], edges[], overall_strategy}
-    NP->>NP: _detect_cycle(edges) — retry up to 3 times
-    NP-->>S: nodes_to_build[], planned_edges[], available_node_packages[]
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772311172_164.svg)
 
 **Planning rules:**
 - Output a flat list of `NodeSpec` objects (no phases)
@@ -166,22 +99,9 @@ PlannedEdge {
 
 ### Node Worker (parallel)
 
-```mermaid
-sequenceDiagram
-    participant FO as Fan-Out Router
-    participant W as Node Worker
-    participant T as search_n8n_nodes tool
-    participant LLM as Gemini LLM
+<!-- mermaid-source-file:.mermaid\README_1772311172_165.mmd-->
 
-    FO->>W: {node_spec, credential_ids}
-    W->>W: _build_worker_prompt()
-    W->>LLM: structured call → WorkerOutput schema
-    LLM->>T: search_n8n_nodes("n8n-nodes-base.gmail")
-    T-->>LLM: parameter schema + docs
-    LLM-->>W: WorkerOutput{parameters, typeVersion}
-    W->>W: _assemble_node_json()<br/>inject UUID, webhookId (if webhook),<br/>credentials, position
-    W-->>FO: NodeResult{node_name, node_json,<br/>validation_passed, validation_errors[]}
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772311172_165.svg)
 
 **Each worker:**
 - Receives one `NodeSpec` and credential IDs
@@ -195,27 +115,9 @@ sequenceDiagram
 
 ### Assembler (Fan-In)
 
-```mermaid
-sequenceDiagram
-    participant S as ARIAState
-    participant ASM as Assembler
-    participant DBG as Debugger
+<!-- mermaid-source-file:.mermaid\README_1772311172_166.mmd-->
 
-    S->>ASM: node_build_results[], planned_edges[]
-    ASM->>ASM: _find_failed_results()
-    alt any validation_passed == false
-        ASM->>DBG: route with classification: schema error
-    else
-        ASM->>ASM: _find_dangling_edge()
-        alt edge references unknown node
-            ASM->>DBG: route with classification: schema error
-        else
-            ASM->>ASM: _build_connections_from_edges()
-            ASM->>ASM: _assemble_workflow_json()
-            ASM-->>S: workflow_json, status="building"
-        end
-    end
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772311172_166.svg)
 
 **Validation gate:**
 - Checks all `NodeResult` objects for `validation_passed: false`
@@ -227,28 +129,9 @@ sequenceDiagram
 
 ### Debugger
 
-```mermaid
-sequenceDiagram
-    participant S as ARIAState
-    participant DB as Debugger
-    participant LLM as Gemini LLM
-    participant G as graph.py router
+<!-- mermaid-source-file:.mermaid\README_1772311172_167.mmd-->
 
-    S->>DB: execution_result.error, workflow_json, fix_attempts
-    DB->>LLM: "Attempt N/3\nError: {...}\nWorkflow: {...}"<br/>structured call → DebuggerOutput schema
-    LLM-->>DB: DebuggerOutput{error_type, node_name,<br/>fixed_parameters, explanation}
-    alt error_type in {schema, logic} AND fixed_parameters not null
-        DB->>DB: _apply_fix() — patch node.parameters in workflow_json
-        DB-->>S: workflow_json (patched), classified_error, fix_attempts+1
-        DB-->>G: route → deploy
-    else rate_limit
-        DB-->>S: classified_error, fix_attempts+1
-        DB-->>G: route → test (retry same workflow)
-    else auth / unfixable / budget exhausted
-        DB-->>S: classified_error, fix_attempts+1
-        DB-->>G: route → hitl_fix_escalation
-    end
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772311172_167.svg)
 
 **Error classification:**
 | Signal in error message | `error_type` | Auto-fixed? |
@@ -265,57 +148,17 @@ sequenceDiagram
 
 ### HITL Escalation
 
-```mermaid
-sequenceDiagram
-    participant S as ARIAState
-    participant HE as HITL Escalation
-    participant LLM as Gemini LLM (HITLExplainer)
-    participant FE as Frontend
+<!-- mermaid-source-file:.mermaid\README_1772311172_168.mmd-->
 
-    S->>HE: classified_error, fix_attempts, n8n_workflow_id
-    HE->>LLM: node_name, error_type, message, fix_attempts
-    LLM-->>HE: plain-English explanation (2-3 sentences)
-    HE->>FE: interrupt({type:"fix_exhausted", explanation, error,<br/>fix_attempts, n8n_url, options:["retry","replan","abort"]})
-    note over FE: Graph is PAUSED — user sees explanation + options
-    FE-->>HE: resume({action: "retry"|"replan"|"abort"})
-    alt action = retry
-        HE-->>S: fix_attempts=0, status="testing"
-        note right of S: routes → test (user fixed node in n8n UI)
-    else action = replan
-        HE-->>S: clear all build state, status="replanning"
-        note right of S: routes → fail (orchestrator restarts preflight)
-    else action = abort
-        HE-->>S: status="failed"
-    end
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772311172_168.svg)
 
 ---
 
 ### Test Node (trigger-aware)
 
-```mermaid
-flowchart TD
-    T[test_node] --> D{detect_trigger_type}
-    D -->|webhook| W[_test_webhook]
-    D -->|schedule / other| A[_test_activation_only]
+<!-- mermaid-source-file:.mermaid\README_1772311172_169.mmd-->
 
-    W --> W1[activate_workflow]
-    W1 --> W2[trigger_webhook POST /webhook/path]
-    W2 --> W3[poll_execution 30s timeout]
-    W3 -->|success| OK([status: done])
-    W3 -->|error| ERR([status: fixing])
-
-    A --> A1[activate_workflow]
-    A1 -->|success| OK2([status: done])
-    A1 -->|HTTPStatusError| ERR2([status: fixing\nwith real node_name from n8n body])
-
-    style W fill:#f0fdf4,stroke:#16a34a,color:#14532d
-    style A fill:#f0fdf4,stroke:#16a34a,color:#14532d
-    style OK fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
-    style OK2 fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
-    style ERR fill:#fef2f2,stroke:#dc2626,color:#7f1d1d
-    style ERR2 fill:#fef2f2,stroke:#dc2626,color:#7f1d1d
-```
+![Mermaid Diagram](.mermaid\README_diagram_1772311172_169.svg)
 
 ---
 

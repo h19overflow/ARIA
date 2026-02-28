@@ -1,0 +1,52 @@
+flowchart TD
+    IN([BuildBlueprint from Preflight]) --> PLAN
+
+    PLAN["Node Planner<br/>(+ search_n8n_nodes tool)"]
+    PLAN --> FO["Fan-Out<br/>(Send API)"]
+
+    subgraph PARALLEL ["Parallel Execution"]
+        W1["Node Worker 1<br/>(+ search tool)"]
+        W2["Node Worker 2<br/>(+ search tool)"]
+        WN["Node Worker N<br/>(+ search tool)"]
+        W1 ~~~ W2 ~~~ WN
+    end
+
+    FO --> PARALLEL
+    PARALLEL --> ASM[Assembler<br/>validation gate]
+
+    ASM --> DEP[Deploy]
+    DEP --> TST[Test]
+
+    TST -->|success| ACT[Activate]
+    TST -->|error| DBG[Debugger]
+    DEP -->|HTTP error| DBG
+
+    DBG -->|rate limit| TST
+    DBG -->|fixable + budget remaining| DEP
+    DBG -->|missing node + budget| SUB[Node Substituter]
+    DBG -->|unfixable or attempts exhausted| ESC[HITL Escalation - PAUSES]
+
+    SUB -->|substitution OK| DEP
+    SUB -->|cannot substitute| ESC
+
+    ESC -->|manual fix| DEP
+    ESC -->|replan or abort| FAIL([Failed])
+
+    ACT --> DONE([Live workflow and webhook URL])
+
+    style PLAN fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style FO fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style W1 fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style W2 fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style WN fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style PARALLEL fill:#f8fafc,stroke:#cbd5e1
+    style ASM fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style DBG fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style DEP fill:#f0fdf4,stroke:#16a34a,color:#14532d
+    style TST fill:#f0fdf4,stroke:#16a34a,color:#14532d
+    style ACT fill:#f0fdf4,stroke:#16a34a,color:#14532d
+    style SUB fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style ESC fill:#fef9c3,stroke:#ca8a04,color:#713f12
+    style IN fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
+    style DONE fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
+    style FAIL fill:#fef2f2,stroke:#dc2626,color:#7f1d1d

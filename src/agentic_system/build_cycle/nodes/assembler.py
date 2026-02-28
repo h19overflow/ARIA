@@ -1,26 +1,32 @@
-"""Fan-in node: collect parallel worker results and assemble final n8n workflow JSON."""
+"""Fan-in node: collect parallel worker results and assemble final n8n workflow JSON.
+
+Uses an LLM agent with search_n8n_nodes to build correct connections,
+especially for branching nodes (If, Switch, Router).
+"""
 from __future__ import annotations
 
+import json
 import logging
 import time
 
 from langchain_core.messages import HumanMessage
 
+from src.agentic_system.shared.base_agent import BaseAgent
 from src.agentic_system.shared.state import ARIAState
+from src.agentic_system.build_cycle.schemas.node_plan import AssemblerOutput
+from src.agentic_system.build_cycle.prompts.assembler import ASSEMBLER_SYSTEM_PROMPT
+from src.agentic_system.build_cycle.tools import search_n8n_nodes
 from src.services.pipeline.event_bus import get_event_bus
 
 logger = logging.getLogger(__name__)
 
-
-def _branch_index(branch: str | None) -> int:
-    """Convert branch label to n8n output index. None/'true'/'1' → 0, 'false'/'2' → 1, '3' → 2."""
-    if branch in (None, "true", "1"):
-        return 0
-    if branch in ("false", "2"):
-        return 1
-    if branch == "3":
-        return 2
-    return 0
+_agent = BaseAgent[AssemblerOutput](
+    prompt=ASSEMBLER_SYSTEM_PROMPT,
+    schema=AssemblerOutput,
+    name="Assembler",
+    tools=[search_n8n_nodes],
+    recursion_limit=20,
+)
 
 
 async def assembler_node(state: ARIAState) -> dict:
@@ -34,26 +40,19 @@ async def assembler_node(state: ARIAState) -> dict:
     failed = _find_failed_results(results)
 
     if failed:
-        elapsed = int((time.monotonic() - start) * 1000)
-        if bus:
-            await bus.emit_complete(
-                "assemble", "Assembler", "error",
-                f"{len(failed)} node(s) failed validation", duration_ms=elapsed,
-            )
-        return _build_validation_failure_output(failed)
+        return await _emit_and_return_error(bus, start, _build_validation_failure_output(failed))
 
     planned_edges: list[dict] = state.get("planned_edges", [])
     node_names = {r["node_name"] for r in results}
 
     dangling_error = _find_dangling_edge(planned_edges, node_names)
     if dangling_error:
-        elapsed = int((time.monotonic() - start) * 1000)
-        if bus:
-            await bus.emit_complete("assemble", "Assembler", "error", dangling_error, duration_ms=elapsed)
-        return _build_edge_error_output(dangling_error)
+        return await _emit_and_return_error(bus, start, _build_edge_error_output(dangling_error))
+
+    node_list = _extract_node_list(results)
+    connections = await _build_connections_via_agent(planned_edges, node_list)
 
     workflow_name = _resolve_workflow_name(state)
-    connections = _build_connections_from_edges(planned_edges, node_names)
     workflow_json = _assemble_workflow_json(workflow_name, results, connections)
 
     elapsed = int((time.monotonic() - start) * 1000)
@@ -70,6 +69,37 @@ async def assembler_node(state: ARIAState) -> dict:
         "messages": [HumanMessage(content=f"[Assembler] Assembled {len(results)} nodes into workflow.")],
     }
 
+
+# ── Agent invocation ─────────────────────────────────────────────────────────
+
+async def _build_connections_via_agent(
+    planned_edges: list[dict],
+    node_list: list[dict],
+) -> dict:
+    """Invoke the Assembler agent to produce the n8n connections object."""
+    prompt = _build_assembler_prompt(planned_edges, node_list)
+    output: AssemblerOutput = await _agent.invoke([HumanMessage(content=prompt)])
+    return output.connections
+
+
+def _build_assembler_prompt(planned_edges: list[dict], node_list: list[dict]) -> str:
+    """Assemble the human message for the Assembler agent."""
+    sections = [
+        f"## Planned edges\n{json.dumps(planned_edges, indent=2)}",
+        f"## Node list\n{json.dumps(node_list, indent=2)}",
+    ]
+    return "\n\n".join(sections)
+
+
+def _extract_node_list(results: list[dict]) -> list[dict]:
+    """Extract node name and type from build results for the agent prompt."""
+    return [
+        {"node_name": r["node_name"], "node_type": r["node_json"].get("type", "")}
+        for r in results
+    ]
+
+
+# ── Pre-validation helpers ───────────────────────────────────────────────────
 
 def _find_failed_results(results: list[dict]) -> list[dict]:
     """Return results where validation did not pass."""
@@ -88,21 +118,7 @@ def _find_dangling_edge(planned_edges: list[dict], node_names: set[str]) -> str 
     return None
 
 
-def _build_connections_from_edges(planned_edges: list[dict], node_names: set[str]) -> dict:
-    """Convert planned edges to n8n connections format."""
-    connections: dict = {}
-    for edge in planned_edges:
-        source = edge["from_node"]
-        target = edge["to_node"]
-        branch = edge.get("branch")
-
-        source_entry = connections.setdefault(source, {"main": [[]]})
-        output_idx = _branch_index(branch)
-        while len(source_entry["main"]) <= output_idx:
-            source_entry["main"].append([])
-        source_entry["main"][output_idx].append({"node": target, "type": "main", "index": 0})
-    return connections
-
+# ── Workflow assembly ────────────────────────────────────────────────────────
 
 def _resolve_workflow_name(state: ARIAState) -> str:
     """Extract workflow name from state or return a safe default."""
@@ -123,6 +139,17 @@ def _assemble_workflow_json(
         "connections": connections,
         "settings": {"executionOrder": "v1"},
     }
+
+
+# ── Error output builders ───────────────────────────────────────────────────
+
+async def _emit_and_return_error(bus: object, start: float, output: dict) -> dict:
+    """Emit an error event and return the pre-built error output."""
+    elapsed = int((time.monotonic() - start) * 1000)
+    if bus:
+        error_msg = output.get("classified_error", {}).get("message", "Unknown error")
+        await bus.emit_complete("assemble", "Assembler", "error", error_msg, duration_ms=elapsed)
+    return output
 
 
 def _build_validation_failure_output(failed: list[dict]) -> dict:
