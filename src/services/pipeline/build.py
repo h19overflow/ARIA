@@ -13,7 +13,7 @@ from langgraph.types import Command
 from redis.asyncio import Redis
 
 from src.agentic_system.graph import ARIAPipeline  # noqa: TC002
-from src.agentic_system.conversation.core.state import ConversationState, get_state
+from src.agentic_system.conversation.core.state import ConversationState
 from src.agentic_system.shared.state import ARIAState, BuildBlueprint, WorkflowTopology
 from src.api.schemas import JobState, SSEEvent
 from src.services.pipeline._sse_helpers import (

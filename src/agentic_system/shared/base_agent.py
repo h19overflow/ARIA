@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import weave
-from typing import Any, AsyncIterator, Generic, Type, TypeVar, Union, cast, AsyncGenerator
+from typing import Any, Generic, Type, TypeVar, Union, cast, AsyncGenerator
 
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage

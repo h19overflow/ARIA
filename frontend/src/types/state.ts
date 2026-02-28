@@ -16,8 +16,9 @@ export interface ARIAState {
   intent?: string
   intent_summary?: string
   topology?: import('./topology').Topology
-  build_phase?: number
-  total_phases?: number
+  nodes_to_build?: Array<{ node_name: string; node_type: string; role: string; credential_type?: string | null; connected_to: string[] }>
+  planned_edges?: unknown[]
+  node_build_results?: Array<{ node_name: string; node_json: unknown; credentials_used: unknown; validation_passed: boolean; validation_errors: string[] }>
   workflow_json?: Record<string, unknown>
   n8n_workflow_id?: string
   n8n_execution_id?: string
@@ -34,7 +35,7 @@ export interface ARIAState {
   pending_question?: string
   user_description?: string
   hitl_explanation?: string | null
-  phase_node_map?: Array<{ nodes: string[]; internal_edges: unknown[]; entry_edges: unknown[] }>
+
 }
 
 export interface BuildBlueprint {
