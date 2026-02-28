@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, ArrowRight, Loader2, CheckCircle2, Clock } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ConversationNotes } from '@/store';
 import { NoteField } from './NoteField';
+import { CredentialStatusCard, getAllCredentialTypes } from './CredentialStatusCard';
+import { IntegrationsList } from './IntegrationsList';
+import { ConstraintsList } from './ConstraintsList';
+import { StartBuildCta } from './StartBuildCta';
 
 interface RequirementsPanelProps {
   notes: ConversationNotes;
   isStreaming: boolean;
   isCommitted: boolean;
   isStarting?: boolean;
+  isDiscoveringCredentials?: boolean;
   onUpdate: (key: string, value: string | null) => void;
   onStartBuild: () => void;
 }
@@ -33,17 +37,8 @@ function removeAt<T>(arr: T[], idx: number): T[] {
   return arr.filter((_, i) => i !== idx);
 }
 
-function getAllCredentialTypes(notes: ConversationNotes): string[] {
-  return [
-    ...new Set([
-      ...Object.keys(notes.resolved_credential_ids ?? {}),
-      ...(notes.pending_credential_types ?? []),
-    ]),
-  ];
-}
-
 export function RequirementsPanel({
-  notes, isStreaming, isCommitted, isStarting, onUpdate, onStartBuild,
+  notes, isStreaming, isCommitted, isStarting, isDiscoveringCredentials, onUpdate, onStartBuild,
 }: RequirementsPanelProps) {
   const [updatedKey, setUpdatedKey] = useState<string | null>(null);
   const notesRef = useRef(notes);
@@ -71,15 +66,8 @@ export function RequirementsPanel({
     timerRef.current = setTimeout(() => setUpdatedKey(null), 800);
   }
 
-  const removeConstraint = (idx: number) => {
-    const updated = removeAt(notes.constraints ?? [], idx);
-    onUpdate('constraints', updated.join('||'));
-  };
-
-  const removeIntegration = (idx: number) => {
-    const updated = removeAt(notes.required_integrations ?? [], idx);
-    onUpdate('required_integrations', updated.join('||'));
-  };
+  const removeConstraint = (idx: number) => onUpdate('constraints', removeAt(notes.constraints ?? [], idx).join('||'));
+  const removeIntegration = (idx: number) => onUpdate('required_integrations', removeAt(notes.required_integrations ?? [], idx).join('||'));
 
   const filledCount = FIELDS.filter(f => notes[f.key]).length;
   const allCredentialTypes = getAllCredentialTypes(notes);
@@ -87,156 +75,34 @@ export function RequirementsPanel({
 
   return (
     <aside style={{
-      width: '300px', flexShrink: 0,
-      background: 'var(--bg-surface)',
+      width: '300px', flexShrink: 0, background: 'var(--bg-surface)',
       borderRight: '1px solid var(--border-subtle)',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
-      {/* Header */}
-      <div style={{
-        padding: '14px 16px 12px',
-        borderBottom: '1px solid var(--border-subtle)',
-        display: 'flex', alignItems: 'center', gap: '8px',
-      }}>
+      <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-secondary)', flex: 1 }}>
           Requirements
         </span>
-        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-          {filledCount}/{FIELDS.length}
-        </span>
+        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{filledCount}/{FIELDS.length}</span>
         <LiveDot active={isStreaming} />
       </div>
 
-      {/* Fields */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {FIELDS.map(f => (
-          <div
-            key={f.key}
-            className={clsx('req-field-card', updatedKey === f.key && 'req-field-just-updated')}
-            style={{ borderRadius: '8px', padding: '10px 12px', border: notes[f.key] ? '1px solid rgba(255,255,255,0.1)' : '1px dashed rgba(255,255,255,0.07)', background: notes[f.key] ? 'rgba(255,255,255,0.04)' : 'transparent', transition: 'border-color 300ms ease, background 300ms ease' }}
-          >
-            <NoteField
-              label={f.friendly}
-              noteKey={f.key}
-              value={notes[f.key] as string | null | undefined}
-              onUpdate={onUpdate}
-            />
+          <div key={f.key} className={clsx('req-field-card', updatedKey === f.key && 'req-field-just-updated')}
+            style={{ borderRadius: '8px', padding: '10px 12px', border: notes[f.key] ? '1px solid rgba(255,255,255,0.1)' : '1px dashed rgba(255,255,255,0.07)', background: notes[f.key] ? 'rgba(255,255,255,0.04)' : 'transparent', transition: 'border-color 300ms ease, background 300ms ease' }}>
+            <NoteField label={f.friendly} noteKey={f.key} value={notes[f.key] as string | null | undefined} onUpdate={onUpdate} />
           </div>
         ))}
-
-        {/* Integrations */}
-        <div className={clsx('req-field-card', updatedKey === 'integrations' && 'req-field-just-updated')}
-          style={{ borderRadius: '8px', padding: '10px 12px', border: '1px solid var(--border-subtle)', background: 'transparent' }}>
-          <span style={{ display: 'block', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '7px' }}>
-            Integrations
-          </span>
-          {(notes.required_integrations ?? []).length === 0 ? (
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Not yet captured...</span>
-          ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-              {notes.required_integrations!.map((integ, i) => (
-                <span key={i} className="integration-chip">
-                  {integ}
-                  <button onClick={() => removeIntegration(i)} style={{ lineHeight: 0, color: 'var(--text-muted)', opacity: 0.6 }}><X size={10} /></button>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Constraints */}
-        <div className={clsx('req-field-card', updatedKey === 'constraints' && 'req-field-just-updated')}
-          style={{ borderRadius: '8px', padding: '10px 12px', border: '1px solid var(--border-subtle)', background: 'transparent' }}>
-          <span style={{ display: 'block', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '7px' }}>
-            Constraints
-          </span>
-          {(notes.constraints ?? []).length === 0 ? (
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Not yet captured...</span>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              {notes.constraints!.map((c, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.75rem', color: 'var(--text-primary)' }}>
-                  <span style={{ flex: 1, lineHeight: 1.5 }}>{c}</span>
-                  <button onClick={() => removeConstraint(i)} style={{ color: 'var(--text-muted)', lineHeight: 0, flexShrink: 0, transition: 'color 150ms ease' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-error)')}
-                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
-                    <X size={11} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Credentials */}
+        <IntegrationsList integrations={notes.required_integrations ?? []} isHighlighted={updatedKey === 'integrations'} onRemove={removeIntegration} />
+        <ConstraintsList constraints={notes.constraints ?? []} isHighlighted={updatedKey === 'constraints'} onRemove={removeConstraint} />
         {isCommitted && (
-          <CredentialStatusCard
-            allCredentialTypes={allCredentialTypes}
-            resolvedIds={notes.resolved_credential_ids}
-            credentialsCommitted={notes.credentials_committed}
-          />
+          <CredentialStatusCard allCredentialTypes={allCredentialTypes} resolvedIds={notes.resolved_credential_ids}
+            credentialsCommitted={notes.credentials_committed} isDiscoveringCredentials={isDiscoveringCredentials} />
         )}
       </div>
 
-      {/* Start Build CTA */}
-      {isCommitted && (
-        <div style={{ padding: '12px 14px 16px', borderTop: '1px solid var(--border-subtle)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-            <CheckCircle2 size={13} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
-            <span style={{ fontSize: '0.72rem', color: 'var(--color-success)', fontWeight: 500 }}>Requirements captured</span>
-          </div>
-          <button
-            className="btn-run-preflight"
-            onClick={onStartBuild}
-            disabled={!canStartBuild || isStarting}
-          >
-            {isStarting
-              ? <><Loader2 size={15} className="animate-spin" /> Starting build...</>
-              : canStartBuild
-                ? <>Start Build <ArrowRight size={15} /></>
-                : <>Waiting for credentials...</>
-            }
-          </button>
-        </div>
-      )}
+      {isCommitted && <StartBuildCta canStartBuild={!!canStartBuild} isStarting={isStarting} onStartBuild={onStartBuild} />}
     </aside>
-  );
-}
-
-function CredentialStatusCard({
-  allCredentialTypes,
-  resolvedIds,
-  credentialsCommitted,
-}: {
-  allCredentialTypes: string[];
-  resolvedIds?: Record<string, string>;
-  credentialsCommitted?: boolean;
-}) {
-  return (
-    <div className={clsx('req-field-card')}
-      style={{ borderRadius: '8px', padding: '10px 12px', border: '1px solid var(--border-subtle)', background: 'transparent' }}>
-      <span style={{ display: 'block', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '7px' }}>
-        Connections
-      </span>
-      {allCredentialTypes.length === 0 ? (
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-          {credentialsCommitted ? 'No credentials needed' : 'Scanning...'}
-        </span>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {allCredentialTypes.map((type) => {
-            const isResolved = type in (resolvedIds ?? {});
-            return (
-              <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem' }}>
-                {isResolved
-                  ? <CheckCircle2 size={12} style={{ color: 'var(--color-success)' }} />
-                  : <Clock size={12} style={{ color: 'var(--text-muted)' }} />}
-                <span style={{ color: isResolved ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{type}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
   );
 }
