@@ -1,6 +1,6 @@
 import type { ARIAState } from './state'
 
-export type EventStage = 'build' | 'test' | 'fix' | 'system'
+export type EventStage = 'rag' | 'plan' | 'build' | 'assemble' | 'deploy' | 'test' | 'fix' | 'activate' | 'system'
 export type EventStatus = 'running' | 'success' | 'error' | 'warning'
 export type FeedEventType = 'node_start' | 'node_done' | 'interrupt' | 'done' | 'error' | 'info'
 
@@ -83,6 +83,15 @@ export interface SSEErrorEvent {
   message: string
 }
 
+export interface SSEWarningEvent {
+  type: 'warning'
+  stage: EventStage
+  node_name: string
+  message: string
+  event_id?: string
+  timestamp?: string
+}
+
 export interface SSEPingEvent {
   type: 'ping'
 }
@@ -94,4 +103,5 @@ export type SSEEnvelope =
   | SSEFixEscalationEvent
   | SSEDoneEvent
   | SSEErrorEvent
+  | SSEWarningEvent
   | SSEPingEvent
