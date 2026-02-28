@@ -96,17 +96,17 @@ async def apply_chunk(
 
 
 async def apply_build_chunk(redis: Redis, job_id: str, chunk: dict, current_state: ARIAState) -> ARIAState:
+    """Merge build streaming chunk into state and update job record.
+
+    Individual nodes emit their own SSE events via BuildEventBus;
+    this function only handles state merging and job persistence.
+    """
     for node_name, update in chunk.items():
         if not isinstance(update, dict):
             log.debug("[%s] Skipping non-dict build chunk from node=%s", job_id, node_name)
             continue
         current_state = {**current_state, **update}  # type: ignore[assignment]
         log.debug("[%s] Build node completed | node=%s", job_id, node_name)
-        await publish(redis, job_id, SSEEvent(
-            type="node", stage="build", node_name=node_name, status="running",
-            message=f"{node_name} completed",
-            aria_state=serialize(current_state),
-        ))
         await write_job(redis, job_id, JobState(
             job_id=job_id, status=current_state.get("status", "building"),  # type: ignore[arg-type]
             aria_state=serialize(current_state),
