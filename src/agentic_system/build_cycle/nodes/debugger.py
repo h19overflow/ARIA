@@ -60,7 +60,7 @@ async def debugger_node(state: ARIAState) -> dict:
         "node_name": result.node_name,
         "message": result.message,
         "description": result.description,
-        "line_number": result.line_number,
+        "line_number": None,
         "stack": error_data.get("stack"),
     }
 
@@ -103,7 +103,7 @@ async def debugger_node(state: ARIAState) -> dict:
         updates["workflow_json"] = _apply_fix(workflow_json, result)
         updates["status"] = "building"
         updates["messages"].append(HumanMessage(
-            content=f"[Debugger] Fix applied to '{result.node_name}': {result.explanation}"
+            content=f"[Debugger] Fix applied to '{result.node_name}'."
         ))
 
     elapsed = int((time.monotonic() - start) * 1000)

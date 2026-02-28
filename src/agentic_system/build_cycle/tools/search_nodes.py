@@ -4,8 +4,8 @@ from __future__ import annotations
 import logging
 
 from langchain_core.tools import tool
-from pydantic import BaseModel, Field
 
+from src.agentic_system.build_cycle.schemas.node_plan import SearchInput
 from src.boundary.chroma.store import ChromaStore
 
 logger = logging.getLogger(__name__)
@@ -13,19 +13,7 @@ logger = logging.getLogger(__name__)
 _MAX_RESULTS = 5
 
 
-class SearchInput(BaseModel):
-    """Input schema for the search_n8n_nodes tool."""
 
-    query: str = Field(
-        description=(
-            "Search query — either a node type like 'n8n-nodes-base.gmail' "
-            "or a natural language description like 'send email with Gmail'."
-        )
-    )
-    doc_type: str | None = Field(
-        default="node",
-        description="Filter by document type: 'node' for node docs, None for all.",
-    )
 
 
 @tool(args_schema=SearchInput)

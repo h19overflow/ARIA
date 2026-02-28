@@ -36,7 +36,7 @@ The human message includes `parameter_hints` from the planner.
 Treat them as overrides: apply them exactly as given, fill in the rest from search results.
 
 ## Rules
-- Output ONLY `parameters` and optionally `type_version`
+- Output ONLY `parameters`
 - Use n8n expression syntax for dynamic values: {{ $json.fieldName }}
 - Keep parameter structure minimal — omit empty optional fields
 - Search for the node type documentation before building parameters

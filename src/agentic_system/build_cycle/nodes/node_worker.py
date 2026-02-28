@@ -6,9 +6,9 @@ import time
 import uuid
 
 from langchain_core.messages import HumanMessage
-from pydantic import BaseModel, Field
 
 from src.agentic_system.shared.base_agent import BaseAgent
+from src.agentic_system.build_cycle.schemas.node_plan import WorkerOutput
 from src.agentic_system.build_cycle.prompts.node_worker import NODE_WORKER_SYSTEM_PROMPT
 from src.agentic_system.build_cycle.tools import search_n8n_nodes
 from src.services.pipeline.event_bus import get_event_bus
@@ -17,11 +17,7 @@ _HORIZONTAL_SPACING_PX = 250
 _DEFAULT_Y_POSITION = 300
 
 
-class WorkerOutput(BaseModel):
-    """LLM output for a single n8n node."""
 
-    parameters: dict = Field(description="Complete n8n node parameters")
-    type_version: int = Field(default=1, description="Node type version")
 
 
 _agent = BaseAgent[WorkerOutput](
@@ -87,7 +83,7 @@ def _assemble_node_json(node_spec: dict, output: WorkerOutput) -> dict:
         "id": str(uuid.uuid4()),
         "name": node_spec["node_name"],
         "type": node_spec["node_type"],
-        "typeVersion": output.type_version,
+        "typeVersion": 1,
         "position": _calculate_position(node_spec.get("position_index", 0)),
         "parameters": output.parameters,
     }

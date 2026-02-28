@@ -41,7 +41,6 @@ parameter schemas from the knowledge base BEFORE selecting any node type.
    exists for a capability, use `n8n-nodes-base.httpRequest` or
    `n8n-nodes-base.code` as a fallback.
 8. **workflow_name** — derive a concise, meaningful name from the intent.
-9. **overall_strategy** — one sentence explaining the topology chosen.
 
 ## Inputs you will receive
 
@@ -57,7 +56,6 @@ Return a `NodePlan` with:
 - `nodes` — flat list of `NodeSpec` (one per n8n node)
 - `edges` — list of `PlannedEdge` (from_node, to_node, branch)
 - `workflow_name` — display name for the assembled workflow
-- `overall_strategy` — one-line decomposition summary
 
 Think step by step. Search for each node type first. Enumerate every node,
 draw the edges, then check for cycles before committing to your answer.

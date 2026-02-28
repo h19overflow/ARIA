@@ -1,7 +1,7 @@
 """Schemas for the parallel node fan-out build pipeline."""
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import TypedDict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -55,12 +55,6 @@ class NodePlan(BaseModel):
         description="All directed connections between nodes"
     )
     workflow_name: str = Field(description="Display name for the assembled workflow")
-    overall_strategy: str = Field(
-        description=(
-            "One sentence explaining the decomposition strategy chosen "
-            "(e.g. 'linear trigger → enrichment → notification pipeline')."
-        )
-    )
 
 
 class NodeResult(TypedDict):
@@ -77,7 +71,6 @@ class ReplacementNode(BaseModel):
 
     name: str = Field(description="Node display name")
     type: str = Field(description="n8n node type (must be n8n-nodes-base.*)")
-    type_version: int = Field(default=1, description="Node type version")
     parameters: dict = Field(description="Complete n8n node parameters")
 
 
@@ -95,3 +88,14 @@ class SubstitutionResult(BaseModel):
     removed_node_name: str = Field(
         description="Name of the node being replaced"
     )
+
+
+class WorkerOutput(BaseModel):
+    """LLM output for a single n8n node worker."""
+    parameters: dict = Field(description="Complete n8n node parameters")
+
+
+class SearchInput(BaseModel):
+    """Input for n8n node search tool."""
+    query: str = Field(description="Search terms for node types")
+    doc_type: Optional[str] = Field(default="node", description="node | workflow_template")

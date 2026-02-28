@@ -134,7 +134,7 @@ def _apply_substitution(
                     "id": str(uuid.uuid4()),
                     "name": replacement.name,
                     "type": replacement.type,
-                    "typeVersion": replacement.type_version,
+                    "typeVersion": 1,
                     "position": node.get("position", [0, 0]),
                     "parameters": replacement.parameters,
                 }

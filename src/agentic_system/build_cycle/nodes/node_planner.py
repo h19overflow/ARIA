@@ -164,7 +164,7 @@ def _plan_to_state_update(plan: NodePlan, resolved_credential_ids: dict, availab
         "node_build_results": [],
         "available_node_packages": available_packages,
         "messages": [HumanMessage(
-            content=f"[Planner] {plan.overall_strategy} → {len(plan.nodes)} nodes queued: {node_names}"
+            content=f"[Planner] '{plan.workflow_name}' → {len(plan.nodes)} nodes queued: {node_names}"
         )],
     }
 

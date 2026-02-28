@@ -9,22 +9,22 @@ from pydantic import BaseModel
 
 from src.agentic_system.shared.base_agent import BaseAgent
 from src.agentic_system.shared.state import ARIAState
+from src.agentic_system.build_cycle.schemas.execution import HITLExplanation
 
 log = logging.getLogger("aria.hitl")
 
 
-class _Explanation(BaseModel):
-    explanation: str
 
 
-_explainer: BaseAgent[_Explanation] = BaseAgent(
+
+_explainer: BaseAgent[HITLExplanation] = BaseAgent(
     prompt=(
         "You are ARIA. An n8n workflow build failed and the auto-fix budget is exhausted. "
         "Write 2-3 sentences explaining what went wrong in plain English — no jargon, no markdown. "
         "Be specific: name the node, describe what the error means, and suggest the most likely cause. "
         "End with what the user should check or do before retrying."
     ),
-    schema=_Explanation,
+    schema=HITLExplanation,
     name="HITLExplainer",
 )
 
@@ -86,7 +86,7 @@ async def _generate_explanation(error: dict, fix_attempts: int) -> str:
         f"Description: {error.get('description') or 'none'}"
     )
     try:
-        result: _Explanation = await _explainer.invoke([HumanMessage(content=prompt)])
+        result: HITLExplanation = await _explainer.invoke([HumanMessage(content=prompt)])
         return result.explanation
     except (ValueError, RuntimeError, TimeoutError, OSError) as exc:
         log.warning("HITLExplainer failed, using fallback: %s", exc)
@@ -173,7 +173,7 @@ async def _answer_user_question(question: str, error: dict, state: ARIAState) ->
         f"Answer clearly and specifically. If you don't know, say so."
     )
     try:
-        result: _Explanation = await _explainer.invoke(
+        result: HITLExplanation = await _explainer.invoke(
             [HumanMessage(content=prompt)]
         )
         return result.explanation

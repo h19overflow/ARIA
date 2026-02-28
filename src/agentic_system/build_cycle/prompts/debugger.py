@@ -32,9 +32,7 @@ full workflow JSON. In a single response you must:
 - node_name: exact name of the failing node from runData
 - message: concise human-readable summary
 - description: optional detail
-- line_number: if present in the stack
 - fixed_parameters: complete updated parameters dict for the node, or null
-- explanation: what you changed and why, or null
 
 ## Rules
 - Be precise with node_name — must match exactly
