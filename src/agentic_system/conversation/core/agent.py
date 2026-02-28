@@ -114,11 +114,15 @@ class ConversationAgent(BaseAgent):
     def _build_agent_graph_for_state(self, state: ConversationState) -> Any:
         """Build an agent graph appropriate for the current conversation phase.
 
-        In credential mode (after commit_notes, before commit_preflight),
-        creates a per-request graph with credential tools bound to the
-        required nodes. Otherwise returns the default agent graph.
+        Credential tools are bound eagerly once required_integrations is
+        populated — even before commit_notes fires — so the agent can
+        call scan_credentials on the same turn that commit_notes runs.
+        The prompt prevents premature credential calls.
         """
-        if not state.committed or state.notes.credentials_committed:
+        if state.notes.credentials_committed:
+            return self._agent
+
+        if not state.notes.required_integrations:
             return self._agent
 
         required_nodes = _integrations_to_node_keys(
