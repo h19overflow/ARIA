@@ -28,9 +28,9 @@ def resolve_node_credentials(
     If no deterministic match, keep whatever the LLM set (fallback).
     """
     for spec in nodes_to_build:
-        short_key = _extract_short_key(spec.get("node_type", ""))
+        short_key = extract_short_key(spec.get("node_type", ""))
         credential_types = NODE_CREDENTIAL_MAP.get(short_key, [])
-        matched = _find_matching_credential(credential_types, resolved_credential_ids)
+        matched = find_matching_credential(credential_types, resolved_credential_ids)
 
         if matched:
             cred_type, cred_id = matched
@@ -49,13 +49,13 @@ def resolve_node_credentials(
     return nodes_to_build
 
 
-def _extract_short_key(node_type: str) -> str:
+def extract_short_key(node_type: str) -> str:
     """Extract short node key from full n8n type string, applying aliases."""
     raw = node_type.rsplit(".", maxsplit=1)[-1] if "." in node_type else node_type
     return _SHORT_KEY_ALIASES.get(raw, raw)
 
 
-def _find_matching_credential(
+def find_matching_credential(
     credential_types: list[str],
     resolved_credential_ids: dict[str, str],
 ) -> tuple[str, str] | None:

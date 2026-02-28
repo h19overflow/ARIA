@@ -16,12 +16,13 @@ from src.agentic_system.shared.state import ARIAState, ClassifiedError
 from src.agentic_system.build_cycle.schemas.execution import DebuggerOutput
 from src.agentic_system.build_cycle.prompts.debugger import DEBUGGER_SYSTEM_PROMPT
 from src.agentic_system.build_cycle.nodes._credential_resolver import (
-    _extract_short_key,
-    _find_matching_credential,
+    extract_short_key,
+    find_matching_credential,
 )
 from src.agentic_system.shared.node_credential_map import NODE_CREDENTIAL_MAP
 from src.services.pipeline.event_bus import get_event_bus
 
+log = logging.getLogger(__name__)
 
 _agent = BaseAgent[DebuggerOutput](
     prompt=DEBUGGER_SYSTEM_PROMPT,
@@ -66,7 +67,7 @@ async def debugger_node(state: ARIAState) -> dict:
     # ── Auth error auto-attach ───────────────────────────────────────
     if result.error_type == "auth":
         cred_ids = state.get("resolved_credential_ids", {})
-        patched = await _try_attach_credentials(workflow_json, result.node_name, cred_ids)
+        patched = _try_attach_credentials(workflow_json, result.node_name, cred_ids)
         if patched:
             if bus:
                 await bus.emit_warning(
@@ -128,10 +129,7 @@ def _apply_fix(workflow_json: dict, result: DebuggerOutput) -> dict:
     return patched
 
 
-log = logging.getLogger(__name__)
-
-
-async def _try_attach_credentials(
+def _try_attach_credentials(
     workflow_json: dict,
     node_name: str,
     resolved_credential_ids: dict[str, str],
@@ -144,9 +142,9 @@ async def _try_attach_credentials(
         if node.get("credentials"):
             return None  # already has credentials — not a missing-cred issue
 
-        short_key = _extract_short_key(node.get("type", ""))
+        short_key = extract_short_key(node.get("type", ""))
         cred_types = NODE_CREDENTIAL_MAP.get(short_key, [])
-        matched = _find_matching_credential(cred_types, resolved_credential_ids)
+        matched = find_matching_credential(cred_types, resolved_credential_ids)
         if not matched:
             return None
 

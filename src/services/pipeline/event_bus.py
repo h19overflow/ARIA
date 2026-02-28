@@ -46,7 +46,6 @@ class BuildEventBus:
     async def emit_complete(
         self, stage: str, node_name: str, status: str,
         message: str, duration_ms: int = 0,
-        detail: dict | None = None,
         aria_state: dict | None = None,
     ) -> None:
         """Emit a node complete event with success/error status."""
@@ -65,7 +64,7 @@ class BuildEventBus:
     async def emit_warning(self, stage: str, node_name: str, message: str) -> None:
         """Emit a warning event (e.g. credential auto-attach)."""
         await self._publish(SSEEvent(
-            type="node",
+            type="warning",
             stage=stage,
             node_name=node_name,
             message=message,
