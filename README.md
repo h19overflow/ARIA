@@ -66,9 +66,9 @@ The Conversation phase is a free-form chat powered by a Gemini-backed agent. It 
 
 The agent creates a **per-request agent graph** when in credential mode (post-commit). This avoids mutating the singleton agent and adds credential tools (`scan_credentials`, `get_credential_schema`, `save_credential`, `commit_preflight`) alongside the base conversation tools.
 
-<!-- mermaid-source-file:.mermaid\README_1772311073_133.mmd-->
+<!-- mermaid-source-file:.mermaid/README_1772311073_133.mmd-->
 
-![Mermaid Diagram](.mermaid\README_diagram_1772311073_133.svg)
+![Mermaid Diagram](.mermaid/README_diagram_1772311073_133.svg)
 
 **Key files:**
 
@@ -89,9 +89,9 @@ The agent creates a **per-request agent graph** when in credential mode (post-co
 
 Once the conversation is fully committed (both `committed` and `credentials_committed` are true), the Build Cycle takes over. It reads the `ConversationNotes` from the `conversation:{id}` Redis key and builds the workflow **phase-by-phase** (e.g., Trigger → Data Processing → Output), testing and self-healing at each step.
 
-<!-- mermaid-source-file:.mermaid\README_1772311073_134.mmd-->
+<!-- mermaid-source-file:.mermaid/README_1772311073_134.mmd-->
 
-![Mermaid Diagram](.mermaid\README_diagram_1772311073_134.svg)
+![Mermaid Diagram](.mermaid/README_diagram_1772311073_134.svg)
 
 **Graph nodes and their roles:**
 
@@ -124,9 +124,9 @@ Once the conversation is fully committed (both `committed` and `credentials_comm
 
 ## Tech Stack & Services
 
-<!-- mermaid-source-file:.mermaid\README_1772311073_135.mmd-->
+<!-- mermaid-source-file:.mermaid/README_1772311073_135.mmd-->
 
-![Mermaid Diagram](.mermaid\README_diagram_1772311073_135.svg)
+![Mermaid Diagram](.mermaid/README_diagram_1772311073_135.svg)
 
 | Component        | Role                                                                                                   |
 | ---------------- | ------------------------------------------------------------------------------------------------------ |
@@ -353,15 +353,15 @@ A Streamlit-based developer UI that predates the React frontend. Uses synchronou
 
 ### Conversation Flow
 
-<!-- mermaid-source-file:.mermaid\README_1772311073_136.mmd-->
+<!-- mermaid-source-file:.mermaid/README_1772311073_136.mmd-->
 
-![Mermaid Diagram](.mermaid\README_diagram_1772311073_136.svg)
+![Mermaid Diagram](.mermaid/README_diagram_1772311073_136.svg)
 
 ### Build Cycle Flow
 
-<!-- mermaid-source-file:.mermaid\README_1772311073_137.mmd-->
+<!-- mermaid-source-file:.mermaid/README_1772311073_137.mmd-->
 
-![Mermaid Diagram](.mermaid\README_diagram_1772311073_137.svg)
+![Mermaid Diagram](.mermaid/README_diagram_1772311073_137.svg)
 
 ---
 
@@ -454,9 +454,9 @@ ARIA uses two HITL mechanisms:
 
 ARIA's RAG pipeline combines BM25 keyword search with semantic similarity for robust retrieval over n8n documentation.
 
-<!-- mermaid-source-file:.mermaid\README_1772311073_138.mmd-->
+<!-- mermaid-source-file:.mermaid/README_1772311073_138.mmd-->
 
-![Mermaid Diagram](.mermaid\README_diagram_1772311073_138.svg)
+![Mermaid Diagram](.mermaid/README_diagram_1772311073_138.svg)
 
 **Alpha detection** dynamically weights the two retrieval methods:
 
