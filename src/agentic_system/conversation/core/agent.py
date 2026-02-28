@@ -5,13 +5,17 @@ from typing import Any, AsyncGenerator, Dict, List
 from langchain.agents import create_agent
 
 from src.agentic_system.shared.base_agent import BaseAgent
-from src.agentic_system.shared.node_credential_map import NODE_CREDENTIAL_MAP
+from src.agentic_system.shared.credential_resolver import (
+    resolve_credential_types,
+    _normalize_to_camel_case,
+)
 from .state import get_state, save_state, ConversationState
 from ..models.schemas import ConversationNotes
 from .prompts import CONVERSATION_SYSTEM_PROMPT
 from ..tools.tools import (
     batch_notes, take_note, commit_notes,
-    make_scan_credentials, get_credential_schema, save_credential, commit_preflight,
+    scan_credentials, set_shared_required_nodes,
+    get_credential_schema, save_credential, commit_preflight,
 )
 from .message_builders import build_lc_messages
 from .event_handlers import (
@@ -24,18 +28,21 @@ from .event_handlers import (
 logger = logging.getLogger(__name__)
 
 
-def _integrations_to_node_keys(integrations: list[str]) -> list[str]:
-    """Map service names (e.g. 'Telegram') to n8n node keys."""
-    lookup = {k.lower(): k for k in NODE_CREDENTIAL_MAP}
+async def _integrations_to_node_keys(integrations: list[str]) -> list[str]:
+    """Map service names (e.g. 'Telegram') to n8n node keys.
+
+    Delegates to the credential resolver which handles:
+    aliases -> hardcoded map -> convention guess -> LLM fallback.
+    """
     result = []
     for name in integrations:
-        key = name.lower().replace(" ", "").replace("-", "")
-        if key in lookup:
-            result.append(lookup[key])
+        cred_types = await resolve_credential_types(name)
+        if cred_types:
+            node_key = _normalize_to_camel_case(name)
+            result.append(node_key)
         else:
             logger.warning(
-                "No node mapping for integration %r — skipping credential scan for it",
-                name,
+                "No credential types resolved for integration %r — skipping", name,
             )
     return result
 
@@ -74,7 +81,7 @@ class ConversationAgent(BaseAgent):
         state = await self._load_or_create_state(conversation_id)
         state.messages.append({"role": "user", "content": user_message})
 
-        agent_graph = self._build_agent_graph_for_state(state)
+        agent_graph = await self._build_agent_graph_for_state(state)
         lc_messages = build_lc_messages(state.messages)
 
         try:
@@ -111,33 +118,32 @@ class ConversationAgent(BaseAgent):
             )
         return state
 
-    def _build_agent_graph_for_state(self, state: ConversationState) -> Any:
-        """Build an agent graph appropriate for the current conversation phase.
+    async def _build_agent_graph_for_state(self, state: ConversationState) -> Any:
+        """Build an agent graph with all tools always available.
 
-        Credential tools are bound eagerly once required_integrations is
-        populated — even before commit_notes fires — so the agent can
-        call scan_credentials on the same turn that commit_notes runs.
-        The prompt prevents premature credential calls.
+        Credential tools (scan_credentials, save_credential, etc.) are always
+        included so the LLM can call them on the same turn it commits notes.
+        scan_credentials takes required_nodes as a parameter, so no pre-binding
+        is needed. The prompt prevents premature credential calls.
         """
         if state.notes.credentials_committed:
             return self._agent
 
-        if not state.notes.required_integrations:
-            return self._agent
+        if state.notes.required_integrations:
+            required_nodes = await _integrations_to_node_keys(
+                state.notes.required_integrations,
+            )
+            state.notes.required_nodes = required_nodes
+            set_shared_required_nodes(required_nodes)
 
-        required_nodes = _integrations_to_node_keys(
-            state.notes.required_integrations,
-        )
-        state.notes.required_nodes = required_nodes
-
-        credential_tools = [
+        all_tools = [
             batch_notes, take_note, commit_notes,
-            make_scan_credentials(required_nodes),
-            get_credential_schema, save_credential, commit_preflight,
+            scan_credentials, get_credential_schema,
+            save_credential, commit_preflight,
         ]
         return create_agent(
             model=self._model,
-            tools=credential_tools,
+            tools=all_tools,
             system_prompt=self._system_prompt,
             name=self.name,
         )

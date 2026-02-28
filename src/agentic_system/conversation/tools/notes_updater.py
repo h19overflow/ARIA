@@ -9,6 +9,7 @@ import logging
 from typing import Any, Dict
 
 from ..core.state import ConversationState
+from .credential_tools import set_shared_required_nodes
 
 logger = logging.getLogger(__name__)
 
@@ -96,3 +97,21 @@ def update_notes_on_credentials_commit(
 ) -> None:
     """Mark credentials as committed."""
     state.notes.credentials_committed = True
+
+
+async def sync_required_nodes_if_needed(state: ConversationState) -> None:
+    """Resolve required_integrations -> required_nodes and update shared state.
+
+    Called after batch_notes/take_note so scan_credentials can access
+    the correct node keys even on the same LLM turn.
+    """
+    if not state.notes.required_integrations:
+        return
+    if state.notes.required_nodes:
+        return  # already resolved
+
+    from ..core.agent import _integrations_to_node_keys
+
+    required_nodes = await _integrations_to_node_keys(state.notes.required_integrations)
+    state.notes.required_nodes = required_nodes
+    set_shared_required_nodes(required_nodes)

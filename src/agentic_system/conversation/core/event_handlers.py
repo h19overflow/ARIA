@@ -17,6 +17,7 @@ from ..tools.notes_updater import (
     update_notes_on_scan_credentials,
     update_notes_on_save_credential_result,
     update_notes_on_credentials_commit,
+    sync_required_nodes_if_needed,
 )
 
 
@@ -60,6 +61,7 @@ async def handle_tool_end_state(
     )
     if tool_name == "take_note":
         update_notes_state(state, tool_args)
+        await sync_required_nodes_if_needed(state)
         yield {"type": "tool_event", "tool": "take_note", "data": tool_args}
     elif tool_name == "batch_notes":
         raw_notes = tool_args.get("notes", [])
@@ -68,6 +70,7 @@ async def handle_tool_end_state(
             note_dict = _to_dict(note)
             update_notes_state(state, note_dict)
             note_pairs.append({"key": note_dict.get("key", "?"), "value": note_dict.get("value")})
+        await sync_required_nodes_if_needed(state)
         yield {
             "type": "tool_event",
             "tool": "batch_notes",
