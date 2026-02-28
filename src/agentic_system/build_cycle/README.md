@@ -29,10 +29,15 @@ flowchart TD
 
     TST -->|success| ACT[Activate]
     TST -->|error| DBG[Debugger]
+    DEP -->|HTTP error| DBG
 
     DBG -->|rate limit| TST
     DBG -->|fixable + budget remaining| DEP
+    DBG -->|missing node + budget| SUB[Node Substituter]
     DBG -->|unfixable or attempts exhausted| ESC[HITL Escalation - PAUSES]
+
+    SUB -->|substitution OK| DEP
+    SUB -->|cannot substitute| ESC
 
     ESC -->|manual fix| DEP
     ESC -->|replan or abort| FAIL([Failed])
@@ -51,6 +56,7 @@ flowchart TD
     style DEP fill:#f0fdf4,stroke:#16a34a,color:#14532d
     style TST fill:#f0fdf4,stroke:#16a34a,color:#14532d
     style ACT fill:#f0fdf4,stroke:#16a34a,color:#14532d
+    style SUB fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
     style ESC fill:#fef9c3,stroke:#ca8a04,color:#713f12
     style IN fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
     style DONE fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
@@ -65,15 +71,16 @@ flowchart TD
 
 | Node | Agentic? | Pauses? | What it does |
 |---|---|---|---|
-| **RAG Retriever** | No | No | Hybrid BM25 + semantic search over ChromaDB (559 n8n node docs). Returns templates per node type plus workflow-level context. |
+| **RAG Retriever** | No | No | Hybrid BM25 + semantic search over ChromaDB (559 n8n node docs). Returns templates per node type plus workflow-level context. Also discovers installed n8n packages via introspection or config fallback. |
 | **Node Planner** | 🤖 Yes | No | Reasons over the full topology, intent, credential boundaries, and RAG summaries to produce a flat `NodePlan` with a list of `NodeSpec` objects and `PlannedEdge` connections. Detects and corrects cycles. |
 | **Node Worker** (parallel) | 🤖 Yes | No | Spawned in parallel via Send API. Builds a single n8n node JSON from its `NodeSpec`, applies credential IDs, generates UUIDs, and calculates canvas position. |
 | **Assembler** | 🤖 Yes | No | Fan-in: collects all `node_build_results`, validates them (short-circuits to debugger if any fail), checks for dangling edges, and merges nodes + connections into final `workflow_json`. |
-| **Deploy** | No | No | Creates (POST) or updates (PUT) the workflow in n8n via the REST API. |
+| **Deploy** | No | No | Creates (POST) or updates (PUT) the workflow in n8n via the REST API. Catches HTTP errors and routes to Debugger instead of crashing. |
 | **Test** | No | No | Activates the workflow. Webhook → fire + poll execution. Non-webhook → activation success = pass. |
-| **Debugger** | 🤖 Yes | No | Classifies the error (`schema`, `auth`, `rate_limit`, `logic`) and applies a targeted fix in one LLM call. |
+| **Debugger** | 🤖 Yes | No | Classifies the error (`schema`, `auth`, `rate_limit`, `logic`, `missing_node`) and applies a targeted fix in one LLM call. Routes `missing_node` to the Node Substituter. |
+| **Node Substituter** | 🤖 Yes | No | LLM-powered recovery for unavailable node types. Replaces missing nodes with `n8n-nodes-base.*` built-in alternatives (typically `httpRequest` or `code`). Escalates to HITL if no substitution is possible. |
 | **Activate** | No | No | Permanently activates the workflow, returns the live webhook URL (None for non-webhook). |
-| **HITL Escalation** | No | ⏸️ Yes | Fix budget exhausted — generates plain-English explanation, pauses for user: retry / replan / abort. |
+| **HITL Escalation** | No | ⏸️ Yes | Fix budget exhausted — generates plain-English explanation, pauses for user: retry / replan / abort. For `missing_node` errors, provides deterministic install instructions instead of LLM-generated explanation. |
 
 ---
 
@@ -218,6 +225,7 @@ sequenceDiagram
 | Wrong values, logic flow, data shape mismatch | `logic` | Yes |
 | 401, 403, token expired, unauthorized | `auth` | No — escalate |
 | 429, rate limit exceeded | `rate_limit` | No — retry test |
+| Unknown node type, unrecognized node, package not installed | `missing_node` | No — route to Node Substituter |
 
 **Fix constraints:** can only change the named node's `parameters`. Cannot add/remove nodes, connections, or touch credential IDs.
 
@@ -283,8 +291,8 @@ flowchart TD
 
 ```
 BuildBlueprint
-    ↓ RAG Retriever      → node_templates[]
-    ↓ Node Planner       → nodes_to_build[], planned_edges[]
+    ↓ RAG Retriever      → node_templates[], available_node_packages[]
+    ↓ Node Planner       → nodes_to_build[], planned_edges[] (prefers installed packages)
     ↓ Fan-Out (Send)     → spawn parallel Node Workers
     ↓ Node Workers       → node_build_results[] (parallel)
     ↓ Assembler          → workflow_json (merged + validated), status="building"
@@ -292,6 +300,8 @@ BuildBlueprint
     ↓ Test               → execution_result → "done" | "fixing"
     ↓   (fixing)
     ↓ Debugger           → classified_error, workflow_json (patched), fix_attempts++
+    ↓   (missing_node)
+    ↓ Node Substituter   → workflow_json (node replaced with built-in), status="building" → Deploy
     ↓   (done)
     ↓ Activate           → webhook_url, status="done"
 ```

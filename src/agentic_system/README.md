@@ -32,7 +32,11 @@ flowchart TD
         ENG --> DEP[Deploy] --> TST[Test]
         TST -->|more phases| ADV[Advance Phase] --> ENG
         TST -->|error| DBG[Debugger]
+        DEP -->|HTTP error| DBG
         DBG -->|fixed| DEP
+        DBG -->|missing node| SUB[Node Substituter]
+        SUB -->|replaced| DEP
+        SUB -->|can't replace| ESC
         DBG -->|exhausted| ESC[HITL Escalation]
         ESC -->|manual fix| DEP
         ESC -->|replan or abort| FAIL[Fail]
@@ -45,6 +49,7 @@ flowchart TD
     style PP fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
     style ENG fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
     style DBG fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style SUB fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
     style Q fill:#fef9c3,stroke:#ca8a04,color:#713f12
     style ASK fill:#fef9c3,stroke:#ca8a04,color:#713f12
     style ESC fill:#fef9c3,stroke:#ca8a04,color:#713f12
@@ -161,7 +166,7 @@ tool_event   → { tool: "commit_preflight", data: { committed: true } }
 Per-node progress updates via SSE:
 
 ```
-rag_retriever   →  "Retrieved 14 templates for 3 nodes"
+rag_retriever   →  "Retrieved 14 templates for 3 nodes" + discovers installed packages
 phase_planner   →  "Linear pipeline → 3 phases: [GitHub Trigger], [IF], [Slack]"
 engineer        →  "Phase 0: built 1 node (GitHub Trigger)"
 deploy          →  "Deployed workflow wf-abc123"
