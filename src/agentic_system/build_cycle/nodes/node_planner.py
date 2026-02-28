@@ -10,6 +10,7 @@ from src.agentic_system.shared.base_agent import BaseAgent
 from src.agentic_system.shared.state import ARIAState, WorkflowTopology
 from src.agentic_system.build_cycle.schemas.node_plan import NodePlan, PlannedEdge
 from src.agentic_system.build_cycle.prompts.node_planner import NODE_PLANNER_SYSTEM_PROMPT
+from src.agentic_system.build_cycle.nodes._credential_resolver import resolve_node_credentials
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ async def node_planner_node(state: ARIAState) -> dict:
         logger.error("[NodePlanner] Cycle detected after %d retries — escalating", MAX_CYCLE_RETRIES)
         return _error_plan()
 
-    return _plan_to_state_update(plan)
+    return _plan_to_state_update(plan, cred_ids)
 
 
 # ── LLM invocation with cycle-detection retry ──────────────────────────────────
@@ -144,10 +145,12 @@ def _summarise_templates(templates: list[dict]) -> str:
 
 # ── State conversion ───────────────────────────────────────────────────────────
 
-def _plan_to_state_update(plan: NodePlan) -> dict:
+def _plan_to_state_update(plan: NodePlan, resolved_credential_ids: dict) -> dict:
+    nodes = [spec.model_dump() for spec in plan.nodes]
+    resolve_node_credentials(nodes, resolved_credential_ids)
     node_names = ", ".join(spec.node_name for spec in plan.nodes)
     return {
-        "nodes_to_build": [spec.model_dump() for spec in plan.nodes],
+        "nodes_to_build": nodes,
         "planned_edges": [edge.model_dump() for edge in plan.edges],
         "node_build_results": [],
         "messages": [HumanMessage(
