@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from src.agentic_system.shared.base_agent import BaseAgent
 from src.agentic_system.build_cycle.prompts.node_worker import NODE_WORKER_SYSTEM_PROMPT
+from src.agentic_system.build_cycle.tools import search_n8n_nodes
 from src.services.pipeline.event_bus import get_event_bus
 
 _HORIZONTAL_SPACING_PX = 250
@@ -27,6 +28,8 @@ _agent = BaseAgent[WorkerOutput](
     prompt=NODE_WORKER_SYSTEM_PROMPT,
     schema=WorkerOutput,
     name="NodeWorker",
+    tools=[search_n8n_nodes],
+    recursion_limit=20,
 )
 
 
@@ -41,11 +44,8 @@ async def node_worker_node(state: dict) -> dict:
     start = time.monotonic()
 
     try:
-        templates: list[dict] = state.get("node_templates", [])
         cred_ids: dict = state.get("resolved_credential_ids", {})
-
-        relevant_templates = _filter_templates_for_node(templates, node_spec.get("node_type", ""))
-        prompt = _build_worker_prompt(node_spec, relevant_templates, cred_ids)
+        prompt = _build_worker_prompt(node_spec, cred_ids)
 
         output: WorkerOutput = await _agent.invoke([HumanMessage(content=prompt)])
         node_json = _assemble_node_json(node_spec, output)
@@ -70,14 +70,12 @@ async def node_worker_node(state: dict) -> dict:
 
 # ── Prompt assembly ───────────────────────────────────────────────────────────
 
-def _build_worker_prompt(node_spec: dict, templates: list[dict], cred_ids: dict) -> str:
+def _build_worker_prompt(node_spec: dict, cred_ids: dict) -> str:
     """Assemble the human message for the node worker."""
     sections = [
         f"## Node to build\n{json.dumps(node_spec, indent=2)}",
         f"## Resolved credential IDs\n{json.dumps(cred_ids, indent=2)}",
     ]
-    if templates:
-        sections.append(f"## RAG templates (reference only)\n{json.dumps(templates, indent=2)}")
     return "\n\n".join(sections)
 
 
@@ -117,17 +115,6 @@ def _attach_credentials_if_present(node: dict, node_spec: dict) -> None:
         node["credentials"] = {
             credential_type: {"id": credential_id, "name": credential_type}
         }
-
-
-# ── Template filtering ────────────────────────────────────────────────────────
-
-def _filter_templates_for_node(templates: list[dict], node_type: str) -> list[dict]:
-    """Return RAG templates relevant to this specific node type."""
-    node_type_lower = node_type.lower()
-    return [
-        t for t in templates
-        if node_type_lower in (t.get("node_type", "") or t.get("name", "")).lower()
-    ]
 
 
 # ── Result constructors ───────────────────────────────────────────────────────
