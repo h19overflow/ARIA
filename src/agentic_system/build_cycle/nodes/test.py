@@ -1,6 +1,9 @@
 """Build Cycle Test — activate, trigger webhook or run manually, poll, deactivate on failure."""
 from __future__ import annotations
 
+import asyncio
+import logging
+
 import httpx
 from langchain_core.messages import HumanMessage
 
@@ -10,6 +13,8 @@ from src.agentic_system.build_cycle.nodes._trigger_utils import (
     detect_trigger_type,
     extract_webhook_path,
 )
+
+log = logging.getLogger("aria.test")
 
 
 async def test_node(state: ARIAState) -> dict:
@@ -67,6 +72,10 @@ async def _test_webhook(workflow_id: str, workflow_json: dict) -> dict:
         await client.trigger_webhook(webhook_path, payload={"test": True})
         execution = await client.poll_execution(workflow_id, timeout=30.0)
         exec_result = _parse_execution(execution)
+        if exec_result["status"] == "success":
+            delayed_error = await _verify_no_delayed_errors(workflow_id)
+            if delayed_error is not None:
+                exec_result = delayed_error
         if exec_result["status"] != "success":
             await _safe_deactivate(client, workflow_id)
     except httpx.HTTPStatusError as exc:
@@ -91,12 +100,29 @@ async def _test_webhook(workflow_id: str, workflow_json: dict) -> dict:
     }
 
 
+async def _verify_no_delayed_errors(workflow_id: str) -> ExecutionResult | None:
+    """Poll for delayed execution errors after an initial success result.
+
+    TODO: Implement once N8nClient exposes list_executions(workflow_id, status, limit).
+    Currently N8nClient has no list_executions method, so this is a no-op.
+    """
+    # Placeholder sleep so the function is structurally ready to extend.
+    await asyncio.sleep(0)
+    log.debug("Delayed-error polling skipped — N8nClient.list_executions not yet available.")
+    return None
+
+
 async def _safe_deactivate(client: N8nClient, workflow_id: str) -> None:
-    """Deactivate workflow, swallowing errors."""
+    """Deactivate workflow, logging but not propagating errors."""
     try:
         await client.deactivate_workflow(workflow_id)
-    except Exception:
-        pass
+    except Exception as exc:
+        log.warning(
+            "Failed to deactivate workflow %s (safe to ignore): %s",
+            workflow_id,
+            exc,
+            exc_info=True,
+        )
 
 
 def _error_result(error_msg: str, *, node_name: str = "unknown") -> dict:

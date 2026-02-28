@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 from langgraph.graph import StateGraph, END
+from langgraph.types import Send
 
 from src.agentic_system.shared.state import ARIAState
 from src.agentic_system.build_cycle.nodes.rag_retriever import rag_retriever_node
-from src.agentic_system.build_cycle.nodes.phase_planner import phase_planner_node
-from src.agentic_system.build_cycle.nodes.engineer import engineer_node
+from src.agentic_system.build_cycle.nodes.node_planner import node_planner_node
+from src.agentic_system.build_cycle.nodes.node_worker import node_worker_node
+from src.agentic_system.build_cycle.nodes.assembler import assembler_node
 from src.agentic_system.build_cycle.nodes.deploy import deploy_node
 from src.agentic_system.build_cycle.nodes.test import test_node
 from src.agentic_system.build_cycle.nodes.debugger import debugger_node
@@ -19,15 +21,26 @@ MAX_FIX_ATTEMPTS = 3
 _FIXABLE_TYPES = {"schema", "logic"}
 
 
+def fan_out_nodes(state: ARIAState) -> list[Send]:
+    """Fan out NodeSpec list to parallel workers via Send API."""
+    nodes_to_build = state.get("nodes_to_build", [])
+    if not nodes_to_build:
+        return []
+    return [
+        Send("node_worker", {
+            "node_spec": spec,
+            "node_templates": state.get("node_templates", []),
+            "resolved_credential_ids": state.get("resolved_credential_ids", {}),
+        })
+        for spec in nodes_to_build
+    ]
+
+
 def _route_test_result(state: ARIAState) -> str:
-    """Route based on execution result: next phase, activate, or debug."""
+    """Route based on execution result: activate on success or debug on failure."""
     result = state.get("execution_result")
     if result and result["status"] == "success":
-        phase = state.get("build_phase", 0)
-        total = state.get("total_phases", 1)
-        if phase + 1 >= total:
-            return "activate"
-        return "advance_phase"
+        return "activate"
     return "debugger"
 
 
@@ -41,9 +54,9 @@ def _route_debugger_result(state: ARIAState) -> str:
     has_budget = state.get("fix_attempts", 0) < MAX_FIX_ATTEMPTS
 
     if error_type == "rate_limit":
-        return "test"  # retry the test without a code change
+        return "test"
     if error_type in _FIXABLE_TYPES and has_budget and state.get("workflow_json"):
-        return "deploy"  # fix was applied in debugger_node, redeploy
+        return "deploy"
     return "hitl_fix_escalation"
 
 
@@ -53,16 +66,6 @@ def _route_hitl_decision(state: ARIAState) -> str:
     if status == "building":
         return "deploy"
     return "fail"
-
-
-def _advance_phase(state: ARIAState) -> dict:
-    """Increment build phase and reset per-phase state."""
-    return {
-        "build_phase": state.get("build_phase", 0) + 1,
-        "fix_attempts": 0,
-        "classified_error": None,
-        "execution_result": None,
-    }
 
 
 def _mark_failed(state: ARIAState) -> dict:
@@ -82,24 +85,24 @@ def build_build_cycle_graph() -> StateGraph:
 
 def _register_nodes(graph: StateGraph) -> None:
     graph.add_node("rag_retriever", rag_retriever_node)
-    graph.add_node("phase_planner", phase_planner_node)
-    graph.add_node("engineer", engineer_node)
+    graph.add_node("node_planner", node_planner_node)
+    graph.add_node("node_worker", node_worker_node)
+    graph.add_node("assembler", assembler_node)
     graph.add_node("deploy", deploy_node)
     graph.add_node("test", test_node)
     graph.add_node("debugger", debugger_node)
     graph.add_node("activate", activate_node)
     graph.add_node("hitl_fix_escalation", hitl_fix_escalation_node)
-    graph.add_node("advance_phase", _advance_phase)
     graph.add_node("fail", _mark_failed)
 
 
 def _wire_edges(graph: StateGraph) -> None:
     graph.set_entry_point("rag_retriever")
-    graph.add_edge("rag_retriever", "phase_planner")
-    graph.add_edge("phase_planner", "engineer")
-    graph.add_edge("engineer", "deploy")
+    graph.add_edge("rag_retriever", "node_planner")
+    graph.add_conditional_edges("node_planner", fan_out_nodes, ["node_worker"])
+    graph.add_edge("node_worker", "assembler")
+    graph.add_edge("assembler", "deploy")
     graph.add_edge("deploy", "test")
-    graph.add_edge("advance_phase", "engineer")
     graph.add_edge("activate", END)
     graph.add_edge("fail", END)
 
@@ -108,7 +111,6 @@ def _wire_edges(graph: StateGraph) -> None:
         _route_test_result,
         {
             "activate": "activate",
-            "advance_phase": "advance_phase",
             "debugger": "debugger",
         },
     )

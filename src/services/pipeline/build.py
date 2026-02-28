@@ -119,9 +119,9 @@ def _conversation_to_aria_state(state: ConversationState) -> ARIAState:
         "fix_attempts": 0,
         "webhook_url": None,
         "status": "planning",
-        "build_phase": 0,
-        "total_phases": 1,
-        "phase_node_map": [],
+        "nodes_to_build": [],
+        "planned_edges": [],
+        "node_build_results": [],
         "paused_for_input": False,
         "hitl_explanation": None,
     }

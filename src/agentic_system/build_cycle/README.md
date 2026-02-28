@@ -1,6 +1,6 @@
 # Build Cycle Graph
 
-Takes the `BuildBlueprint` from Preflight and incrementally builds, deploys, tests, and activates a live n8n workflow.
+Takes the `BuildBlueprint` from Preflight and incrementally builds, deploys, tests, and activates a live n8n workflow using parallel node workers and fan-in assembly.
 
 ---
 
@@ -11,19 +11,23 @@ flowchart TD
     IN([BuildBlueprint from Preflight]) --> RAG
 
     RAG[RAG Retriever]
-    RAG --> PLAN[Phase Planner]
-    PLAN --> ENG
+    RAG --> PLAN[Node Planner]
+    PLAN --> FO["Fan-Out<br/>(Send API)"]
 
-    subgraph LOOP [Per-phase build loop]
-        ENG[Engineer]
-        DEP[Deploy]
-        TST[Test]
-        ENG --> DEP --> TST
+    subgraph PARALLEL ["Parallel Execution"]
+        W1["Node Worker 1"]
+        W2["Node Worker 2"]
+        WN["Node Worker N"]
+        W1 ~~~ W2 ~~~ WN
     end
 
-    TST -->|success - more phases| ADV[Advance Phase]
-    ADV --> ENG
-    TST -->|success - final phase| ACT[Activate]
+    FO --> PARALLEL
+    PARALLEL --> ASM[Assembler<br/>validation gate]
+
+    ASM --> DEP[Deploy]
+    DEP --> TST[Test]
+
+    TST -->|success| ACT[Activate]
     TST -->|error| DBG[Debugger]
 
     DBG -->|rate limit| TST
@@ -37,17 +41,20 @@ flowchart TD
 
     style RAG fill:#f0fdf4,stroke:#16a34a,color:#14532d
     style PLAN fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
-    style ENG fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style FO fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style W1 fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style W2 fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style WN fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style PARALLEL fill:#f8fafc,stroke:#cbd5e1
+    style ASM fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
     style DBG fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
     style DEP fill:#f0fdf4,stroke:#16a34a,color:#14532d
     style TST fill:#f0fdf4,stroke:#16a34a,color:#14532d
-    style ADV fill:#f0fdf4,stroke:#16a34a,color:#14532d
     style ACT fill:#f0fdf4,stroke:#16a34a,color:#14532d
     style ESC fill:#fef9c3,stroke:#ca8a04,color:#713f12
     style IN fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
     style DONE fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
     style FAIL fill:#fef2f2,stroke:#dc2626,color:#7f1d1d
-    style LOOP fill:#f8fafc,stroke:#cbd5e1
 ```
 
 **🤖 Blue = Agentic (LLM call)** · **⏸️ Yellow = Pauses for user input** · **🟢 Green = Deterministic / API call**
@@ -59,11 +66,11 @@ flowchart TD
 | Node | Agentic? | Pauses? | What it does |
 |---|---|---|---|
 | **RAG Retriever** | No | No | Hybrid BM25 + semantic search over ChromaDB (559 n8n node docs). Returns templates per node type plus workflow-level context. |
-| **Phase Planner** | 🤖 Yes | No | Reasons over the full topology, intent, credential boundaries, and RAG summaries to split the workflow into ordered build chunks. |
-| **Engineer** | 🤖 Yes | No | Builds the n8n workflow JSON for the current phase. Phase > 0 merges new nodes into the existing workflow. |
+| **Node Planner** | 🤖 Yes | No | Reasons over the full topology, intent, credential boundaries, and RAG summaries to produce a flat `NodePlan` with a list of `NodeSpec` objects and `PlannedEdge` connections. Detects and corrects cycles. |
+| **Node Worker** (parallel) | 🤖 Yes | No | Spawned in parallel via Send API. Builds a single n8n node JSON from its `NodeSpec`, applies credential IDs, generates UUIDs, and calculates canvas position. |
+| **Assembler** | 🤖 Yes | No | Fan-in: collects all `node_build_results`, validates them (short-circuits to debugger if any fail), checks for dangling edges, and merges nodes + connections into final `workflow_json`. |
 | **Deploy** | No | No | Creates (POST) or updates (PUT) the workflow in n8n via the REST API. |
 | **Test** | No | No | Activates the workflow. Webhook → fire + poll execution. Non-webhook → activation success = pass. |
-| **Advance Phase** | No | No | Increments phase counter, resets per-phase error state. |
 | **Debugger** | 🤖 Yes | No | Classifies the error (`schema`, `auth`, `rate_limit`, `logic`) and applies a targeted fix in one LLM call. |
 | **Activate** | No | No | Permanently activates the workflow, returns the live webhook URL (None for non-webhook). |
 | **HITL Escalation** | No | ⏸️ Yes | Fix budget exhausted — generates plain-English explanation, pauses for user: retry / replan / abort. |
@@ -72,65 +79,110 @@ flowchart TD
 
 ## Agent Internals
 
-### Phase Planner
+### Node Planner
 
 ```mermaid
 sequenceDiagram
     participant S as ARIAState
-    participant PP as Phase Planner
+    participant NP as Node Planner
     participant LLM as Gemini LLM
 
-    S->>PP: intent, topology{nodes,edges,branch_nodes}, credential_ids, node_templates
-    PP->>PP: _build_planner_prompt()<br/>cap templates at 12 summaries
-    PP->>LLM: structured call → PhasePlan schema
-    LLM-->>PP: PhasePlan{phases[], overall_strategy}
-    PP->>PP: _plan_to_phase_entries()<br/>slice topology edges per phase
-    PP-->>S: phase_node_map[], total_phases, build_phase=0
+    S->>NP: intent, topology{nodes,edges,branch_nodes},\ncredential_ids, node_templates
+    NP->>NP: _build_planner_prompt()<br/>cap templates at 12 summaries
+    NP->>LLM: structured call → NodePlan schema
+    LLM-->>NP: NodePlan{nodes[], edges[], overall_strategy}
+    NP->>NP: _detect_cycle(edges)<br/>retry up to 3 times if cycle found
+    NP-->>S: nodes_to_build[], planned_edges[]
 ```
 
 **Planning rules:**
-- Phase 0 is always the trigger node alone
-- Never mix nodes from different external services in one phase
-- IF/Switch nodes travel with their service owner
-- 1–3 nodes per phase (max 4)
-- Merge/fanin nodes get their own phase after all feeding branches
+- Output a flat list of `NodeSpec` objects (no phases)
+- Never mix nodes from different external services
+- Include conditional branch hints (IF/Switch)
+- Preserve all topology edges
+- Ensure no cycles in planned edges
 
-**Output shape per phase:**
+**Output shape:**
 ```python
-PhaseEntry {
-    nodes: ["Gmail"],           # node names to build
-    internal_edges: [...],      # edges entirely within this phase
-    entry_edges: [...],         # edges crossing in from the previous phase
+NodePlan {
+    nodes: [NodeSpec, NodeSpec, ...],       # all nodes to build (parallel)
+    edges: [PlannedEdge, PlannedEdge, ...], # all connections
+    overall_strategy: "...",                # one-sentence explanation
+}
+
+NodeSpec {
+    node_name: str,              # display name
+    node_type: str,              # n8n type identifier
+    parameter_hints: dict,       # planner-supplied overrides
+    credential_id: str | None,   # resolved credential UUID
+    credential_type: str | None, # credential type name
+    position_index: int,         # layout ordering hint
+}
+
+PlannedEdge {
+    from_node: str,              # source node name
+    to_node: str,                # target node name
+    branch: str | None,          # conditional branch label (for If/Switch)
 }
 ```
 
 ---
 
-### Engineer
+### Node Worker (parallel)
+
+```mermaid
+sequenceDiagram
+    participant FO as Fan-Out Router
+    participant W as Node Worker
+    participant LLM as Gemini LLM
+
+    FO->>W: {node_spec, node_templates[], credential_ids}
+    W->>W: _filter_templates_for_node()
+    W->>W: _build_worker_prompt()
+    W->>LLM: structured call → WorkerOutput schema
+    LLM-->>W: WorkerOutput{parameters, typeVersion}
+    W->>W: _assemble_node_json()<br/>inject UUID, webhookId (if webhook),\ncredentials, position
+    W-->>FO: NodeResult{node_name, node_json,\nvalidation_passed, validation_errors[]}
+```
+
+**Each worker:**
+- Receives one `NodeSpec` and relevant RAG templates
+- Calls LLM once to generate complete `parameters`
+- Wraps parameters into full n8n node JSON
+- Returns a `NodeResult` with pass/fail status
+- Runs in parallel with all other workers
+
+---
+
+### Assembler (Fan-In)
 
 ```mermaid
 sequenceDiagram
     participant S as ARIAState
-    participant EN as Engineer
-    participant LLM as Gemini LLM
+    participant ASM as Assembler
+    participant DBG as Debugger
 
-    S->>EN: blueprint, phase_node_map[build_phase], node_templates,\ncredential_ids, workflow_json (existing, phase>0)
-    EN->>EN: _filter_templates() — only templates for this phase's nodes
-    EN->>EN: _build_phase_prompt() — intent + nodes + creds + templates\n+ connection map + existing workflow (phase>0)
-    EN->>LLM: structured call → EngineerOutput schema
-    LLM-->>EN: EngineerOutput{nodes[], connections[]}
-    EN->>EN: to_n8n_payload() — inject UUIDs, credential IDs
-    alt phase > 0
-        EN->>EN: merge_into_existing() — append nodes, preserve existing
+    S->>ASM: node_build_results[], planned_edges[]
+    ASM->>ASM: _find_failed_results()
+    alt any validation_passed == false
+        ASM->>DBG: route with classification: schema error
+    else
+        ASM->>ASM: _find_dangling_edge()
+        alt edge references unknown node
+            ASM->>DBG: route with classification: schema error
+        else
+            ASM->>ASM: _build_connections_from_edges()
+            ASM->>ASM: _assemble_workflow_json()
+            ASM-->>S: workflow_json, status="building"
+        end
     end
-    EN-->>S: workflow_json (new or merged)
 ```
 
-**Trigger rules (phase 0):**
-- Build ONLY the trigger specified in the intent — never default to Webhook
-- Webhook → include `webhookId` UUID + short `path` slug
-- Schedule → use a direct `rule` object (not an expression string): `{"interval": [{"field": "minutes", "minutesInterval": 15}]}`
-- Other triggers → follow the RAG template exactly
+**Validation gate:**
+- Checks all `NodeResult` objects for `validation_passed: false`
+- Scans `planned_edges` for references to nodes not in `node_build_results`
+- Short-circuits to Debugger with `type: "schema"` if any fail
+- Otherwise, merges nodes and connections into final workflow JSON
 
 ---
 
@@ -232,15 +284,15 @@ flowchart TD
 ```
 BuildBlueprint
     ↓ RAG Retriever      → node_templates[]
-    ↓ Phase Planner      → phase_node_map[], total_phases, build_phase=0
-    ↓ Engineer           → workflow_json (built or merged)
+    ↓ Node Planner       → nodes_to_build[], planned_edges[]
+    ↓ Fan-Out (Send)     → spawn parallel Node Workers
+    ↓ Node Workers       → node_build_results[] (parallel)
+    ↓ Assembler          → workflow_json (merged + validated), status="building"
     ↓ Deploy             → n8n_workflow_id
     ↓ Test               → execution_result → "done" | "fixing"
     ↓   (fixing)
     ↓ Debugger           → classified_error, workflow_json (patched), fix_attempts++
-    ↓   (done, more phases)
-    ↓ Advance Phase      → build_phase++
-    ↓   (done, final phase)
+    ↓   (done)
     ↓ Activate           → webhook_url, status="done"
 ```
 
@@ -251,8 +303,9 @@ BuildBlueprint
 | Event | What the UI sees | Type |
 |---|---|---|
 | RAG Retriever fires | `"Retrieved N templates for M nodes via hybrid search"` | Per-node update |
-| Phase Planner fires | `"Strategy: X → N phases: [node], [node]..."` | Per-node update |
-| Engineer fires | `"Phase N: built M nodes (NodeA, NodeB)"` | Per-node update |
+| Node Planner fires | `"Strategy: X → N nodes queued: [node], [node]..."` | Per-node update |
+| Node Workers fire (parallel) | `"Building NodeA..."`, `"Building NodeB..."` (one per worker) | Per-node update |
+| Assembler fires | `"Assembled N nodes into workflow."` | Per-node update |
 | Deploy fires | `"Deployed workflow <id>"` | Per-node update |
 | Test fires | `"Execution success/error: <exec_id>"` or `"Activation success (non-webhook trigger)"` | Per-node update |
 | Debugger fires | `"<type> in '<node>': <message>"` + `"Fix applied: <explanation>"` | Per-node update |
@@ -281,10 +334,10 @@ Detection scans `workflow_json.nodes` for known type strings:
 
 ## Bugs Fixed (2026-02-27)
 
-### Bug 1 — Engineer always assumed Webhook as Phase 0 trigger
-**File:** `prompts/engineer.py`
-**Root cause:** System prompt hard-coded `"Phase 0: workflow MUST start with a Webhook node"`, causing the LLM to override Schedule Trigger intent or produce malformed Schedule nodes.
-**Fix:** Replaced with trigger-type-aware instructions. Phase 0 now says "build the trigger specified in the intent". Added explicit Webhook and Schedule Trigger examples showing the correct parameter shapes (especially the Schedule `rule` object vs expression string).
+### Bug 1 — Phase-based sequential loop → Parallel fan-out/fan-in refactor
+**Files:** `graph.py`, `nodes/node_planner.py`, `nodes/node_worker.py`, `nodes/assembler.py`
+**Root cause:** Previous architecture split workflows into sequential phases (Phase 0, Phase 1, etc.), requiring an Engineer to build all nodes in a phase, then Advance Phase, then repeat. This serialized build time and was inflexible when node dependencies were lightweight.
+**Fix:** Replaced phase planner with flat Node Planner that produces a DAG of all nodes + edges (with cycle detection). Use LangGraph's Send API to spawn parallel Node Workers for each node, then Fan-In with Assembler to validate and merge results before Deploy.
 
 ---
 
@@ -306,20 +359,20 @@ Detection scans `workflow_json.nodes` for known type strings:
 
 ## What's Next
 
-### 1. Engineer prompt overflow on large workflows (active issue)
-**Symptom:** `Failed to parse structured output: Expecting ',' delimiter at char 119548` — the LLM's response overflows the JSON parser when the phase prompt includes a large existing workflow + many RAG templates.
-**Fix needed:** Before passing `workflow_json` to the Engineer in phase > 0, strip cosmetic fields (`position`, redundant `typeVersion`) and deduplicate connections. Also cap `node_templates` tokens rather than just count.
-
-### 2. `detect_trigger_type` scans all nodes, not just the entry trigger
+### 1. `detect_trigger_type` scans all nodes, not just the entry trigger
 **Symptom:** A workflow containing a Webhook Response node after a Schedule Trigger will be misclassified as `"webhook"`.
 **Fix needed:** Use `build_blueprint.topology.entry_node` to restrict detection to the trigger node only, rather than scanning all nodes.
+
+### 2. Node Worker prompt tuning for large workflows
+**Symptom:** Parallel workers may struggle with large parameter sets or ambiguous node types when RAG templates are insufficient.
+**Fix needed:** Enhance Node Worker prompt with multi-shot examples and fallback strategies for rare or undocumented node types.
 
 ### 3. Medium and large fixture coverage
 The benchmark currently passes 2/3 simple fixtures. Next step is to run the medium tier (3–4 node workflows with branching) and fix failures as they appear. Large fixtures (6–8 nodes, merge nodes) come after medium is stable.
 
-### 4. Webhook Echo needs `responseMode` fix
-**Symptom:** A single-node Webhook Echo workflow fails on first run because the Engineer defaults to `responseMode: "responseNode"`, which requires a "Respond to Webhook" node that doesn't exist. The Debugger fixes it on retry 3.
-**Fix needed:** Add an explicit example to the Engineer prompt showing that a standalone Webhook node should use `responseMode: "onReceived"`.
+### 4. Cycle detection stress testing
+**Symptom:** Node Planner detects cycles but only retries LLM up to 3 times.
+**Fix needed:** Consider increasing retry budget or adding a fallback heuristic (e.g., topological sort with cycle-breaking) if LLM persistently produces cyclic plans.
 
 ---
 

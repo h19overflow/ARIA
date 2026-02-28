@@ -1,5 +1,6 @@
 """Central LangGraph state shared across preflight and build_cycle."""
 from __future__ import annotations
+import operator
 from typing import Annotated
 from typing_extensions import TypedDict
 from langgraph.graph.message import add_messages
@@ -19,13 +20,6 @@ class WorkflowTopology(TypedDict):
     edges: list[WorkflowEdge]
     entry_node: str               # trigger node (always phase 0)
     branch_nodes: list[str]       # nodes with multiple outbound edges (If, Switch)
-
-
-class PhaseEntry(TypedDict):
-    """One build phase with topology context for the Engineer."""
-    nodes: list[str]                    # node names to build this phase
-    internal_edges: list[WorkflowEdge]  # edges entirely within this phase
-    entry_edges: list[WorkflowEdge]     # edges crossing in FROM the previous phase
 
 
 class BuildBlueprint(TypedDict):
@@ -89,10 +83,10 @@ class ARIAState(TypedDict):
     webhook_url: str | None
     status: str  # "planning" | "building" | "testing" | "fixing" | "done" | "failed" | "replanning"
 
-    # Incremental build phases
-    build_phase: int
-    total_phases: int
-    phase_node_map: list[PhaseEntry]
+    # Parallel build — fan-out/fan-in via LangGraph Send
+    nodes_to_build: Annotated[list, operator.add]       # NodeSpec dicts from planner; reducer concatenates Send batches
+    planned_edges: list                                  # all edges from planner (no reducer needed)
+    node_build_results: Annotated[list, operator.add]   # NodeResult dicts aggregated from parallel workers
 
     # HITL pause indicator — set True immediately before interrupt(), False after resume.
     # Frontend can read this without inferring from SSE gaps.

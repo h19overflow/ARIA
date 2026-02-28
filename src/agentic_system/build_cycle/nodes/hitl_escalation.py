@@ -118,9 +118,9 @@ def _reset_for_replan(state: ARIAState) -> dict:
         "classified_error": None,
         "execution_result": None,
         "node_templates": [],
-        "build_phase": 0,
-        "total_phases": 0,
-        "phase_node_map": [],
+        "nodes_to_build": [],
+        "planned_edges": [],
+        "node_build_results": [],
         "paused_for_input": False,
         "status": "replanning",
         "messages": [HumanMessage(

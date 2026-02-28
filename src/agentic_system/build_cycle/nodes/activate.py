@@ -1,6 +1,8 @@
 """Build Cycle Activate — activates the deployed workflow in n8n."""
 from __future__ import annotations
 
+import logging
+
 from langchain_core.messages import HumanMessage
 
 from src.agentic_system.shared.state import ARIAState
@@ -10,6 +12,8 @@ from src.agentic_system.build_cycle.nodes._trigger_utils import (
     detect_trigger_type,
     extract_webhook_path,
 )
+
+log = logging.getLogger("aria.activate")
 
 
 async def activate_node(state: ARIAState) -> dict:
@@ -26,8 +30,10 @@ async def activate_node(state: ARIAState) -> dict:
     await client.connect()
     try:
         await client.activate_workflow(workflow_id)
-    except Exception:
-        pass  # Already active from test phase
+    except Exception as exc:
+        log.warning(
+            "Activation attempt failed (may already be active): %s", exc, exc_info=True
+        )
     finally:
         await client.disconnect()
 
