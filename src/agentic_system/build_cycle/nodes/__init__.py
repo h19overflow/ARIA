@@ -1,4 +1,3 @@
-from src.agentic_system.build_cycle.nodes.rag_retriever import rag_retriever_node
 from src.agentic_system.build_cycle.nodes.node_planner import node_planner_node
 from src.agentic_system.build_cycle.nodes.node_worker import node_worker_node
 from src.agentic_system.build_cycle.nodes.assembler import assembler_node
@@ -10,7 +9,6 @@ from src.agentic_system.build_cycle.nodes.node_substituter import node_substitut
 from src.agentic_system.build_cycle.nodes.hitl_escalation import hitl_fix_escalation_node
 
 __all__ = [
-    "rag_retriever_node",
     "node_planner_node",
     "node_worker_node",
     "assembler_node",

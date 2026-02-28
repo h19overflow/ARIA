@@ -25,7 +25,7 @@ class WorkflowTopology(TypedDict):
 class BuildBlueprint(TypedDict):
     """Handoff contract from Pre-Flight → Build Cycle."""
     intent: str
-    required_nodes: list[str]        # kept for rag_retriever compat
+    required_nodes: list[str]        # used by node_planner for topology hints
     credential_ids: dict[str, str]
     topology: WorkflowTopology       # NEW
     user_description: str            # NEW
@@ -73,7 +73,6 @@ class ARIAState(TypedDict):
     conversation_notes: dict | None
 
     # Build Cycle owned
-    node_templates: list[dict]
     workflow_json: dict | None
     n8n_workflow_id: str | None
     n8n_execution_id: str | None
@@ -83,7 +82,7 @@ class ARIAState(TypedDict):
     webhook_url: str | None
     status: str  # "planning" | "building" | "testing" | "fixing" | "done" | "failed" | "replanning"
 
-    # Node availability — populated by rag_retriever at build start
+    # Node availability — populated by node_planner
     available_node_packages: list[str]
 
     # Parallel build — fan-out/fan-in via LangGraph Send

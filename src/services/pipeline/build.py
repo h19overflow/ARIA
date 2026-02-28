@@ -111,7 +111,6 @@ def _conversation_to_aria_state(state: ConversationState) -> ARIAState:
         "user_description": workflow_intent,
         "intent_summary": workflow_intent,
         "conversation_notes": None,
-        "node_templates": [],
         "workflow_json": None,
         "n8n_workflow_id": None,
         "n8n_execution_id": None,

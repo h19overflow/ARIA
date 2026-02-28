@@ -204,7 +204,6 @@ def _reset_for_replan(state: ARIAState) -> dict:
         "fix_attempts": 0,
         "classified_error": None,
         "execution_result": None,
-        "node_templates": [],
         "nodes_to_build": [],
         "planned_edges": [],
         "node_build_results": [],

@@ -37,7 +37,7 @@ def build_initial_state(description: str, conversation_notes: dict | None = None
         "credential_guide_payload": None, "build_blueprint": None, "topology": None,
         "user_description": description, "intent_summary": "",
         "orchestrator_decision": "", "pending_question": "", "orchestrator_turns": 0,
-        "node_templates": [], "workflow_json": None, "n8n_workflow_id": None,
+        "workflow_json": None, "n8n_workflow_id": None,
         "n8n_execution_id": None, "execution_result": None, "classified_error": None,
         "fix_attempts": 0, "webhook_url": None, "nodes_to_build": [],
         "planned_edges": [], "node_build_results": [], "paused_for_input": False,
