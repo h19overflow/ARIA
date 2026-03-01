@@ -2,7 +2,7 @@
 
 > Natural language in → live n8n workflow out.
 
-**Status:** Core pipeline verified · React frontend integration complete
+**Status:** In progress — paused while learning more before continuing development
 
 ---
 
