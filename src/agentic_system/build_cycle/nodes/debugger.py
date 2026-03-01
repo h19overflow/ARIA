@@ -29,8 +29,6 @@ from src.services.pipeline.event_bus import get_event_bus
 
 log = logging.getLogger(__name__)
 
-_FIXABLE_TYPES = {"schema", "logic", "missing_node"}
-
 # Phase 1: Tool-use agent — searches ChromaDB for correct node schemas
 _diagnostic_researcher = BaseAgent(
     prompt=DIAGNOSTIC_RESEARCHER_SYSTEM_PROMPT,
@@ -57,7 +55,6 @@ async def debugger_node(state: ARIAState) -> dict:
     workflow_json = state["workflow_json"]
     fix_attempts = state.get("fix_attempts", 0)
     error_data = exec_result.get("error") or {}
-    cred_ids = state.get("resolved_credential_ids", {})
 
     if bus:
         await bus.emit_start(
@@ -67,8 +64,8 @@ async def debugger_node(state: ARIAState) -> dict:
     start = time.monotonic()
 
     # ── Fast path: auth auto-attach (no LLM needed) ──────────────────
-    error_msg = error_data.get("message", "")
-    if _looks_like_auth_error(error_msg):
+    if _looks_like_auth_error(error_data.get("message", "")):
+        cred_ids = state.get("resolved_credential_ids", {})
         patched = _try_attach_credentials(
             workflow_json, error_data.get("node_name", ""), cred_ids,
         )
@@ -78,20 +75,41 @@ async def debugger_node(state: ARIAState) -> dict:
             )
 
     # ── Two-phase LLM fix ─────────────────────────────────────────────
+    return await _run_two_phase_fix(state, error_data, workflow_json, fix_attempts, bus, start)
+
+
+async def _run_two_phase_fix(
+    state: ARIAState, error_data: dict, workflow_json: dict,
+    fix_attempts: int, bus, start: float,
+) -> dict:
+    """Run DiagnosticResearcher → FixComposer and build state updates."""
     available_packages = state.get("available_node_packages", ["n8n-nodes-base"])
     compact_workflow = _summarize_workflow(workflow_json, error_data.get("node_name"))
 
-    # Phase 1: Researcher diagnoses the issue
     diagnostic_report = await _run_diagnostic_researcher(
         error_data, compact_workflow, available_packages,
     )
-
-    # Phase 2: Composer produces the structured fix
     result = await _run_fix_composer(
         diagnostic_report, error_data, compact_workflow,
         fix_attempts, available_packages,
     )
 
+    updates = _build_fix_updates(workflow_json, result, error_data, fix_attempts)
+
+    elapsed = int((time.monotonic() - start) * 1000)
+    fix_status = "success" if updates.get("status") == "building" else "error"
+    if bus:
+        await bus.emit_complete(
+            "fix", "Debugger", fix_status,
+            f"Debugger {result.error_type}: {result.message}", duration_ms=elapsed,
+        )
+    return updates
+
+
+def _build_fix_updates(
+    workflow_json: dict, result: DebuggerOutput, error_data: dict, fix_attempts: int,
+) -> dict:
+    """Assemble the state update dict from a DebuggerOutput."""
     classified: ClassifiedError = {
         "type": result.error_type,
         "node_name": result.node_name,
@@ -101,7 +119,6 @@ async def debugger_node(state: ARIAState) -> dict:
         "stack": error_data.get("stack"),
     }
 
-    has_fix = _has_any_fix(result)
     updates: dict = {
         "classified_error": classified,
         "fix_attempts": fix_attempts + 1,
@@ -110,20 +127,12 @@ async def debugger_node(state: ARIAState) -> dict:
         )],
     }
 
-    if has_fix:
+    if _has_any_fix(result):
         updates["workflow_json"] = _apply_full_fix(workflow_json, result)
         updates["status"] = "building"
         updates["messages"].append(HumanMessage(
             content=f"[Debugger] Fix applied — {_describe_fix(result)}"
         ))
-
-    elapsed = int((time.monotonic() - start) * 1000)
-    fix_status = "success" if has_fix else "error"
-    if bus:
-        await bus.emit_complete(
-            "fix", "Debugger", fix_status,
-            f"Debugger {result.error_type}: {result.message}", duration_ms=elapsed,
-        )
 
     return updates
 
@@ -203,8 +212,8 @@ def _apply_full_fix(workflow_json: dict, result: DebuggerOutput) -> dict:
 
     patched["nodes"] = nodes
 
-    # 4. Replace connections if provided
-    if result.fixed_connections is not None:
+    # 4. Replace connections if provided (empty dict is not a valid replacement)
+    if result.fixed_connections:
         patched["connections"] = result.fixed_connections
 
     return patched
@@ -300,7 +309,7 @@ def _has_any_fix(result: DebuggerOutput) -> bool:
     """Check if the DebuggerOutput contains any fix operations."""
     return any([
         result.fixed_nodes,
-        result.fixed_connections is not None,
+        bool(result.fixed_connections),
         result.added_nodes,
         result.removed_node_names,
     ])
@@ -315,7 +324,7 @@ def _describe_fix(result: DebuggerOutput) -> str:
         parts.append(f"added {len(result.added_nodes)} node(s)")
     if result.removed_node_names:
         parts.append(f"removed {len(result.removed_node_names)} node(s)")
-    if result.fixed_connections is not None:
+    if result.fixed_connections:
         parts.append("rewired connections")
     return ", ".join(parts) if parts else "no changes"
 
