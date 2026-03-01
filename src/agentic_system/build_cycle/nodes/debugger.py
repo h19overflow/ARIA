@@ -48,10 +48,11 @@ async def debugger_node(state: ARIAState) -> dict:
         )
     start = time.monotonic()
 
+    compact_workflow = _summarize_workflow(workflow_json, error_data.get("node_name"))
     prompt = (
         f"Attempt: {fix_attempts + 1}/3\n"
         f"Error:\n{json.dumps(error_data, indent=2)}\n\n"
-        f"Workflow:\n{json.dumps(workflow_json, indent=2)}"
+        f"Workflow:\n{json.dumps(compact_workflow, indent=2)}"
     )
     result: DebuggerOutput = await _agent.invoke([HumanMessage(content=prompt)])
 
@@ -115,6 +116,29 @@ async def debugger_node(state: ARIAState) -> dict:
         )
 
     return updates
+
+
+def _summarize_workflow(workflow_json: dict, failing_node_name: str | None) -> dict:
+    """Compact workflow for the debugger prompt.
+
+    The failing node keeps full parameters (the LLM needs them to produce a fix).
+    All other nodes are summarised to name/type/credentials only.
+    """
+    summary = {k: v for k, v in workflow_json.items() if k != "nodes"}
+    compact_nodes = []
+    for node in workflow_json.get("nodes", []):
+        if node.get("name") == failing_node_name:
+            compact_nodes.append(node)
+        else:
+            short: dict = {
+                "name": node.get("name"),
+                "type": node.get("type"),
+            }
+            if node.get("credentials"):
+                short["credentials"] = node["credentials"]
+            compact_nodes.append(short)
+    summary["nodes"] = compact_nodes
+    return summary
 
 
 def _apply_fix(workflow_json: dict, result: DebuggerOutput) -> dict:

@@ -111,12 +111,48 @@ def _build_substituter_prompt(
 ) -> str:
     """Assemble the prompt for the substituter agent."""
     available = state.get("available_node_packages", ["n8n-nodes-base"])
+    compact_node = _summarize_node(failing_node)
+    compact_error = {
+        "type": error.get("type"),
+        "node_name": error.get("node_name"),
+        "message": error.get("message"),
+        "description": error.get("description"),
+    }
     return "\n\n".join([
-        f"## Failing node\n{json.dumps(failing_node, indent=2)}",
-        f"## Error\n{json.dumps(error, indent=2)}",
+        f"## Failing node\n{json.dumps(compact_node, indent=2)}",
+        f"## Error\n{json.dumps(compact_error, indent=2)}",
         f"## Available packages\n{json.dumps(available, indent=2)}",
         "## Task\nReplace this node with n8n-nodes-base alternatives.",
     ])
+
+
+def _summarize_node(node: dict) -> dict:
+    """Extract only the fields the substituter needs — drop large parameters."""
+    summary: dict = {
+        "name": node.get("name"),
+        "type": node.get("type"),
+        "typeVersion": node.get("typeVersion"),
+    }
+    if node.get("credentials"):
+        summary["credentials"] = node["credentials"]
+
+    parameters = node.get("parameters", {})
+    # Include parameter keys and short scalar values so the LLM understands
+    # the node's intent, but truncate large nested blobs.
+    compact_params: dict = {}
+    for key, value in parameters.items():
+        if isinstance(value, str) and len(value) > 300:
+            compact_params[key] = value[:300] + "...(truncated)"
+        elif isinstance(value, (dict, list)):
+            serialized = json.dumps(value)
+            if len(serialized) > 300:
+                compact_params[key] = f"<{type(value).__name__} with {len(serialized)} chars>"
+            else:
+                compact_params[key] = value
+        else:
+            compact_params[key] = value
+    summary["parameters"] = compact_params
+    return summary
 
 
 def _apply_substitution(
