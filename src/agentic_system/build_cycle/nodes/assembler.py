@@ -52,6 +52,10 @@ async def assembler_node(state: ARIAState) -> dict:
     node_list = _extract_node_list(results)
     connections = await _build_connections_via_agent(planned_edges, node_list)
 
+    conn_error = _validate_connections(connections, planned_edges, node_list)
+    if conn_error:
+        return await _emit_and_return_error(bus, start, _build_edge_error_output(conn_error))
+
     workflow_name = _resolve_workflow_name(state)
     workflow_json = _assemble_workflow_json(workflow_name, results, connections)
 
@@ -115,6 +119,36 @@ def _find_dangling_edge(planned_edges: list[dict], node_names: set[str]) -> str 
             return f"Edge references unknown source node '{source}'"
         if target not in node_names:
             return f"Edge references unknown target node '{target}'"
+    return None
+
+
+def _validate_connections(
+    connections: dict,
+    planned_edges: list[dict],
+    node_list: list[dict],
+) -> str | None:
+    """Validate connections cover all planned edges. Returns error message or None."""
+    if not planned_edges:
+        return None
+
+    if not connections and len(node_list) > 1:
+        return f"Empty connections dict but {len(node_list)} nodes and {len(planned_edges)} planned edges"
+
+    for edge in planned_edges:
+        source = edge.get("from_node", "")
+        target = edge.get("to_node", "")
+        source_conns = connections.get(source, {}).get("main", [])
+        found = False
+        for output_port in source_conns:
+            for conn in output_port:
+                if conn.get("node") == target:
+                    found = True
+                    break
+            if found:
+                break
+        if not found:
+            return f"Missing connection: '{source}' → '{target}' (in planned_edges but not in connections)"
+
     return None
 
 

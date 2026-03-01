@@ -174,4 +174,11 @@ When in doubt, search the node type to confirm the output mapping.
 - Target input index is always 0 unless docs specify otherwise
 - Trigger nodes and entry nodes that have no incoming edges should NOT appear as
   targets in any connection — only as sources
+
+## CRITICAL: Non-empty connections required
+
+An empty connections dict `{}` is NEVER valid when there are 2+ nodes.
+You MUST produce a connection for EVERY edge in `planned_edges`.
+Every non-trigger node MUST appear as a target in at least one connection.
+If you are unsure how to connect nodes, default to a linear chain through output index 0.
 """
