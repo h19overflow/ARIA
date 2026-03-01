@@ -14,7 +14,7 @@ from src.api.settings import settings
 from src.boundary.chroma.store import ChromaStore
 from src.boundary.chroma._internals.bm25 import BM25Index
 from src.boundary.chroma._internals.hybrid import hybrid_search
-from benchmarks.adapters.base import BaseRetriever, RetrievalResult
+from benchmarks.adapters.base import BaseRetriever, RetrievalResult, add_documents_batched
 
 
 class ChunkedRetriever(BaseRetriever):
@@ -60,7 +60,7 @@ class ChunkedRetriever(BaseRetriever):
             collection_name=f"bench_chunked_{self._strategy}",
             embedding_function=embeddings,
         )
-        self._store.add_documents(chunks)
+        add_documents_batched(self._store, chunks)
         self._bm25 = BM25Index(chunks, k=20)
 
     def _split_documents(self, docs: list[Document]) -> list[Document]:
@@ -97,6 +97,7 @@ class ChunkedRetriever(BaseRetriever):
     async def teardown(self) -> None:
         self._store = None
         self._bm25 = None
+
 
 
 def _dict_to_result(raw: dict) -> RetrievalResult:

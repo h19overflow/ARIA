@@ -2,6 +2,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from langchain_chroma import Chroma
+from langchain_core.documents import Document
+
+_CHROMA_BATCH_SIZE = 5000
+
 
 @dataclass
 class RetrievalResult:
@@ -37,3 +42,10 @@ class BaseRetriever(ABC):
     @abstractmethod
     def name(self) -> str:
         """Human-readable name for reports."""
+
+
+def add_documents_batched(store: Chroma, docs: list[Document]) -> None:
+    """Add documents in batches to avoid Chroma max batch size errors."""
+    for start in range(0, len(docs), _CHROMA_BATCH_SIZE):
+        batch = docs[start:start + _CHROMA_BATCH_SIZE]
+        store.add_documents(batch)

@@ -1,0 +1,5 @@
+name: rerank_semantic_flashrank
+adapter: rerank
+params:
+  inner_adapter: chroma_semantic
+  reranker: flashrank

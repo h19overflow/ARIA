@@ -13,7 +13,7 @@ from langchain_core.documents import Document
 from src.boundary.chroma.store import ChromaStore
 from src.boundary.chroma._internals.bm25 import BM25Index
 from src.boundary.chroma._internals.hybrid import hybrid_search
-from benchmarks.adapters.base import BaseRetriever, RetrievalResult
+from benchmarks.adapters.base import BaseRetriever, RetrievalResult, add_documents_batched
 
 
 class HuggingFaceRetriever(BaseRetriever):
@@ -52,7 +52,7 @@ class HuggingFaceRetriever(BaseRetriever):
             collection_name=collection_name,
             embedding_function=embeddings,
         )
-        self._store.add_documents(self._docs)
+        add_documents_batched(self._store, self._docs)
 
         if self._search_mode == "hybrid":
             self._bm25 = BM25Index(self._docs, k=20)
@@ -84,6 +84,7 @@ class HuggingFaceRetriever(BaseRetriever):
         self._store = None
         self._bm25 = None
         self._docs = []
+
 
 
 def _pair_to_result(doc: Document, score: float) -> RetrievalResult:

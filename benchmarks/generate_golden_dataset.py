@@ -63,6 +63,25 @@ async def extract_node_metadata(store: ChromaStore) -> list[dict]:
     return nodes
 
 
+def _extract_text(content: str | list) -> str:
+    """Extract plain text from LLM response content (may be str or list of blocks)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(block.get("text", "") for block in content if isinstance(block, dict))
+    return str(content)
+
+
+def _parse_json_response(content: str | list) -> list[dict]:
+    """Extract and parse JSON array from LLM response, stripping markdown fences."""
+    text = _extract_text(content).strip()
+    text = text.strip("`")
+    if text.startswith("json"):
+        text = text[4:]
+    text = text.strip()
+    return json.loads(text)
+
+
 async def generate_queries_for_node(
     llm: ChatGoogleGenerativeAI,
     node: dict,
@@ -74,7 +93,7 @@ async def generate_queries_for_node(
         description=node["description"],
     )
     response = await llm.ainvoke(prompt)
-    raw = json.loads(response.content.strip().strip("```json").strip("```"))
+    raw = _parse_json_response(response.content)
 
     queries = []
     for i, item in enumerate(raw):
@@ -99,16 +118,19 @@ async def generate_multi_node_queries(
         names = [n["name"] for n in pair]
         types = [n["node_type"] for n in pair]
         prompt = MULTI_NODE_PROMPT.format(node_names=", ".join(names))
-        response = await llm.ainvoke(prompt)
-        raw = json.loads(response.content.strip().strip("```json").strip("```"))
-        for i, item in enumerate(raw):
-            queries.append(GoldenQuery(
-                id=f"multi_{'-'.join(types)}_{i}",
-                category=QueryCategory.MULTI_NODE,
-                query=item["query"],
-                expected_nodes=types,
-                difficulty=Difficulty(item.get("difficulty", "medium")),
-            ))
+        try:
+            response = await llm.ainvoke(prompt)
+            raw = _parse_json_response(response.content)
+            for i, item in enumerate(raw):
+                queries.append(GoldenQuery(
+                    id=f"multi_{'-'.join(types)}_{i}",
+                    category=QueryCategory.MULTI_NODE,
+                    query=item["query"],
+                    expected_nodes=types,
+                    difficulty=Difficulty(item.get("difficulty", "medium")),
+                ))
+        except (json.JSONDecodeError, KeyError, ValueError) as exc:
+            print(f"  SKIP multi-node {names}: {exc}")
     return queries
 
 
@@ -140,16 +162,24 @@ async def main() -> None:
         google_api_key=settings.google_api_key,
     )
 
-    nodes = await extract_node_metadata(store)
-    print(f"Found {len(nodes)} unique nodes")
+    all_nodes = await extract_node_metadata(store)
+    nodes = all_nodes[:50]
+    print(f"Found {len(all_nodes)} unique nodes, using first {len(nodes)}")
 
     all_queries: list[GoldenQuery] = []
 
     # Single-node queries (5 per node)
-    for node in nodes:
-        queries = await generate_queries_for_node(llm, node)
-        all_queries.extend(queries)
-        print(f"  Generated {len(queries)} queries for {node['name']}")
+    failed = 0
+    for i, node in enumerate(nodes):
+        try:
+            queries = await generate_queries_for_node(llm, node)
+            all_queries.extend(queries)
+            print(f"  [{i+1}/{len(nodes)}] Generated {len(queries)} queries for {node['name']}")
+        except (json.JSONDecodeError, KeyError, ValueError) as exc:
+            failed += 1
+            print(f"  [{i+1}/{len(nodes)}] SKIP {node['name']}: {exc}")
+    if failed:
+        print(f"  Skipped {failed}/{len(nodes)} nodes due to LLM parse errors")
 
     # Multi-node queries from common pairs
     common_pairs = _build_common_pairs(nodes)

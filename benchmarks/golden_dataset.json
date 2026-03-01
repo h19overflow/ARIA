@@ -1,0 +1,2521 @@
+{
+  "version": "1.0",
+  "queries": [
+    {
+      "id": "natural_language_n8n-nodes-base.activationtrigger_0",
+      "category": "natural_language",
+      "query": "I want to start a process automatically whenever a workflow is activated.",
+      "expected_nodes": [
+        "n8n-nodes-base.activationtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.activationtrigger_1",
+      "category": "exact_lookup",
+      "query": "Activation Trigger",
+      "expected_nodes": [
+        "n8n-nodes-base.activationtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.activationtrigger_2",
+      "category": "partial_description",
+      "query": "node that runs when an internal n8n event is fired",
+      "expected_nodes": [
+        "n8n-nodes-base.activationtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.activationtrigger_3",
+      "category": "misspelled",
+      "query": "ativation triggr",
+      "expected_nodes": [
+        "n8n-nodes-base.activationtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.activationtrigger_4",
+      "category": "ambiguous",
+      "query": "workflow event",
+      "expected_nodes": [
+        "n8n-nodes-base.activationtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.aggregate_0",
+      "category": "natural_language",
+      "query": "How can I combine all my separate items into a single list?",
+      "expected_nodes": [
+        "n8n-nodes-base.aggregate"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.aggregate_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.aggregate",
+      "expected_nodes": [
+        "n8n-nodes-base.aggregate"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.aggregate_2",
+      "category": "partial_description",
+      "query": "batch multiple incoming items into one array",
+      "expected_nodes": [
+        "n8n-nodes-base.aggregate"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.aggregate_3",
+      "category": "misspelled",
+      "query": "agregate",
+      "expected_nodes": [
+        "n8n-nodes-base.aggregate"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.aggregate_4",
+      "category": "ambiguous",
+      "query": "group items",
+      "expected_nodes": [
+        "n8n-nodes-base.aggregate"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.aitransform_0",
+      "category": "natural_language",
+      "query": "How do I use AI to write code for my data?",
+      "expected_nodes": [
+        "n8n-nodes-base.aitransform"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.aitransform_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.aitransform",
+      "expected_nodes": [
+        "n8n-nodes-base.aitransform"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.aitransform_2",
+      "category": "partial_description",
+      "query": "the node that generates code snippets from a prompt",
+      "expected_nodes": [
+        "n8n-nodes-base.aitransform"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.aitransform_3",
+      "category": "misspelled",
+      "query": "AI Transfrom",
+      "expected_nodes": [
+        "n8n-nodes-base.aitransform"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.aitransform_4",
+      "category": "ambiguous",
+      "query": "data transformation",
+      "expected_nodes": [
+        "n8n-nodes-base.aitransform"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.code_0",
+      "category": "natural_language",
+      "query": "how can I run a custom python script to process my data",
+      "expected_nodes": [
+        "n8n-nodes-base.code"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.code_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.code",
+      "expected_nodes": [
+        "n8n-nodes-base.code"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.code_2",
+      "category": "partial_description",
+      "query": "the node that lets you write javascript manually",
+      "expected_nodes": [
+        "n8n-nodes-base.code"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.code_3",
+      "category": "misspelled",
+      "query": "javascrit node",
+      "expected_nodes": [
+        "n8n-nodes-base.code"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.code_4",
+      "category": "ambiguous",
+      "query": "custom logic",
+      "expected_nodes": [
+        "n8n-nodes-base.code"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_keyboard-shortcuts_0",
+      "category": "natural_language",
+      "query": "How can I use hotkeys to write code faster in the editor?",
+      "expected_nodes": [
+        "keyboard-shortcuts"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_keyboard-shortcuts_1",
+      "category": "exact_lookup",
+      "query": "keyboard-shortcuts",
+      "expected_nodes": [
+        "keyboard-shortcuts"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_keyboard-shortcuts_2",
+      "category": "partial_description",
+      "query": "the commands for the javascript editing window",
+      "expected_nodes": [
+        "keyboard-shortcuts"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_keyboard-shortcuts_3",
+      "category": "misspelled",
+      "query": "keybord shortucts",
+      "expected_nodes": [
+        "keyboard-shortcuts"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_keyboard-shortcuts_4",
+      "category": "ambiguous",
+      "query": "shortcuts",
+      "expected_nodes": [
+        "keyboard-shortcuts"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_common-issues_0",
+      "category": "natural_language",
+      "query": "how to fix common errors in the structured output parser node",
+      "expected_nodes": [
+        "common-issues"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_common-issues_1",
+      "category": "exact_lookup",
+      "query": "Structured Output Parser node common issues",
+      "expected_nodes": [
+        "common-issues"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_common-issues_2",
+      "category": "partial_description",
+      "query": "troubleshooting guide for turning AI responses into specific JSON formats",
+      "expected_nodes": [
+        "common-issues"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_common-issues_3",
+      "category": "misspelled",
+      "query": "Stuctured Outpt Parcer node help",
+      "expected_nodes": [
+        "common-issues"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_common-issues_4",
+      "category": "ambiguous",
+      "query": "schema error troubleshooting",
+      "expected_nodes": [
+        "common-issues"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.comparedatasets_0",
+      "category": "natural_language",
+      "query": "how do i find the differences between two lists of data",
+      "expected_nodes": [
+        "n8n-nodes-base.comparedatasets"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.comparedatasets_1",
+      "category": "exact_lookup",
+      "query": "Compare Datasets",
+      "expected_nodes": [
+        "n8n-nodes-base.comparedatasets"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.comparedatasets_2",
+      "category": "partial_description",
+      "query": "identify records that exist in one input but not the other",
+      "expected_nodes": [
+        "n8n-nodes-base.comparedatasets"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.comparedatasets_3",
+      "category": "misspelled",
+      "query": "comapre data sets",
+      "expected_nodes": [
+        "n8n-nodes-base.comparedatasets"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.comparedatasets_4",
+      "category": "ambiguous",
+      "query": "data reconciliation",
+      "expected_nodes": [
+        "n8n-nodes-base.comparedatasets"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.compression_0",
+      "category": "natural_language",
+      "query": "how can I zip multiple files into one archive",
+      "expected_nodes": [
+        "n8n-nodes-base.compression"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.compression_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.compression",
+      "expected_nodes": [
+        "n8n-nodes-base.compression"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.compression_2",
+      "category": "partial_description",
+      "query": "extract data from a gzip file",
+      "expected_nodes": [
+        "n8n-nodes-base.compression"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.compression_3",
+      "category": "misspelled",
+      "query": "compresion",
+      "expected_nodes": [
+        "n8n-nodes-base.compression"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.compression_4",
+      "category": "ambiguous",
+      "query": "file processing",
+      "expected_nodes": [
+        "n8n-nodes-base.compression"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-langchain.chattrigger_0",
+      "category": "natural_language",
+      "query": "I want to create an AI chatbot that starts when a user sends a message",
+      "expected_nodes": [
+        "n8n-nodes-langchain.chattrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-langchain.chattrigger_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-langchain.chattrigger",
+      "expected_nodes": [
+        "n8n-nodes-langchain.chattrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-langchain.chattrigger_2",
+      "category": "partial_description",
+      "query": "the node that provides a chat window for users to interact with agents",
+      "expected_nodes": [
+        "n8n-nodes-langchain.chattrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-langchain.chattrigger_3",
+      "category": "misspelled",
+      "query": "chat triger",
+      "expected_nodes": [
+        "n8n-nodes-langchain.chattrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-langchain.chattrigger_4",
+      "category": "ambiguous",
+      "query": "ai interface",
+      "expected_nodes": [
+        "n8n-nodes-langchain.chattrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.converttofile_0",
+      "category": "natural_language",
+      "query": "I want to change my data into a downloadable file",
+      "expected_nodes": [
+        "n8n-nodes-base.converttofile"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.converttofile_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.converttofile",
+      "expected_nodes": [
+        "n8n-nodes-base.converttofile"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.converttofile_2",
+      "category": "partial_description",
+      "query": "change json to binary format",
+      "expected_nodes": [
+        "n8n-nodes-base.converttofile"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.converttofile_3",
+      "category": "misspelled",
+      "query": "convrt to file",
+      "expected_nodes": [
+        "n8n-nodes-base.converttofile"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.converttofile_4",
+      "category": "ambiguous",
+      "query": "binary converter",
+      "expected_nodes": [
+        "n8n-nodes-base.converttofile"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.crypto_0",
+      "category": "natural_language",
+      "query": "how do I encrypt a sensitive field using a secret key?",
+      "expected_nodes": [
+        "n8n-nodes-base.crypto"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.crypto_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.crypto",
+      "expected_nodes": [
+        "n8n-nodes-base.crypto"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.crypto_2",
+      "category": "partial_description",
+      "query": "node that provides hashing and hmac functions",
+      "expected_nodes": [
+        "n8n-nodes-base.crypto"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.crypto_3",
+      "category": "misspelled",
+      "query": "Cryptho",
+      "expected_nodes": [
+        "n8n-nodes-base.crypto"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.crypto_4",
+      "category": "ambiguous",
+      "query": "data security",
+      "expected_nodes": [
+        "n8n-nodes-base.crypto"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.datatable_0",
+      "category": "natural_language",
+      "query": "how do I save data permanently across workflow runs",
+      "expected_nodes": [
+        "n8n-nodes-base.datatable"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.datatable_1",
+      "category": "exact_lookup",
+      "query": "Data table",
+      "expected_nodes": [
+        "n8n-nodes-base.datatable"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.datatable_2",
+      "category": "partial_description",
+      "query": "internal storage for rows and columns",
+      "expected_nodes": [
+        "n8n-nodes-base.datatable"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.datatable_3",
+      "category": "misspelled",
+      "query": "data tabel",
+      "expected_nodes": [
+        "n8n-nodes-base.datatable"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.datatable_4",
+      "category": "ambiguous",
+      "query": "database",
+      "expected_nodes": [
+        "n8n-nodes-base.datatable"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.datetime_0",
+      "category": "natural_language",
+      "query": "I want to add 3 days to the current date",
+      "expected_nodes": [
+        "n8n-nodes-base.datetime"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.datetime_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.datetime",
+      "expected_nodes": [
+        "n8n-nodes-base.datetime"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.datetime_2",
+      "category": "partial_description",
+      "query": "the node that changes timezones and parses date strings",
+      "expected_nodes": [
+        "n8n-nodes-base.datetime"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.datetime_3",
+      "category": "misspelled",
+      "query": "dait and tiime",
+      "expected_nodes": [
+        "n8n-nodes-base.datetime"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.datetime_4",
+      "category": "ambiguous",
+      "query": "format converter",
+      "expected_nodes": [
+        "n8n-nodes-base.datetime"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.debughelper_0",
+      "category": "natural_language",
+      "query": "I want to simulate a workflow failure to test my error handling path",
+      "expected_nodes": [
+        "n8n-nodes-base.debughelper"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.debughelper_1",
+      "category": "exact_lookup",
+      "query": "Debug Helper",
+      "expected_nodes": [
+        "n8n-nodes-base.debughelper"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.debughelper_2",
+      "category": "partial_description",
+      "query": "create mock data and trigger error types for testing",
+      "expected_nodes": [
+        "n8n-nodes-base.debughelper"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.debughelper_3",
+      "category": "misspelled",
+      "query": "debugh elper",
+      "expected_nodes": [
+        "n8n-nodes-base.debughelper"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.debughelper_4",
+      "category": "ambiguous",
+      "query": "test utility",
+      "expected_nodes": [
+        "n8n-nodes-base.debughelper"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.set_0",
+      "category": "natural_language",
+      "query": "how to add a new property to the JSON output of my workflow",
+      "expected_nodes": [
+        "n8n-nodes-base.set"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.set_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.set",
+      "expected_nodes": [
+        "n8n-nodes-base.set"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.set_2",
+      "category": "partial_description",
+      "query": "the node that lets you manually assign values to specific keys",
+      "expected_nodes": [
+        "n8n-nodes-base.set"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.set_3",
+      "category": "misspelled",
+      "query": "Edti Feilds node",
+      "expected_nodes": [
+        "n8n-nodes-base.set"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.set_4",
+      "category": "ambiguous",
+      "query": "transform data",
+      "expected_nodes": [
+        "n8n-nodes-base.set"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.editimage_0",
+      "category": "natural_language",
+      "query": "I want to automatically resize and watermark a photo",
+      "expected_nodes": [
+        "n8n-nodes-base.editimage"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.editimage_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.editimage",
+      "expected_nodes": [
+        "n8n-nodes-base.editimage"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.editimage_2",
+      "category": "partial_description",
+      "query": "the node used for cropping and rotating image files",
+      "expected_nodes": [
+        "n8n-nodes-base.editimage"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.editimage_3",
+      "category": "misspelled",
+      "query": "edti imgae",
+      "expected_nodes": [
+        "n8n-nodes-base.editimage"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.editimage_4",
+      "category": "ambiguous",
+      "query": "photo processing",
+      "expected_nodes": [
+        "n8n-nodes-base.editimage"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.emailimap_0",
+      "category": "natural_language",
+      "query": "trigger a workflow when a new email is received",
+      "expected_nodes": [
+        "n8n-nodes-base.emailimap"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.emailimap_1",
+      "category": "exact_lookup",
+      "query": "Email Trigger (IMAP)",
+      "expected_nodes": [
+        "n8n-nodes-base.emailimap"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.emailimap_2",
+      "category": "partial_description",
+      "query": "node to watch an inbox for incoming messages",
+      "expected_nodes": [
+        "n8n-nodes-base.emailimap"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.emailimap_3",
+      "category": "misspelled",
+      "query": "emial imap trigegr",
+      "expected_nodes": [
+        "n8n-nodes-base.emailimap"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.emailimap_4",
+      "category": "ambiguous",
+      "query": "receive message",
+      "expected_nodes": [
+        "n8n-nodes-base.emailimap"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.errortrigger_0",
+      "category": "natural_language",
+      "query": "how to trigger a workflow when another one fails",
+      "expected_nodes": [
+        "n8n-nodes-base.errortrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.errortrigger_1",
+      "category": "exact_lookup",
+      "query": "Error Trigger",
+      "expected_nodes": [
+        "n8n-nodes-base.errortrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.errortrigger_2",
+      "category": "partial_description",
+      "query": "the node that listens for execution errors",
+      "expected_nodes": [
+        "n8n-nodes-base.errortrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.errortrigger_3",
+      "category": "misspelled",
+      "query": "eror triger",
+      "expected_nodes": [
+        "n8n-nodes-base.errortrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.errortrigger_4",
+      "category": "ambiguous",
+      "query": "error handling",
+      "expected_nodes": [
+        "n8n-nodes-base.errortrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.evaluation_0",
+      "category": "natural_language",
+      "query": "assess the quality of my AI workflow results",
+      "expected_nodes": [
+        "n8n-nodes-base.evaluation"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.evaluation_1",
+      "category": "exact_lookup",
+      "query": "Evaluation node",
+      "expected_nodes": [
+        "n8n-nodes-base.evaluation"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.evaluation_2",
+      "category": "partial_description",
+      "query": "tool to measure the reliability of AI outputs",
+      "expected_nodes": [
+        "n8n-nodes-base.evaluation"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.evaluation_3",
+      "category": "misspelled",
+      "query": "evalution node",
+      "expected_nodes": [
+        "n8n-nodes-base.evaluation"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.evaluation_4",
+      "category": "ambiguous",
+      "query": "validation tool",
+      "expected_nodes": [
+        "n8n-nodes-base.evaluation"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.evaluationtrigger_0",
+      "category": "natural_language",
+      "query": "How can I run a reliability test on my AI workflow using a Google Sheet dataset?",
+      "expected_nodes": [
+        "n8n-nodes-base.evaluationtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.evaluationtrigger_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.evaluationtrigger",
+      "expected_nodes": [
+        "n8n-nodes-base.evaluationtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.evaluationtrigger_2",
+      "category": "partial_description",
+      "query": "the trigger node that processes evaluation items from a spreadsheet one by one",
+      "expected_nodes": [
+        "n8n-nodes-base.evaluationtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.evaluationtrigger_3",
+      "category": "misspelled",
+      "query": "evalution triggger",
+      "expected_nodes": [
+        "n8n-nodes-base.evaluationtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.evaluationtrigger_4",
+      "category": "ambiguous",
+      "query": "AI testing tool",
+      "expected_nodes": [
+        "n8n-nodes-base.evaluationtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.executecommand_0",
+      "category": "natural_language",
+      "query": "run a bash script on the server",
+      "expected_nodes": [
+        "n8n-nodes-base.executecommand"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.executecommand_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.executecommand",
+      "expected_nodes": [
+        "n8n-nodes-base.executecommand"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.executecommand_2",
+      "category": "partial_description",
+      "query": "terminal command runner",
+      "expected_nodes": [
+        "n8n-nodes-base.executecommand"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.executecommand_3",
+      "category": "misspelled",
+      "query": "execut commmand",
+      "expected_nodes": [
+        "n8n-nodes-base.executecommand"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.executecommand_4",
+      "category": "ambiguous",
+      "query": "shell",
+      "expected_nodes": [
+        "n8n-nodes-base.executecommand"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.executeworkflow_0",
+      "category": "natural_language",
+      "query": "How do I trigger another workflow from within my current flow?",
+      "expected_nodes": [
+        "n8n-nodes-base.executeworkflow"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.executeworkflow_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.executeworkflow",
+      "expected_nodes": [
+        "n8n-nodes-base.executeworkflow"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.executeworkflow_2",
+      "category": "partial_description",
+      "query": "run a separate automation process on the same host",
+      "expected_nodes": [
+        "n8n-nodes-base.executeworkflow"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.executeworkflow_3",
+      "category": "misspelled",
+      "query": "excute subworkflo",
+      "expected_nodes": [
+        "n8n-nodes-base.executeworkflow"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.executeworkflow_4",
+      "category": "ambiguous",
+      "query": "nested logic",
+      "expected_nodes": [
+        "n8n-nodes-base.executeworkflow"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.executeworkflowtrigger_0",
+      "category": "natural_language",
+      "query": "how to trigger a workflow from another workflow",
+      "expected_nodes": [
+        "n8n-nodes-base.executeworkflowtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.executeworkflowtrigger_1",
+      "category": "exact_lookup",
+      "query": "Execute Sub-workflow Trigger",
+      "expected_nodes": [
+        "n8n-nodes-base.executeworkflowtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.executeworkflowtrigger_2",
+      "category": "partial_description",
+      "query": "the start node for a subworkflow",
+      "expected_nodes": [
+        "n8n-nodes-base.executeworkflowtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.executeworkflowtrigger_3",
+      "category": "misspelled",
+      "query": "excecute sub-workfow triger",
+      "expected_nodes": [
+        "n8n-nodes-base.executeworkflowtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.executeworkflowtrigger_4",
+      "category": "ambiguous",
+      "query": "subworkflow",
+      "expected_nodes": [
+        "n8n-nodes-base.executeworkflowtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.executiondata_0",
+      "category": "natural_language",
+      "query": "how to add custom search tags to my workflow executions",
+      "expected_nodes": [
+        "n8n-nodes-base.executiondata"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.executiondata_1",
+      "category": "exact_lookup",
+      "query": "Execution Data",
+      "expected_nodes": [
+        "n8n-nodes-base.executiondata"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.executiondata_2",
+      "category": "partial_description",
+      "query": "node to store metadata for filtering in the execution list",
+      "expected_nodes": [
+        "n8n-nodes-base.executiondata"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.executiondata_3",
+      "category": "misspelled",
+      "query": "excecution data",
+      "expected_nodes": [
+        "n8n-nodes-base.executiondata"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.executiondata_4",
+      "category": "ambiguous",
+      "query": "save metadata",
+      "expected_nodes": [
+        "n8n-nodes-base.executiondata"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.extractfromfile_0",
+      "category": "natural_language",
+      "query": "how do I extract data from a file I uploaded",
+      "expected_nodes": [
+        "n8n-nodes-base.extractfromfile"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.extractfromfile_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.extractfromfile",
+      "expected_nodes": [
+        "n8n-nodes-base.extractfromfile"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.extractfromfile_2",
+      "category": "partial_description",
+      "query": "parse binary content into structured data",
+      "expected_nodes": [
+        "n8n-nodes-base.extractfromfile"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.extractfromfile_3",
+      "category": "misspelled",
+      "query": "exract from fil",
+      "expected_nodes": [
+        "n8n-nodes-base.extractfromfile"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.extractfromfile_4",
+      "category": "ambiguous",
+      "query": "process binary data",
+      "expected_nodes": [
+        "n8n-nodes-base.extractfromfile"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.filter_0",
+      "category": "natural_language",
+      "query": "I only want to keep items that have a status of completed",
+      "expected_nodes": [
+        "n8n-nodes-base.filter"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.filter_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.filter",
+      "expected_nodes": [
+        "n8n-nodes-base.filter"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.filter_2",
+      "category": "partial_description",
+      "query": "the node that discards data based on a specific rule",
+      "expected_nodes": [
+        "n8n-nodes-base.filter"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.filter_3",
+      "category": "misspelled",
+      "query": "fliter",
+      "expected_nodes": [
+        "n8n-nodes-base.filter"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.filter_4",
+      "category": "ambiguous",
+      "query": "data processing",
+      "expected_nodes": [
+        "n8n-nodes-base.filter"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.ftp_0",
+      "category": "natural_language",
+      "query": "I want to upload a csv file to my web server using SFTP",
+      "expected_nodes": [
+        "n8n-nodes-base.ftp"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.ftp_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.ftp",
+      "expected_nodes": [
+        "n8n-nodes-base.ftp"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.ftp_2",
+      "category": "partial_description",
+      "query": "transfer files to a remote host using secure protocol",
+      "expected_nodes": [
+        "n8n-nodes-base.ftp"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.ftp_3",
+      "category": "misspelled",
+      "query": "fttp server",
+      "expected_nodes": [
+        "n8n-nodes-base.ftp"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.ftp_4",
+      "category": "ambiguous",
+      "query": "upload file",
+      "expected_nodes": [
+        "n8n-nodes-base.ftp"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.git_0",
+      "category": "natural_language",
+      "query": "commit changes to a repository",
+      "expected_nodes": [
+        "n8n-nodes-base.git"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.git_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.git",
+      "expected_nodes": [
+        "n8n-nodes-base.git"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.git_2",
+      "category": "partial_description",
+      "query": "version control system",
+      "expected_nodes": [
+        "n8n-nodes-base.git"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.git_3",
+      "category": "misspelled",
+      "query": "gitt",
+      "expected_nodes": [
+        "n8n-nodes-base.git"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.git_4",
+      "category": "ambiguous",
+      "query": "source code",
+      "expected_nodes": [
+        "n8n-nodes-base.git"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.graphql_0",
+      "category": "natural_language",
+      "query": "fetch data from a graphql endpoint",
+      "expected_nodes": [
+        "n8n-nodes-base.graphql"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.graphql_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.graphql",
+      "expected_nodes": [
+        "n8n-nodes-base.graphql"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.graphql_2",
+      "category": "partial_description",
+      "query": "execute a query language request to an api",
+      "expected_nodes": [
+        "n8n-nodes-base.graphql"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.graphql_3",
+      "category": "misspelled",
+      "query": "graphlq",
+      "expected_nodes": [
+        "n8n-nodes-base.graphql"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.graphql_4",
+      "category": "ambiguous",
+      "query": "api request",
+      "expected_nodes": [
+        "n8n-nodes-base.graphql"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-langchain.guardrails_0",
+      "category": "natural_language",
+      "query": "how can I filter out offensive language from my AI model output",
+      "expected_nodes": [
+        "n8n-nodes-langchain.guardrails"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-langchain.guardrails_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-langchain.guardrails",
+      "expected_nodes": [
+        "n8n-nodes-langchain.guardrails"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-langchain.guardrails_2",
+      "category": "partial_description",
+      "query": "node to validate LLM inputs and outputs for safety",
+      "expected_nodes": [
+        "n8n-nodes-langchain.guardrails"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "misspelled_n8n-nodes-langchain.guardrails_3",
+      "category": "misspelled",
+      "query": "Gaurdrails",
+      "expected_nodes": [
+        "n8n-nodes-langchain.guardrails"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-langchain.guardrails_4",
+      "category": "ambiguous",
+      "query": "AI security",
+      "expected_nodes": [
+        "n8n-nodes-langchain.guardrails"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.html_0",
+      "category": "natural_language",
+      "query": "extract specific data from a website body",
+      "expected_nodes": [
+        "n8n-nodes-base.html"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.html_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.html",
+      "expected_nodes": [
+        "n8n-nodes-base.html"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.html_2",
+      "category": "partial_description",
+      "query": "parse elements using CSS selectors",
+      "expected_nodes": [
+        "n8n-nodes-base.html"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.html_3",
+      "category": "misspelled",
+      "query": "htlm parser",
+      "expected_nodes": [
+        "n8n-nodes-base.html"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.html_4",
+      "category": "ambiguous",
+      "query": "web scraping",
+      "expected_nodes": [
+        "n8n-nodes-base.html"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.httprequest_0",
+      "category": "natural_language",
+      "query": "I want to pull data from a custom API endpoint for my workflow",
+      "expected_nodes": [
+        "n8n-nodes-base.httprequest"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.httprequest_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.httprequest",
+      "expected_nodes": [
+        "n8n-nodes-base.httprequest"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.httprequest_2",
+      "category": "partial_description",
+      "query": "the node used to send GET and POST requests to websites",
+      "expected_nodes": [
+        "n8n-nodes-base.httprequest"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.httprequest_3",
+      "category": "misspelled",
+      "query": "htpp reqest",
+      "expected_nodes": [
+        "n8n-nodes-base.httprequest"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.httprequest_4",
+      "category": "ambiguous",
+      "query": "api connector",
+      "expected_nodes": [
+        "n8n-nodes-base.httprequest"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.if_0",
+      "category": "natural_language",
+      "query": "split my workflow if the status is completed",
+      "expected_nodes": [
+        "n8n-nodes-base.if"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.if_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.if",
+      "expected_nodes": [
+        "n8n-nodes-base.if"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.if_2",
+      "category": "partial_description",
+      "query": "node for conditional branching and comparisons",
+      "expected_nodes": [
+        "n8n-nodes-base.if"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.if_3",
+      "category": "misspelled",
+      "query": "iff node",
+      "expected_nodes": [
+        "n8n-nodes-base.if"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.if_4",
+      "category": "ambiguous",
+      "query": "logic",
+      "expected_nodes": [
+        "n8n-nodes-base.if"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.jwt_0",
+      "category": "natural_language",
+      "query": "How do I sign a JSON web token for authentication?",
+      "expected_nodes": [
+        "n8n-nodes-base.jwt"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.jwt_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.jwt",
+      "expected_nodes": [
+        "n8n-nodes-base.jwt"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.jwt_2",
+      "category": "partial_description",
+      "query": "node to verify and decode web tokens",
+      "expected_nodes": [
+        "n8n-nodes-base.jwt"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.jwt_3",
+      "category": "misspelled",
+      "query": "jtw node",
+      "expected_nodes": [
+        "n8n-nodes-base.jwt"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.jwt_4",
+      "category": "ambiguous",
+      "query": "token authentication",
+      "expected_nodes": [
+        "n8n-nodes-base.jwt"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.ldap_0",
+      "category": "natural_language",
+      "query": "how do I search for a user in my active directory",
+      "expected_nodes": [
+        "n8n-nodes-base.ldap"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.ldap_1",
+      "category": "exact_lookup",
+      "query": "LDAP node",
+      "expected_nodes": [
+        "n8n-nodes-base.ldap"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.ldap_2",
+      "category": "partial_description",
+      "query": "the node that interacts with directory service objects",
+      "expected_nodes": [
+        "n8n-nodes-base.ldap"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.ldap_3",
+      "category": "misspelled",
+      "query": "LADP",
+      "expected_nodes": [
+        "n8n-nodes-base.ldap"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.ldap_4",
+      "category": "ambiguous",
+      "query": "user authentication",
+      "expected_nodes": [
+        "n8n-nodes-base.ldap"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.limit_0",
+      "category": "natural_language",
+      "query": "I want to only keep the first 10 items from my previous step",
+      "expected_nodes": [
+        "n8n-nodes-base.limit"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.limit_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.limit",
+      "expected_nodes": [
+        "n8n-nodes-base.limit"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.limit_2",
+      "category": "partial_description",
+      "query": "reduce the number of items to a maximum amount",
+      "expected_nodes": [
+        "n8n-nodes-base.limit"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.limit_3",
+      "category": "misspelled",
+      "query": "limmit",
+      "expected_nodes": [
+        "n8n-nodes-base.limit"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.limit_4",
+      "category": "ambiguous",
+      "query": "filter results",
+      "expected_nodes": [
+        "n8n-nodes-base.limit"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.localfiletrigger_0",
+      "category": "natural_language",
+      "query": "run a workflow whenever a new file is added to a folder on my computer",
+      "expected_nodes": [
+        "n8n-nodes-base.localfiletrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.localfiletrigger_1",
+      "category": "exact_lookup",
+      "query": "Local File Trigger",
+      "expected_nodes": [
+        "n8n-nodes-base.localfiletrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.localfiletrigger_2",
+      "category": "partial_description",
+      "query": "node that monitors directory for changes or deletions",
+      "expected_nodes": [
+        "n8n-nodes-base.localfiletrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.localfiletrigger_3",
+      "category": "misspelled",
+      "query": "loacal file trigerr",
+      "expected_nodes": [
+        "n8n-nodes-base.localfiletrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.localfiletrigger_4",
+      "category": "ambiguous",
+      "query": "watch folder",
+      "expected_nodes": [
+        "n8n-nodes-base.localfiletrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.splitinbatches_0",
+      "category": "natural_language",
+      "query": "I need to run a set of nodes for every single item in my list",
+      "expected_nodes": [
+        "n8n-nodes-base.splitinbatches"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.splitinbatches_1",
+      "category": "exact_lookup",
+      "query": "Loop Over Items",
+      "expected_nodes": [
+        "n8n-nodes-base.splitinbatches"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.splitinbatches_2",
+      "category": "partial_description",
+      "query": "break down a large array into smaller chunks for processing",
+      "expected_nodes": [
+        "n8n-nodes-base.splitinbatches"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.splitinbatches_3",
+      "category": "misspelled",
+      "query": "split in batchs",
+      "expected_nodes": [
+        "n8n-nodes-base.splitinbatches"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.splitinbatches_4",
+      "category": "ambiguous",
+      "query": "iteration",
+      "expected_nodes": [
+        "n8n-nodes-base.splitinbatches"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.manualworkflowtrigger_0",
+      "category": "natural_language",
+      "query": "how do I start a workflow manually?",
+      "expected_nodes": [
+        "n8n-nodes-base.manualworkflowtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.manualworkflowtrigger_1",
+      "category": "exact_lookup",
+      "query": "Manual Trigger",
+      "expected_nodes": [
+        "n8n-nodes-base.manualworkflowtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.manualworkflowtrigger_2",
+      "category": "partial_description",
+      "query": "button to run the automation on demand",
+      "expected_nodes": [
+        "n8n-nodes-base.manualworkflowtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.manualworkflowtrigger_3",
+      "category": "misspelled",
+      "query": "manuel trigger",
+      "expected_nodes": [
+        "n8n-nodes-base.manualworkflowtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.manualworkflowtrigger_4",
+      "category": "ambiguous",
+      "query": "workflow start",
+      "expected_nodes": [
+        "n8n-nodes-base.manualworkflowtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.markdown_0",
+      "category": "natural_language",
+      "query": "I want to convert my markdown notes into an HTML email body",
+      "expected_nodes": [
+        "n8n-nodes-base.markdown"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.markdown_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.markdown",
+      "expected_nodes": [
+        "n8n-nodes-base.markdown"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.markdown_2",
+      "category": "partial_description",
+      "query": "change text from html to markdown",
+      "expected_nodes": [
+        "n8n-nodes-base.markdown"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.markdown_3",
+      "category": "misspelled",
+      "query": "markdwon",
+      "expected_nodes": [
+        "n8n-nodes-base.markdown"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.markdown_4",
+      "category": "ambiguous",
+      "query": "format text",
+      "expected_nodes": [
+        "n8n-nodes-base.markdown"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-langchain.mcpClient_0",
+      "category": "natural_language",
+      "query": "how to connect to an external mcp server to use its tools",
+      "expected_nodes": [
+        "n8n-nodes-langchain.mcpClient"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-langchain.mcpClient_1",
+      "category": "exact_lookup",
+      "query": "MCP Client",
+      "expected_nodes": [
+        "n8n-nodes-langchain.mcpClient"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-langchain.mcpClient_2",
+      "category": "partial_description",
+      "query": "the node that allows using model context protocol tools",
+      "expected_nodes": [
+        "n8n-nodes-langchain.mcpClient"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "misspelled_n8n-nodes-langchain.mcpClient_3",
+      "category": "misspelled",
+      "query": "MPC Cleint",
+      "expected_nodes": [
+        "n8n-nodes-langchain.mcpClient"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-langchain.mcpClient_4",
+      "category": "ambiguous",
+      "query": "external tool provider",
+      "expected_nodes": [
+        "n8n-nodes-langchain.mcpClient"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-langchain.mcptrigger_0",
+      "category": "natural_language",
+      "query": "How can I make my n8n workflows available as tools in Claude Desktop?",
+      "expected_nodes": [
+        "n8n-nodes-langchain.mcptrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-langchain.mcptrigger_1",
+      "category": "exact_lookup",
+      "query": "MCP Server Trigger",
+      "expected_nodes": [
+        "n8n-nodes-langchain.mcptrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-langchain.mcptrigger_2",
+      "category": "partial_description",
+      "query": "the node that lets n8n act as a model context protocol provider",
+      "expected_nodes": [
+        "n8n-nodes-langchain.mcptrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "misspelled_n8n-nodes-langchain.mcptrigger_3",
+      "category": "misspelled",
+      "query": "MPC Server Triger",
+      "expected_nodes": [
+        "n8n-nodes-langchain.mcptrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-langchain.mcptrigger_4",
+      "category": "ambiguous",
+      "query": "AI agent connector",
+      "expected_nodes": [
+        "n8n-nodes-langchain.mcptrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.merge_0",
+      "category": "natural_language",
+      "query": "how do I combine data from two different sources into one path?",
+      "expected_nodes": [
+        "n8n-nodes-base.merge"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.merge_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.merge",
+      "expected_nodes": [
+        "n8n-nodes-base.merge"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.merge_2",
+      "category": "partial_description",
+      "query": "the node that waits for all inputs to arrive before continuing",
+      "expected_nodes": [
+        "n8n-nodes-base.merge"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.merge_3",
+      "category": "misspelled",
+      "query": "marge node",
+      "expected_nodes": [
+        "n8n-nodes-base.merge"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.merge_4",
+      "category": "ambiguous",
+      "query": "join",
+      "expected_nodes": [
+        "n8n-nodes-base.merge"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.n8n_0",
+      "category": "natural_language",
+      "query": "How can I get a list of all my workflows using an API call?",
+      "expected_nodes": [
+        "n8n-nodes-base.n8n"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.n8n_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.n8n",
+      "expected_nodes": [
+        "n8n-nodes-base.n8n"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.n8n_2",
+      "category": "partial_description",
+      "query": "node to consume the n8n public api within a flow",
+      "expected_nodes": [
+        "n8n-nodes-base.n8n"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.n8n_3",
+      "category": "misspelled",
+      "query": "n8nn node",
+      "expected_nodes": [
+        "n8n-nodes-base.n8n"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.n8n_4",
+      "category": "ambiguous",
+      "query": "workflow management",
+      "expected_nodes": [
+        "n8n-nodes-base.n8n"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.form_0",
+      "category": "natural_language",
+      "query": "how to build a multi-step web form for users to fill out",
+      "expected_nodes": [
+        "n8n-nodes-base.form"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.form_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.form",
+      "expected_nodes": [
+        "n8n-nodes-base.form"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.form_2",
+      "category": "partial_description",
+      "query": "the node that creates a web interface for manual data entry",
+      "expected_nodes": [
+        "n8n-nodes-base.form"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.form_3",
+      "category": "misspelled",
+      "query": "n8n froam node",
+      "expected_nodes": [
+        "n8n-nodes-base.form"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.form_4",
+      "category": "ambiguous",
+      "query": "collect user input",
+      "expected_nodes": [
+        "n8n-nodes-base.form"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.formtrigger_0",
+      "category": "natural_language",
+      "query": "how to start a workflow when someone fills out a web form",
+      "expected_nodes": [
+        "n8n-nodes-base.formtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.formtrigger_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.formtrigger",
+      "expected_nodes": [
+        "n8n-nodes-base.formtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.formtrigger_2",
+      "category": "partial_description",
+      "query": "the node that generates a hosted page for user input",
+      "expected_nodes": [
+        "n8n-nodes-base.formtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.formtrigger_3",
+      "category": "misspelled",
+      "query": "n8n from triggre",
+      "expected_nodes": [
+        "n8n-nodes-base.formtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.formtrigger_4",
+      "category": "ambiguous",
+      "query": "get user data",
+      "expected_nodes": [
+        "n8n-nodes-base.formtrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.n8ntrigger_0",
+      "category": "natural_language",
+      "query": "run a job whenever I publish my changes to n8n",
+      "expected_nodes": [
+        "n8n-nodes-base.n8ntrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.n8ntrigger_1",
+      "category": "exact_lookup",
+      "query": "n8n Trigger",
+      "expected_nodes": [
+        "n8n-nodes-base.n8ntrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.n8ntrigger_2",
+      "category": "partial_description",
+      "query": "execute actions when the instance restarts",
+      "expected_nodes": [
+        "n8n-nodes-base.n8ntrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.n8ntrigger_3",
+      "category": "misspelled",
+      "query": "n8n triggr",
+      "expected_nodes": [
+        "n8n-nodes-base.n8ntrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.n8ntrigger_4",
+      "category": "ambiguous",
+      "query": "system event",
+      "expected_nodes": [
+        "n8n-nodes-base.n8ntrigger"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.noop_0",
+      "category": "natural_language",
+      "query": "how can I add a placeholder step that does nothing to my workflow?",
+      "expected_nodes": [
+        "n8n-nodes-base.noop"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.noop_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.noop",
+      "expected_nodes": [
+        "n8n-nodes-base.noop"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.noop_2",
+      "category": "partial_description",
+      "query": "a node that serves as a visual end point without any logic",
+      "expected_nodes": [
+        "n8n-nodes-base.noop"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.noop_3",
+      "category": "misspelled",
+      "query": "No Operatun",
+      "expected_nodes": [
+        "n8n-nodes-base.noop"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.noop_4",
+      "category": "ambiguous",
+      "query": "stop",
+      "expected_nodes": [
+        "n8n-nodes-base.noop"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.readwritefile_0",
+      "category": "natural_language",
+      "query": "how to save a file to the n8n server",
+      "expected_nodes": [
+        "n8n-nodes-base.readwritefile"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.readwritefile_1",
+      "category": "exact_lookup",
+      "query": "n8n-nodes-base.readwritefile",
+      "expected_nodes": [
+        "n8n-nodes-base.readwritefile"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.readwritefile_2",
+      "category": "partial_description",
+      "query": "accessing local filesystem and writing data",
+      "expected_nodes": [
+        "n8n-nodes-base.readwritefile"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.readwritefile_3",
+      "category": "misspelled",
+      "query": "read/wright file disk",
+      "expected_nodes": [
+        "n8n-nodes-base.readwritefile"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.readwritefile_4",
+      "category": "ambiguous",
+      "query": "storage",
+      "expected_nodes": [
+        "n8n-nodes-base.readwritefile"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "natural_language_n8n-nodes-base.removeduplicates_0",
+      "category": "natural_language",
+      "query": "I want to remove duplicate entries from my list",
+      "expected_nodes": [
+        "n8n-nodes-base.removeduplicates"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "exact_lookup_n8n-nodes-base.removeduplicates_1",
+      "category": "exact_lookup",
+      "query": "Remove Duplicates",
+      "expected_nodes": [
+        "n8n-nodes-base.removeduplicates"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "easy"
+    },
+    {
+      "id": "partial_description_n8n-nodes-base.removeduplicates_2",
+      "category": "partial_description",
+      "query": "the node that keeps only unique items and deletes the rest",
+      "expected_nodes": [
+        "n8n-nodes-base.removeduplicates"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "misspelled_n8n-nodes-base.removeduplicates_3",
+      "category": "misspelled",
+      "query": "remve duplicats",
+      "expected_nodes": [
+        "n8n-nodes-base.removeduplicates"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "medium"
+    },
+    {
+      "id": "ambiguous_n8n-nodes-base.removeduplicates_4",
+      "category": "ambiguous",
+      "query": "data cleanup",
+      "expected_nodes": [
+        "n8n-nodes-base.removeduplicates"
+      ],
+      "expected_doc_type": "node",
+      "difficulty": "hard"
+    },
+    {
+      "id": "wf_001",
+      "category": "workflow_template",
+      "query": "daily email report workflow",
+      "expected_nodes": [],
+      "expected_doc_type": "workflow_template",
+      "difficulty": "medium"
+    },
+    {
+      "id": "wf_002",
+      "category": "workflow_template",
+      "query": "slack notification when new row added to google sheets",
+      "expected_nodes": [],
+      "expected_doc_type": "workflow_template",
+      "difficulty": "medium"
+    }
+  ]
+}
