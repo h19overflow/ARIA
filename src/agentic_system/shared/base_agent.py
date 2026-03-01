@@ -9,7 +9,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from src.api.settings import settings
 from src.agentic_system.shared.weave_logger import ensure_weave_init
@@ -18,6 +18,19 @@ S = TypeVar("S", bound=BaseModel)
 
 # Transient errors worth retrying on Gemini
 _RETRYABLE = (TimeoutError, ConnectionError, OSError)
+
+
+def _is_retryable(exc: BaseException) -> bool:
+    """Check if an exception is worth retrying.
+
+    Covers network errors plus Python 3.11+ int-to-str digit-limit errors
+    caused by Gemini hallucinating huge numeric literals in structured JSON.
+    """
+    if isinstance(exc, _RETRYABLE):
+        return True
+    if isinstance(exc, ValueError) and "int_max_str_digits" in str(exc):
+        return True
+    return False
 
 
 class BaseAgent(Generic[S]):
@@ -104,7 +117,7 @@ class BaseAgent(Generic[S]):
 
     def _make_retry(self) -> Any:
         return retry(
-            retry=retry_if_exception_type(_RETRYABLE),
+            retry=retry_if_exception(_is_retryable),
             wait=wait_exponential(multiplier=1, min=1, max=10),
             stop=stop_after_attempt(self._max_retries),
             reraise=True,
