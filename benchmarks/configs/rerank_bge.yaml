@@ -1,0 +1,5 @@
+name: rerank_bge
+adapter: rerank
+params:
+  inner_adapter: chroma_hybrid
+  reranker: bge_reranker

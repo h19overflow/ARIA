@@ -1,0 +1,4 @@
+name: baseline
+adapter: chroma_hybrid
+params:
+  alpha: null  # auto-detect

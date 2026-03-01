@@ -1,0 +1,5 @@
+name: bge_m3
+adapter: huggingface
+params:
+  model_name: "BAAI/bge-m3"
+  search_mode: hybrid

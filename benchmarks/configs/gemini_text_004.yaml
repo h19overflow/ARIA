@@ -1,0 +1,4 @@
+name: gemini_text_004
+adapter: chroma_hybrid
+params:
+  embedding_model: "models/text-embedding-004"

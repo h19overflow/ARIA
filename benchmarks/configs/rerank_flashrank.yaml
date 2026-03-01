@@ -1,0 +1,5 @@
+name: rerank_flashrank
+adapter: rerank
+params:
+  inner_adapter: chroma_hybrid
+  reranker: flashrank

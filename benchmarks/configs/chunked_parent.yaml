@@ -1,0 +1,4 @@
+name: chunked_parent
+adapter: chunked
+params:
+  strategy: parent_child

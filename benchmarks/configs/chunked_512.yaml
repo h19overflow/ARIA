@@ -1,0 +1,6 @@
+name: chunked_512
+adapter: chunked
+params:
+  chunk_size: 512
+  chunk_overlap: 64
+  strategy: fixed

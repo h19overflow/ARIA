@@ -1,0 +1,5 @@
+name: gte_large
+adapter: huggingface
+params:
+  model_name: "thenlper/gte-large"
+  search_mode: hybrid

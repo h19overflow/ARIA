@@ -1,0 +1,5 @@
+name: e5_large
+adapter: huggingface
+params:
+  model_name: "intfloat/e5-large-v2"
+  search_mode: hybrid
