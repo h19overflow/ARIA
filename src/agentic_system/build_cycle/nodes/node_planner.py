@@ -112,13 +112,50 @@ async def _run_composer_with_cycle_retry(
 
     for attempt in range(MAX_CYCLE_RETRIES):
         plan: NodePlan = await _composer.invoke([HumanMessage(content=prompt)])
+        
+        errors = []
         cycle_error = _detect_cycle(plan.edges)
-        if cycle_error is None:
+        if cycle_error:
+            errors.append(cycle_error)
+            
+        unknown_nodes_error = _detect_unknown_nodes(plan.nodes, available_packages)
+        if unknown_nodes_error:
+            errors.append(unknown_nodes_error)
+            
+        if not errors:
             return plan
-        logger.warning("[PlanComposer] Cycle on attempt %d: %s", attempt + 1, cycle_error)
+            
+        error_msg = "\n\n".join(errors)
+        logger.warning("[PlanComposer] Validation error on attempt %d: %s", attempt + 1, error_msg)
         prompt = base_prompt + (
-            f"\n\n## ERROR: Cycle detected in your previous answer\n{cycle_error}\n"
-            "Revise your edges so the graph is acyclic before responding again."
+            f"\n\n## ERROR: Validation failed for your previous answer\n{error_msg}\n"
+            "Revise your node plan to fix these issues before responding again."
+        )
+    return None
+
+# ── Validation ────────────────────────────────────────────────────────────────
+
+def _detect_unknown_nodes(nodes: list, available_packages: list[str]) -> str | None:
+    """Check if any planned node uses a package prefix that isn't installed."""
+    if not available_packages:
+        return None
+        
+    invalid_nodes = []
+    for node in nodes:
+        node_type = node.node_type
+        if "." not in node_type:
+            if node_type not in available_packages:
+                invalid_nodes.append(node_type)
+        else:
+            prefix = node_type.rsplit(".", 1)[0]
+            if prefix not in available_packages:
+                invalid_nodes.append(node_type)
+                
+    if invalid_nodes:
+        invalid_str = ", ".join(invalid_nodes)
+        return (
+            f"The following node types belong to packages that are NOT installed: {invalid_str}.\n"
+            "You MUST replace them with valid nodes from the 'Available node packages' list (e.g. fallback to 'n8n-nodes-base.httpRequest' or 'n8n-nodes-base.code')."
         )
     return None
 
