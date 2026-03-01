@@ -1,16 +1,17 @@
-"""Build Cycle Node Planner — LLM-driven flat DAG decomposition with tool-based RAG."""
+"""Build Cycle Node Planner — two-phase: Researcher (RAG) + Composer (structured output)."""
 from __future__ import annotations
 
 import json
 import logging
 import time
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 
 from src.agentic_system.shared.base_agent import BaseAgent
 from src.agentic_system.shared.state import ARIAState, WorkflowTopology
 from src.agentic_system.build_cycle.schemas.node_plan import NodePlan, PlannedEdge
-from src.agentic_system.build_cycle.prompts.node_planner import NODE_PLANNER_SYSTEM_PROMPT
+from src.agentic_system.build_cycle.prompts.node_researcher import NODE_RESEARCHER_SYSTEM_PROMPT
+from src.agentic_system.build_cycle.prompts.plan_composer import PLAN_COMPOSER_SYSTEM_PROMPT
 from src.agentic_system.build_cycle.nodes._credential_resolver import resolve_node_credentials
 from src.agentic_system.build_cycle.tools import search_n8n_nodes
 from src.boundary.n8n.node_discovery import discover_installed_node_prefixes
@@ -20,12 +21,22 @@ logger = logging.getLogger(__name__)
 
 MAX_CYCLE_RETRIES = 3
 
-_agent = BaseAgent[NodePlan](
-    prompt=NODE_PLANNER_SYSTEM_PROMPT,
-    schema=NodePlan,
-    name="NodePlanner",
+# Phase 1: Tool-use agent, text output — searches ChromaDB for node docs
+_researcher = BaseAgent(
+    prompt=NODE_RESEARCHER_SYSTEM_PROMPT,
+    schema=None,
+    name="NodeResearcher",
     tools=[search_n8n_nodes],
-    recursion_limit=40,
+    recursion_limit=30,
+)
+
+# Phase 2: Structured output agent, no tools — composes the NodePlan
+_composer = BaseAgent[NodePlan](
+    prompt=PLAN_COMPOSER_SYSTEM_PROMPT,
+    schema=NodePlan,
+    name="PlanComposer",
+    tools=[],
+    recursion_limit=5,
 )
 
 
@@ -48,8 +59,13 @@ async def node_planner_node(state: ARIAState) -> dict:
         return _empty_plan()
 
     available_packages = await discover_installed_node_prefixes()
-    prompt = _build_planner_prompt(intent, topology, cred_ids, sorted(available_packages))
-    plan = await _invoke_with_cycle_retry(prompt)
+    sorted_packages = sorted(available_packages)
+
+    # Phase 1: Researcher searches for node documentation
+    catalog = await _run_researcher(intent, topology, cred_ids, sorted_packages)
+
+    # Phase 2: Composer produces the structured NodePlan
+    plan = await _run_composer_with_cycle_retry(catalog, intent, cred_ids, sorted_packages)
 
     if plan is None:
         elapsed = int((time.monotonic() - start) * 1000)
@@ -64,34 +80,50 @@ async def node_planner_node(state: ARIAState) -> dict:
             "plan", "Node Planner", "success",
             f"Planned {len(plan.nodes)} nodes", duration_ms=elapsed,
         )
-    return _plan_to_state_update(plan, cred_ids, sorted(available_packages))
+    return _plan_to_state_update(plan, cred_ids, sorted_packages)
 
 
-# ── LLM invocation with cycle-detection retry ──────────────────────────────────
+# ── Phase 1: Researcher ──────────────────────────────────────────────────────
 
-async def _invoke_with_cycle_retry(base_prompt: str) -> NodePlan | None:
-    """Invoke the LLM up to MAX_CYCLE_RETRIES times, feeding cycle errors back."""
+async def _run_researcher(
+    intent: str,
+    topology: WorkflowTopology | None,
+    cred_ids: dict,
+    available_packages: list[str],
+) -> str:
+    """Run the Researcher agent to produce a node catalog via RAG search."""
+    prompt = _build_researcher_prompt(intent, topology, cred_ids, available_packages)
+    result: AIMessage = await _researcher.invoke([HumanMessage(content=prompt)])
+    logger.info("[NodeResearcher] Catalog produced (%d chars)", len(result.content))
+    return result.content
+
+
+# ── Phase 2: Composer with cycle-detection retry ─────────────────────────────
+
+async def _run_composer_with_cycle_retry(
+    catalog: str,
+    intent: str,
+    cred_ids: dict,
+    available_packages: list[str],
+) -> NodePlan | None:
+    """Run the Composer agent up to MAX_CYCLE_RETRIES times."""
+    base_prompt = _build_composer_prompt(catalog, intent, cred_ids, available_packages)
     prompt = base_prompt
+
     for attempt in range(MAX_CYCLE_RETRIES):
-        plan: NodePlan = await _agent.invoke([HumanMessage(content=prompt)])
+        plan: NodePlan = await _composer.invoke([HumanMessage(content=prompt)])
         cycle_error = _detect_cycle(plan.edges)
         if cycle_error is None:
             return plan
-        logger.warning("[NodePlanner] Cycle on attempt %d: %s", attempt + 1, cycle_error)
-        prompt = _append_cycle_feedback(base_prompt, cycle_error)
+        logger.warning("[PlanComposer] Cycle on attempt %d: %s", attempt + 1, cycle_error)
+        prompt = base_prompt + (
+            f"\n\n## ERROR: Cycle detected in your previous answer\n{cycle_error}\n"
+            "Revise your edges so the graph is acyclic before responding again."
+        )
     return None
 
 
-def _append_cycle_feedback(base_prompt: str, cycle_error: str) -> str:
-    """Extend the prompt with a cycle-detection error for the next retry."""
-    return (
-        base_prompt
-        + f"\n\n## ERROR: Cycle detected in your previous answer\n{cycle_error}\n"
-        + "Revise your edges so the graph is acyclic before responding again."
-    )
-
-
-# ── Cycle detection ────────────────────────────────────────────────────────────
+# ── Cycle detection ───────────────────────────────────────────────────────────
 
 def _detect_cycle(edges: list[PlannedEdge]) -> str | None:
     """Return an error message if a cycle exists; None if the graph is a valid DAG."""
@@ -121,14 +153,15 @@ def _detect_cycle(edges: list[PlannedEdge]) -> str | None:
     return None
 
 
-# ── Prompt assembly ────────────────────────────────────────────────────────────
+# ── Prompt assembly ───────────────────────────────────────────────────────────
 
-def _build_planner_prompt(
+def _build_researcher_prompt(
     intent: str,
     topology: WorkflowTopology | None,
     cred_ids: dict,
-    available_packages: list[str] | None = None,
+    available_packages: list[str],
 ) -> str:
+    """Build the human message for the Researcher agent."""
     sections = [f"## Intent\n{intent}"]
 
     if topology:
@@ -142,17 +175,34 @@ def _build_planner_prompt(
         sections.append(
             f"## Available node packages (installed on this n8n instance)\n"
             f"{json.dumps(available_packages, indent=2)}\n"
-            f"You MUST ONLY use node types from these packages. "
-            f"Example: if 'n8n-nodes-base' is listed, you can use 'n8n-nodes-base.gmail', "
-            f"'n8n-nodes-base.code', etc. "
-            f"If no dedicated node exists for a capability, use "
-            f"'n8n-nodes-base.httpRequest' or 'n8n-nodes-base.code' as a fallback."
+            f"You MUST ONLY search for node types from these packages."
         )
 
     return "\n\n".join(sections)
 
 
-# ── State conversion ───────────────────────────────────────────────────────────
+def _build_composer_prompt(
+    catalog: str,
+    intent: str,
+    cred_ids: dict,
+    available_packages: list[str],
+) -> str:
+    """Build the human message for the Composer agent."""
+    sections = [
+        f"## Node Catalog (from Researcher — use ONLY these nodes)\n{catalog}",
+        f"## Intent\n{intent}",
+        f"## Available credentials\n{json.dumps(cred_ids, indent=2)}",
+    ]
+
+    if available_packages:
+        sections.append(
+            f"## Available node packages\n{json.dumps(available_packages, indent=2)}"
+        )
+
+    return "\n\n".join(sections)
+
+
+# ── State conversion ─────────────────────────────────────────────────────────
 
 def _plan_to_state_update(plan: NodePlan, resolved_credential_ids: dict, available_packages: list[str]) -> dict:
     nodes = [spec.model_dump() for spec in plan.nodes]
