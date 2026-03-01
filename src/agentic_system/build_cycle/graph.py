@@ -12,13 +12,12 @@ from src.agentic_system.build_cycle.nodes.deploy import deploy_node
 from src.agentic_system.build_cycle.nodes.test import test_node
 from src.agentic_system.build_cycle.nodes.debugger import debugger_node
 from src.agentic_system.build_cycle.nodes.activate import activate_node
-from src.agentic_system.build_cycle.nodes.node_substituter import node_substituter_node
 from src.agentic_system.build_cycle.nodes.hitl_escalation import (
     hitl_fix_escalation_node,
 )
 
 MAX_FIX_ATTEMPTS = 3
-_FIXABLE_TYPES = {"schema", "logic"}
+_FIXABLE_TYPES = {"schema", "logic", "missing_node", "auth"}
 
 
 def fan_out_nodes(state: ARIAState) -> list[Send]:
@@ -53,13 +52,9 @@ def _route_debugger_result(state: ARIAState) -> str:
     error_type = error.get("type")
     has_budget = state.get("fix_attempts", 0) < MAX_FIX_ATTEMPTS
 
-    if error_type == "missing_node" and has_budget:
-        return "node_substituter"
     if error_type == "rate_limit":
         return "test"
     if error_type in _FIXABLE_TYPES and has_budget and state.get("workflow_json"):
-        return "deploy"
-    if error_type == "auth" and has_budget and state.get("workflow_json"):
         return "deploy"
     return "hitl_fix_escalation"
 
@@ -69,13 +64,6 @@ def _route_deploy_result(state: ARIAState) -> str:
     if state.get("status") == "fixing":
         return "debugger"
     return "test"
-
-
-def _route_substituter_result(state: ARIAState) -> str:
-    """Route after substitution: deploy if fixed, escalate if not."""
-    if state.get("status") == "building" and state.get("workflow_json"):
-        return "deploy"
-    return "hitl_fix_escalation"
 
 
 def _route_hitl_decision(state: ARIAState) -> str:
@@ -111,7 +99,6 @@ def _register_nodes(graph: StateGraph) -> None:
     graph.add_node("test", test_node)
     graph.add_node("debugger", debugger_node)
     graph.add_node("activate", activate_node)
-    graph.add_node("node_substituter", node_substituter_node)
     graph.add_node("hitl_fix_escalation", hitl_fix_escalation_node)
     graph.add_node("fail", _mark_failed)
 
@@ -143,14 +130,8 @@ def _wire_edges(graph: StateGraph) -> None:
         {
             "deploy": "deploy",
             "test": "test",
-            "node_substituter": "node_substituter",
             "hitl_fix_escalation": "hitl_fix_escalation",
         },
-    )
-    graph.add_conditional_edges(
-        "node_substituter",
-        _route_substituter_result,
-        {"deploy": "deploy", "hitl_fix_escalation": "hitl_fix_escalation"},
     )
     graph.add_conditional_edges(
         "hitl_fix_escalation",
