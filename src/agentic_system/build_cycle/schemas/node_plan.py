@@ -102,3 +102,9 @@ class SearchInput(BaseModel):
     """Input for n8n node search tool."""
     query: str = Field(description="Search terms for node types")
     doc_type: Optional[str] = Field(default="node", description="node | workflow_template")
+    n_results: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Number of results to return (1-20). Use more for broad/ambiguous queries.",
+    )

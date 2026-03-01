@@ -10,25 +10,24 @@ from src.boundary.chroma.store import ChromaStore
 
 logger = logging.getLogger(__name__)
 
-_MAX_RESULTS = 5
-
-
-
 
 
 @tool(args_schema=SearchInput)
-async def search_n8n_nodes(query: str, doc_type: str | None = "node") -> str:
+async def search_n8n_nodes(
+    query: str,
+    doc_type: str | None = "node",
+    n_results: int = 5,
+) -> str:
     """Search the n8n knowledge base for node documentation and parameter templates.
 
     Use this tool BEFORE selecting any node type to verify it exists and
-    understand its parameter schema. Returns up to 5 matching results with
-    node type, name, and full documentation.
+    understand its parameter schema. Adjust n_results for broad queries (up to 20).
     """
     store = ChromaStore()
     await store.connect()
     try:
-        results = await store.hybrid_query_n8n_documents(
-            query=query, n_results=_MAX_RESULTS, doc_type=doc_type,
+        results = await store.query_n8n_documents(
+            query=query, n_results=n_results, doc_type=doc_type,
         )
     finally:
         await store.disconnect()
