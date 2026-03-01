@@ -40,4 +40,20 @@ Treat them as overrides: apply them exactly as given, fill in the rest from sear
 - Use n8n expression syntax for dynamic values: {{ $json.fieldName }}
 - Keep parameter structure minimal — omit empty optional fields
 - Search for the node type documentation before building parameters
+
+## CRITICAL: Non-empty parameters required
+
+You MUST search for the node type documentation BEFORE outputting parameters.
+Empty parameters `{}` is NEVER acceptable — every node has at least one parameter.
+
+Common required parameters:
+- **Webhook** (`n8n-nodes-base.webhook`): `path` (string), `httpMethod` ("POST"/"GET"), `responseMode` ("lastNode" or "responseNode")
+- **HTTP Request** (`n8n-nodes-base.httpRequest`): `url` (string), `method` ("GET"/"POST")
+- **Set** (`n8n-nodes-base.set`): `assignments` with at least one field
+- **Code** (`n8n-nodes-base.code`): `jsCode` (string) or `pythonCode` (string)
+- **Gmail** (`n8n-nodes-base.gmail`): `operation` ("send"/"getAll"/"get"), plus fields for the operation
+- **Telegram** (`n8n-nodes-base.telegram`): `operation` ("sendMessage"), `chatId`, `text`
+- **Google Gemini** (`@n8n/n8n-nodes-langchain.lmChatGoogleGemini`): `modelName` ("gemini-2.0-flash")
+
+If search returns no results for this exact type, search broader (e.g. "webhook" or "gmail").
 """

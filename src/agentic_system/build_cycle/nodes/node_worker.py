@@ -12,12 +12,15 @@ from src.agentic_system.build_cycle.schemas.node_plan import WorkerOutput
 from src.agentic_system.build_cycle.prompts.node_worker import NODE_WORKER_SYSTEM_PROMPT
 from src.agentic_system.build_cycle.tools import search_n8n_nodes
 from src.services.pipeline.event_bus import get_event_bus
+from src.agentic_system.build_cycle.nodes._node_worker_helpers import (
+    _validate_node_output,
+    _success_result,
+    _failure_result,
+)
 
 _HORIZONTAL_SPACING_PX = 250
 _DEFAULT_Y_POSITION = 300
-
-
-
+_TRIGGER_TYPES = {"n8n-nodes-base.webhook", "n8n-nodes-base.scheduletrigger", "n8n-nodes-base.cron"}
 
 
 _agent = BaseAgent[WorkerOutput](
@@ -45,6 +48,16 @@ async def node_worker_node(state: dict) -> dict:
 
         output: WorkerOutput = await _agent.invoke([HumanMessage(content=prompt)])
         node_json = _assemble_node_json(node_spec, output)
+
+        validation_errors = _validate_node_output(node_json)
+        if validation_errors:
+            elapsed = int((time.monotonic() - start) * 1000)
+            if bus:
+                await bus.emit_complete(
+                    "build", node_name, "error",
+                    f"{node_name} validation failed: {validation_errors[0]}", duration_ms=elapsed,
+                )
+            return {"node_build_results": [_failure_result(node_name, validation_errors)]}
 
         elapsed = int((time.monotonic() - start) * 1000)
         if bus:
@@ -111,25 +124,3 @@ def _attach_credentials_if_present(node: dict, node_spec: dict) -> None:
         node["credentials"] = {
             credential_type: {"id": credential_id, "name": credential_type}
         }
-
-
-# ── Result constructors ───────────────────────────────────────────────────────
-
-def _success_result(node_name: str, node_json: dict) -> dict:
-    """Build a passing NodeResult."""
-    return {
-        "node_name": node_name,
-        "node_json": node_json,
-        "validation_passed": True,
-        "validation_errors": [],
-    }
-
-
-def _failure_result(node_name: str, exc: Exception) -> dict:
-    """Build a failing NodeResult from an exception."""
-    return {
-        "node_name": node_name,
-        "node_json": {},
-        "validation_passed": False,
-        "validation_errors": [f"{type(exc).__name__}: {exc}"],
-    }
