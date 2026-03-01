@@ -6,10 +6,8 @@ from unittest.mock import AsyncMock, patch, MagicMock
 
 from langchain_core.messages import AIMessage, HumanMessage
 
-from src.agentic_system.build_cycle.nodes.debugger import (
-    debugger_node,
-    _apply_full_fix,
-)
+from src.agentic_system.build_cycle.nodes.debugger import debugger_node
+from src.agentic_system.build_cycle.nodes._debugger_fix import _apply_full_fix
 from src.agentic_system.build_cycle.schemas.execution import (
     DebuggerOutput,
     FixedNode,
