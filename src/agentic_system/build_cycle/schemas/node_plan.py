@@ -81,29 +81,6 @@ class NodeResult(TypedDict):
     validation_errors: list[str]
 
 
-class ReplacementNode(BaseModel):
-    """A single replacement node produced by the substituter."""
-
-    name: str = Field(description="Node display name")
-    type: str = Field(description="n8n node type (must be n8n-nodes-base.*)")
-    parameters: dict = Field(description="Complete n8n node parameters")
-
-
-class SubstitutionResult(BaseModel):
-    """Output from the Node Substituter agent."""
-
-    substitution_possible: bool = Field(
-        description="Whether a built-in replacement exists"
-    )
-    reason: str = Field(description="Why substitution is or isn't possible")
-    replacement_nodes: list[ReplacementNode] = Field(
-        default_factory=list,
-        description="Replacement node(s) using only n8n-nodes-base types",
-    )
-    removed_node_name: str = Field(
-        description="Name of the node being replaced"
-    )
-
 
 class WorkerOutput(BaseModel):
     """LLM output for a single n8n node worker."""

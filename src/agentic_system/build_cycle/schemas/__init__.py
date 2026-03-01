@@ -9,9 +9,7 @@ from src.agentic_system.build_cycle.schemas.node_plan import (
     NodeResult,
     NodeSpec,
     PlannedEdge,
-    ReplacementNode,
     SearchInput,
-    SubstitutionResult,
     WorkerOutput,
 )
 
@@ -23,8 +21,6 @@ __all__ = [
     "NodeResult",
     "NodeSpec",
     "PlannedEdge",
-    "ReplacementNode",
     "SearchInput",
-    "SubstitutionResult",
     "WorkerOutput",
 ]
