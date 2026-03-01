@@ -1,6 +1,7 @@
 """Build Cycle Deploy — POST workflow to n8n."""
 from __future__ import annotations
 
+import logging
 import time
 
 import httpx
@@ -9,6 +10,35 @@ from langchain_core.messages import HumanMessage
 from src.agentic_system.shared.state import ARIAState
 from src.boundary.n8n.client import N8nClient
 from src.services.pipeline.event_bus import get_event_bus
+
+log = logging.getLogger("aria.deploy")
+
+
+def _validate_workflow_before_deploy(workflow_json: dict) -> str | None:
+    """Pre-flight check before hitting the n8n API. Returns error message or None."""
+    nodes = workflow_json.get("nodes", [])
+    connections = workflow_json.get("connections", {})
+
+    if not nodes:
+        return "Workflow has no nodes"
+
+    for node in nodes:
+        if not node.get("id"):
+            return f"Node '{node.get('name', '?')}' missing required 'id' field"
+        if not node.get("type"):
+            return f"Node '{node.get('name', '?')}' missing required 'type' field"
+
+        node_type = node.get("type", "").lower()
+        if "webhook" in node_type:
+            if not node.get("webhookId"):
+                return f"Webhook node '{node.get('name', '?')}' missing 'webhookId'"
+            if not node.get("parameters", {}).get("path"):
+                return f"Webhook node '{node.get('name', '?')}' missing 'parameters.path'"
+
+    if len(nodes) > 1 and not connections:
+        return f"Workflow has {len(nodes)} nodes but no connections"
+
+    return None
 
 
 async def deploy_node(state: ARIAState) -> dict:
@@ -23,6 +53,29 @@ async def deploy_node(state: ARIAState) -> dict:
 
     # Strip read-only fields before sending to n8n API
     payload = {k: v for k, v in workflow_json.items() if k != "id"}
+
+    pre_deploy_error = _validate_workflow_before_deploy(workflow_json)
+    if pre_deploy_error:
+        log.warning("[Deploy] Pre-deploy validation failed: %s", pre_deploy_error)
+        elapsed = int((time.monotonic() - start) * 1000)
+        if bus:
+            await bus.emit_complete(
+                "deploy", "Deploy", "error",
+                f"Pre-deploy validation: {pre_deploy_error}", duration_ms=elapsed,
+            )
+        return {
+            "execution_result": {
+                "status": "error", "execution_id": "", "data": None,
+                "error": {
+                    "type": None, "node_name": "unknown",
+                    "message": pre_deploy_error,
+                    "description": "Pre-deploy validation failure",
+                    "line_number": None, "stack": None,
+                },
+            },
+            "status": "fixing",
+            "messages": [HumanMessage(content=f"[Deploy] Validation failed: {pre_deploy_error}")],
+        }
 
     client = N8nClient()
     await client.connect()
