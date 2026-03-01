@@ -48,13 +48,10 @@ async def deploy_node(state: ARIAState) -> dict:
         await bus.emit_start("deploy", "Deploy", "Deploying workflow to n8n...")
     start = time.monotonic()
 
-    workflow_json = state["workflow_json"]
+    workflow_json = state.get("workflow_json")
     existing_id = state.get("n8n_workflow_id")
 
-    # Strip read-only fields before sending to n8n API
-    payload = {k: v for k, v in workflow_json.items() if k != "id"}
-
-    pre_deploy_error = _validate_workflow_before_deploy(workflow_json)
+    pre_deploy_error = _validate_workflow_before_deploy(workflow_json) if workflow_json else "workflow_json is None — assembler did not produce a valid workflow"
     if pre_deploy_error:
         log.warning("[Deploy] Pre-deploy validation failed: %s", pre_deploy_error)
         elapsed = int((time.monotonic() - start) * 1000)
@@ -76,6 +73,9 @@ async def deploy_node(state: ARIAState) -> dict:
             "status": "fixing",
             "messages": [HumanMessage(content=f"[Deploy] Validation failed: {pre_deploy_error}")],
         }
+
+    # Strip read-only fields before sending to n8n API
+    payload = {k: v for k, v in workflow_json.items() if k != "id"}
 
     client = N8nClient()
     await client.connect()

@@ -48,7 +48,7 @@ async def debugger_node(state: ARIAState) -> dict:
     """Classify execution error and apply full-spectrum fix."""
     bus = get_event_bus(state)
     exec_result = state["execution_result"]
-    workflow_json = state["workflow_json"]
+    workflow_json = state.get("workflow_json") or {"nodes": [], "connections": {}}
     fix_attempts = state.get("fix_attempts", 0)
     error_data = exec_result.get("error") or {}
 
