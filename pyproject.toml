@@ -34,6 +34,13 @@ dependencies = [
     "nest-asyncio>=1.6",
 ]
 
+[project.optional-dependencies]
+benchmark = [
+    "sentence-transformers>=3.0.0",
+    "flashrank>=0.2.0",
+    "pyyaml>=6.0",
+]
+
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
 markers = [
