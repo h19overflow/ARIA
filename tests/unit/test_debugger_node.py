@@ -2,17 +2,13 @@
 from __future__ import annotations
 
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage
 
 from src.agentic_system.build_cycle.nodes.debugger import debugger_node
 from src.agentic_system.build_cycle.nodes._debugger_fix import _apply_full_fix
-from src.agentic_system.build_cycle.schemas.execution import (
-    DebuggerOutput,
-    FixedNode,
-    NewNode,
-)
+from src.agentic_system.build_cycle.schemas.execution import DebuggerOutput, FixedNode
 
 
 @pytest.fixture
@@ -52,12 +48,12 @@ def test_apply_full_fix_patches_node_parameters():
         ],
         "connections": {},
     }
-    output = DebuggerOutput(
-        error_type="schema",
-        node_name="Gmail",
-        message="fix",
-        fixed_nodes=[FixedNode(node_name="Gmail", parameters={"to": "a@b.com"})],
-    )
+    output = {
+        "error_type": "schema",
+        "node_name": "Gmail",
+        "message": "fix",
+        "fixed_nodes": [{"node_name": "Gmail", "parameters": {"to": "a@b.com"}}],
+    }
     result = _apply_full_fix(workflow, output)
     assert result["nodes"][0]["parameters"] == {"to": "a@b.com"}
 
@@ -70,20 +66,20 @@ def test_apply_full_fix_changes_node_type():
         ],
         "connections": {},
     }
-    output = DebuggerOutput(
-        error_type="missing_node",
-        node_name="AI Agent",
-        message="Node type not installed",
-        fixed_nodes=[FixedNode(
-            node_name="AI Agent",
-            parameters={"url": "https://api.openai.com/v1/chat"},
-            new_type="n8n-nodes-base.httpRequest",
-        )],
-    )
+    output = {
+        "error_type": "missing_node",
+        "node_name": "AI Agent",
+        "message": "Node type not installed",
+        "fixed_nodes": [{
+            "node_name": "AI Agent",
+            "parameters": {"url": "https://api.openai.com/v1/chat"},
+            "new_type": "n8n-nodes-base.httpRequest",
+        }],
+    }
     result = _apply_full_fix(workflow, output)
     assert result["nodes"][0]["type"] == "n8n-nodes-base.httpRequest"
     assert result["nodes"][0]["parameters"]["url"] == "https://api.openai.com/v1/chat"
-    assert result["nodes"][0]["name"] == "AI Agent"  # name preserved
+    assert result["nodes"][0]["name"] == "AI Agent"
 
 
 def test_apply_full_fix_adds_and_removes_nodes():
@@ -96,19 +92,19 @@ def test_apply_full_fix_adds_and_removes_nodes():
         ],
         "connections": {"Trigger": {"main": [[{"node": "Old Node", "type": "main", "index": 0}]]}},
     }
-    output = DebuggerOutput(
-        error_type="logic",
-        node_name="Old Node",
-        message="Replace with better approach",
-        removed_node_names=["Old Node"],
-        added_nodes=[NewNode(
-            name="New Transform",
-            type="n8n-nodes-base.code",
-            parameters={"jsCode": "return items;"},
-            position=[300, 200],
-        )],
-        fixed_connections={"Trigger": {"main": [[{"node": "New Transform", "type": "main", "index": 0}]]}},
-    )
+    output = {
+        "error_type": "logic",
+        "node_name": "Old Node",
+        "message": "Replace with better approach",
+        "removed_node_names": ["Old Node"],
+        "added_nodes": [{
+            "name": "New Transform",
+            "type": "n8n-nodes-base.code",
+            "parameters": {"jsCode": "return items;"},
+            "position": [300, 200],
+        }],
+        "fixed_connections": {"Trigger": {"main": [[{"node": "New Transform", "type": "main", "index": 0}]]}},
+    }
     result = _apply_full_fix(workflow, output)
     node_names = [n["name"] for n in result["nodes"]]
     assert "Old Node" not in node_names
@@ -125,12 +121,12 @@ def test_apply_full_fix_rewires_connections():
         "connections": {"A": {"main": [[{"node": "B", "type": "main", "index": 0}]]}},
     }
     new_connections = {"A": {"main": [[{"node": "B", "type": "main", "index": 0}, {"node": "B", "type": "main", "index": 1}]]}}
-    output = DebuggerOutput(
-        error_type="schema",
-        node_name="B",
-        message="fix connections",
-        fixed_connections=new_connections,
-    )
+    output = {
+        "error_type": "schema",
+        "node_name": "B",
+        "message": "fix connections",
+        "fixed_connections": new_connections,
+    }
     result = _apply_full_fix(workflow, output)
     assert result["connections"] == new_connections
 
@@ -142,16 +138,16 @@ def test_apply_full_fix_attaches_credentials():
         ],
         "connections": {},
     }
-    output = DebuggerOutput(
-        error_type="schema",
-        node_name="Gmail",
-        message="fix",
-        fixed_nodes=[FixedNode(
-            node_name="Gmail",
-            parameters={"to": "a@b.com"},
-            credentials={"gmailOAuth2Api": {"id": "cred-123", "name": "gmailOAuth2Api"}},
-        )],
-    )
+    output = {
+        "error_type": "schema",
+        "node_name": "Gmail",
+        "message": "fix",
+        "fixed_nodes": [{
+            "node_name": "Gmail",
+            "parameters": {"to": "a@b.com"},
+            "credentials": {"gmailOAuth2Api": {"id": "cred-123", "name": "gmailOAuth2Api"}},
+        }],
+    }
     result = _apply_full_fix(workflow, output)
     assert result["nodes"][0]["credentials"]["gmailOAuth2Api"]["id"] == "cred-123"
 

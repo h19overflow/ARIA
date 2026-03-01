@@ -95,7 +95,7 @@ async def _run_two_phase_fix(
     if bus:
         await bus.emit_complete(
             "fix", "Debugger", fix_status,
-            f"Debugger {result.error_type}: {result.message}", duration_ms=elapsed,
+            f"Debugger {result['error_type']}: {result['message']}", duration_ms=elapsed,
         )
     return updates
 
@@ -128,8 +128,8 @@ async def _run_fix_composer(
     compact_workflow: dict,
     fix_attempts: int,
     available_packages: list[str],
-) -> DebuggerOutput:
-    """Run the Composer to produce a structured fix."""
+) -> dict:
+    """Run the Composer to produce a structured fix. Returns a plain dict."""
     capped_report = _cap_text(diagnostic_report, _MAX_DIAGNOSTIC_CHARS)
     prompt = (
         f"Attempt: {fix_attempts + 1}/3\n\n"
@@ -139,7 +139,8 @@ async def _run_fix_composer(
         f"## Available packages\n{json.dumps(available_packages, indent=2)}"
     )
     prompt = _cap_text(prompt, _MAX_PROMPT_CHARS)
-    return await _fix_composer.invoke([HumanMessage(content=prompt)])
+    output = await _fix_composer.invoke([HumanMessage(content=prompt)])
+    return output.model_dump()
 
 
 def _cap_text(text: str, max_chars: int) -> str:
