@@ -1,9 +1,10 @@
 """Schemas for the parallel node fan-out build pipeline."""
 from __future__ import annotations
 
-from typing import TypedDict, Optional
+import json
+from typing import Any, TypedDict, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class PlannedEdge(BaseModel):
@@ -43,6 +44,20 @@ class NodeSpec(BaseModel):
     position_index: int = Field(
         description="Ordering hint used to compute canvas layout position"
     )
+
+    @field_validator("parameter_hints", mode="before")
+    @classmethod
+    def coerce_json_string_to_dict(cls, v: Any) -> dict:
+        """Auto-coerce JSON strings to dicts — prevents LLM retry spirals."""
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, dict):
+                    return parsed
+            except (json.JSONDecodeError, TypeError):
+                pass
+            return {}
+        return v if isinstance(v, dict) else {}
 
 
 class NodePlan(BaseModel):
