@@ -5,7 +5,6 @@ import { BuildHeader } from "@/components/build/BuildHeader";
 import { BuildSidebar } from "@/components/build/BuildSidebar";
 import { SuccessBanner } from "@/components/build/SuccessBanner";
 import { ClarifyDrawer } from "@/components/build/ClarifyDrawer";
-import { FixEscalationPanel } from "@/components/build/FixEscalationPanel";
 import { CredentialDrawer } from "@/components/build/CredentialDrawer";
 import { useBuild } from "@/hooks/useBuild";
 import { PageGuide } from "@/components/shared/PageGuide";
@@ -39,14 +38,6 @@ export function BuildPage({ conversationId }: BuildPageProps) {
     return resume("provide", creds);
   }
 
-  function handleFixEscalationAction(action: "retry" | "replan" | "abort" | "discuss", message?: string) {
-    if (action === "discuss" && message) {
-      resume("discuss", message);
-    } else {
-      resume(action, action);
-    }
-  }
-
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <BuildHeader status={status} ariaState={ariaState} />
@@ -77,17 +68,6 @@ export function BuildPage({ conversationId }: BuildPageProps) {
               />
             )}
 
-            {/* HITL: fix escalation panel — shown when fix budget exhausted */}
-            {interrupt?.kind === "fix_exhausted" && (
-              <FixEscalationPanel
-                explanation={interrupt.payload.explanation ?? ""}
-                error={interrupt.payload.error ?? {}}
-                fixAttempts={interrupt.payload.fix_attempts ?? 0}
-                n8nUrl={interrupt.payload.n8n_url ?? ""}
-                onAction={handleFixEscalationAction}
-              />
-            )}
-
             {/* HITL: clarify drawer — shown for mid-build clarification questions */}
             {interrupt?.kind === "clarify" && (
               <ClarifyDrawer
@@ -100,9 +80,7 @@ export function BuildPage({ conversationId }: BuildPageProps) {
             {/* Success banner overlaid at bottom of canvas */}
             {isDone && (
               <SuccessBanner
-                webhookUrl={ariaState?.webhook_url}
-                n8nWorkflowId={ariaState?.n8n_workflow_id}
-                fixAttempts={ariaState?.fix_attempts ?? 0}
+                n8nWorkflowUrl={ariaState?.n8n_workflow_url}
               />
             )}
           </div>
