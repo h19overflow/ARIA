@@ -17,7 +17,7 @@ export const startBuild = (conversationId: string): Promise<BuildResponse> =>
 export const getJobStatus = (jobId: string): Promise<JobStatusResponse> =>
   request(`/jobs/${jobId}`)
 
-// HITL resume
+// Build interrupt resume (clarify / credential)
 export const submitResume = (
   jobId: string,
   kind: 'clarify' | 'provide' | 'resume' | 'retry' | 'replan' | 'abort' | 'discuss',

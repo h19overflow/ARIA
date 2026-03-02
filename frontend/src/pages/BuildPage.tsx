@@ -68,7 +68,7 @@ export function BuildPage({ conversationId }: BuildPageProps) {
               />
             )}
 
-            {/* HITL: clarify drawer — shown for mid-build clarification questions */}
+            {/* Clarify drawer — shown for mid-build clarification questions */}
             {interrupt?.kind === "clarify" && (
               <ClarifyDrawer
                 question={interrupt.payload.question ?? ""}
@@ -85,7 +85,7 @@ export function BuildPage({ conversationId }: BuildPageProps) {
             )}
           </div>
 
-          {/* HITL: credential drawer below canvas */}
+          {/* Credential drawer below canvas */}
           {interrupt?.kind === "credential" && (
             <CredentialDrawer
               pendingTypes={(interrupt.payload.pending_types as string[]) ?? []}
