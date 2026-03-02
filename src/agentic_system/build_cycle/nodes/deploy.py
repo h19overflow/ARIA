@@ -7,6 +7,7 @@ import time
 import httpx
 from langchain_core.messages import HumanMessage
 
+from src.api.settings import settings
 from src.agentic_system.shared.state import ARIAState
 from src.boundary.n8n.client import N8nClient
 from src.services.pipeline.event_bus import get_event_bus
@@ -70,7 +71,7 @@ async def deploy_node(state: ARIAState) -> dict:
                     "line_number": None, "stack": None,
                 },
             },
-            "status": "fixing",
+            "status": "failed",
             "messages": [HumanMessage(content=f"[Deploy] Validation failed: {pre_deploy_error}")],
         }
 
@@ -102,10 +103,12 @@ async def deploy_node(state: ARIAState) -> dict:
             "deploy", "Deploy", "success",
             f"Deployed workflow {workflow_id}", duration_ms=elapsed,
         )
+    n8n_workflow_url = f"{settings.n8n_base_url.rstrip('/')}/workflow/{workflow_id}"
     return {
         "n8n_workflow_id": workflow_id,
-        "status": "testing",
-        "messages": [HumanMessage(content=f"[Deploy] Workflow deployed: {workflow_id}")],
+        "n8n_workflow_url": n8n_workflow_url,
+        "status": "done",
+        "messages": [HumanMessage(content=f"[Deploy] Workflow created: {n8n_workflow_url}")],
     }
 
 
@@ -141,7 +144,7 @@ def _handle_deploy_error(
                 "stack": None,
             },
         },
-        "status": "fixing",
+        "status": "failed",
         "messages": [HumanMessage(content=f"[Deploy] Failed ({node_name}): {error_msg}")],
     }
 
