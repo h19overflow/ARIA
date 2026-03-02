@@ -94,17 +94,28 @@ class ConnectionTarget(BaseModel):
     index: int = Field(default=0, description="Input port on target node, usually 0")
 
 
-class NodeConnections(BaseModel):
-    """All outgoing connections from a single source node."""
+class SourceNodeConnections(BaseModel):
+    """All outgoing connections from one source node — keyed by source name."""
+    source_node_name: str = Field(
+        description="Exact name of the source node (must match a name from node_list)"
+    )
     main: list[list[ConnectionTarget]] = Field(
-        description="List of output ports. Each port is a list of connection targets."
+        description=(
+            "Output ports list. main[0] is output 0, main[1] is output 1, etc. "
+            "Each port contains a list of connection targets. "
+            "For If nodes: main[0]=true branch, main[1]=false branch. "
+            "For linear edges: use main[0] only."
+        ),
     )
 
 
 class AssemblerOutput(BaseModel):
     """LLM output from the Assembler agent — complete n8n connections object."""
-    connections: dict[str, NodeConnections] = Field(
-        description="Connections keyed by source node name."
+    connections: list[SourceNodeConnections] = Field(
+        description=(
+            "One entry per source node that has outgoing edges. "
+            "Every edge from planned_edges MUST appear here."
+        ),
     )
 
 

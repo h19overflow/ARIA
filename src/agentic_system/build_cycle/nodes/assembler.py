@@ -86,16 +86,26 @@ async def _build_connections_via_agent(
     """
     prompt = _build_assembler_prompt(planned_edges, node_list)
     output: AssemblerOutput = await _agent.invoke([HumanMessage(content=prompt)])
-    connections = {
-        source: conn.model_dump()
-        for source, conn in output.connections.items()
-    }
+    connections = _convert_assembler_output_to_dict(output)
     if connections:
         logger.info("[Assembler] LLM produced connections for %d sources", len(connections))
         return connections
 
     logger.warning("[Assembler] LLM returned empty connections — using deterministic fallback")
     return _build_connections_from_edges(planned_edges)
+
+
+def _convert_assembler_output_to_dict(output: AssemblerOutput) -> dict:
+    """Convert list-based AssemblerOutput to n8n connections dict."""
+    result: dict = {}
+    for entry in output.connections:
+        result[entry.source_node_name] = {
+            "main": [
+                [target.model_dump() for target in port]
+                for port in entry.main
+            ]
+        }
+    return result
 
 
 def _build_assembler_prompt(planned_edges: list[dict], node_list: list[dict]) -> str:
