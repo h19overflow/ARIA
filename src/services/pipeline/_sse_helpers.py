@@ -37,11 +37,9 @@ def build_initial_state(description: str, conversation_notes: dict | None = None
         "credential_guide_payload": None, "build_blueprint": None, "topology": None,
         "user_description": description, "intent_summary": "",
         "orchestrator_decision": "", "pending_question": "", "orchestrator_turns": 0,
-        "workflow_json": None, "n8n_workflow_id": None,
-        "n8n_execution_id": None, "execution_result": None, "classified_error": None,
-        "fix_attempts": 0, "webhook_url": None, "nodes_to_build": [],
-        "planned_edges": [], "node_build_results": [], "paused_for_input": False,
-        "hitl_explanation": None, "job_id": "",
+        "workflow_json": None, "n8n_workflow_id": None, "n8n_workflow_url": None,
+        "nodes_to_build": [],
+        "planned_edges": [], "node_build_results": [], "job_id": "",
         "conversation_notes": conversation_notes,
     }
 
@@ -52,14 +50,6 @@ def detect_interrupt(state: ARIAState, interrupt_value: dict | None = None) -> t
         return "credential", {
             "pending_types": state.get("pending_credential_types", []),
             "guide": state.get("credential_guide_payload"),
-        }
-    if interrupt_value and interrupt_value.get("type") == "fix_exhausted":
-        return "fix_exhausted", {
-            "explanation": interrupt_value.get("explanation", ""),
-            "error": interrupt_value.get("error", {}),
-            "fix_attempts": interrupt_value.get("fix_attempts", 0),
-            "n8n_url": interrupt_value.get("n8n_url", ""),
-            "options": interrupt_value.get("options", ["retry", "replan", "abort"]),
         }
     return "clarify", {"question": state.get("pending_question", "")}
 

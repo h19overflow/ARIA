@@ -113,17 +113,11 @@ def _conversation_to_aria_state(state: ConversationState) -> ARIAState:
         "conversation_notes": None,
         "workflow_json": None,
         "n8n_workflow_id": None,
-        "n8n_execution_id": None,
-        "execution_result": None,
-        "classified_error": None,
-        "fix_attempts": 0,
-        "webhook_url": None,
+        "n8n_workflow_url": None,
         "status": "planning",
         "nodes_to_build": [],
         "planned_edges": [],
         "node_build_results": [],
-        "paused_for_input": False,
-        "hitl_explanation": None,
         "job_id": "",
     }
 
