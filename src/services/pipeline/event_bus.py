@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
+from typing import Any
 from uuid import uuid4
 
 from redis.asyncio import Redis
@@ -12,7 +13,7 @@ from src.api.schemas import SSEEvent
 log = logging.getLogger("aria.event_bus")
 
 
-def get_event_bus(state: dict) -> BuildEventBus | None:
+def get_event_bus(state: dict[str, Any]) -> BuildEventBus | None:
     """Create a BuildEventBus from state, or None if job_id is missing."""
     job_id = state.get("job_id", "")
     if not job_id:

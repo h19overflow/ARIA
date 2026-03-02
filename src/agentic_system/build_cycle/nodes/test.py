@@ -10,7 +10,7 @@ from langchain_core.messages import HumanMessage
 
 from src.agentic_system.shared.state import ARIAState, ExecutionResult
 from src.boundary.n8n.client import N8nClient
-from src.agentic_system.build_cycle.nodes._trigger_utils import (
+from src.agentic_system.build_cycle.nodes.modules._trigger_utils import (
     detect_trigger_type,
     extract_webhook_path,
 )

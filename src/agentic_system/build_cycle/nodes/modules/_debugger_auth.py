@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import logging
 import time
+from typing import Any
 
 from langchain_core.messages import HumanMessage
 
 from src.agentic_system.shared.state import ClassifiedError
-from src.agentic_system.build_cycle.nodes._credential_resolver import (
+from src.agentic_system.build_cycle.nodes.modules._credential_resolver import (
     extract_short_key,
     find_matching_credential,
 )
@@ -56,7 +57,7 @@ def _try_attach_credentials(
 
 
 async def _auth_auto_attach_result(
-    bus, start: float, fix_attempts: int, error_data: dict, patched: dict,
+    bus, start: float, fix_attempts: int, error_data: dict[str, Any], patched: dict,
 ) -> dict:
     """Build result dict for the auth auto-attach fast path."""
     node_name = error_data.get("node_name", "unknown")

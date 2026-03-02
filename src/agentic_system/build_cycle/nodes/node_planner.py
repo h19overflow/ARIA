@@ -12,7 +12,7 @@ from src.agentic_system.shared.state import ARIAState, WorkflowTopology
 from src.agentic_system.build_cycle.schemas.node_plan import NodePlan, PlannedEdge
 from src.agentic_system.build_cycle.prompts.node_researcher import NODE_RESEARCHER_SYSTEM_PROMPT
 from src.agentic_system.build_cycle.prompts.plan_composer import PLAN_COMPOSER_SYSTEM_PROMPT
-from src.agentic_system.build_cycle.nodes._credential_resolver import resolve_node_credentials
+from src.agentic_system.build_cycle.nodes.modules._credential_resolver import resolve_node_credentials
 from src.agentic_system.build_cycle.tools import search_n8n_nodes
 from src.boundary.n8n.node_discovery import discover_installed_node_prefixes
 from src.services.pipeline.event_bus import get_event_bus

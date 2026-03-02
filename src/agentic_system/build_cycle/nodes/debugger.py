@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from typing import Any, cast
 
 from langchain_core.messages import AIMessage, HumanMessage
 
@@ -17,13 +18,13 @@ from src.agentic_system.build_cycle.prompts.debugger import FIX_COMPOSER_SYSTEM_
 from src.agentic_system.build_cycle.tools import search_n8n_nodes
 from src.services.pipeline.event_bus import get_event_bus
 
-from src.agentic_system.build_cycle.nodes._debugger_auth import (
+from src.agentic_system.build_cycle.nodes.modules._debugger_auth import (
     _looks_like_auth_error,
     _try_attach_credentials,
     _auth_auto_attach_result,
 )
-from src.agentic_system.build_cycle.nodes._debugger_fix import _build_fix_updates
-from src.agentic_system.build_cycle.nodes._debugger_compact import _summarize_workflow
+from src.agentic_system.build_cycle.nodes.modules._debugger_fix import _build_fix_updates
+from src.agentic_system.build_cycle.nodes.modules._debugger_compact import _summarize_workflow
 
 log = logging.getLogger(__name__)
 
@@ -46,11 +47,12 @@ _fix_composer = BaseAgent[DebuggerOutput](
 
 async def debugger_node(state: ARIAState) -> dict:
     """Classify execution error and apply full-spectrum fix."""
-    bus = get_event_bus(state)
+    bus = get_event_bus(cast(dict[str, Any], state))
     exec_result = state["execution_result"]
     workflow_json = state.get("workflow_json") or {"nodes": [], "connections": {}}
     fix_attempts = state.get("fix_attempts", 0)
-    error_data = exec_result.get("error") or {}
+    _raw_error = exec_result.get("error") if exec_result is not None else None
+    error_data: dict[str, Any] = cast(dict[str, Any], _raw_error) if _raw_error is not None else {}
 
     if bus:
         await bus.emit_start(
@@ -73,7 +75,7 @@ async def debugger_node(state: ARIAState) -> dict:
 
 
 async def _run_two_phase_fix(
-    state: ARIAState, error_data: dict, workflow_json: dict,
+    state: ARIAState, error_data: dict[str, Any], workflow_json: dict,
     fix_attempts: int, bus, start: float,
 ) -> dict:
     """Run DiagnosticResearcher → FixComposer and build state updates."""
@@ -101,7 +103,7 @@ async def _run_two_phase_fix(
 
 
 async def _run_diagnostic_researcher(
-    error_data: dict,
+    error_data: dict[str, Any],
     compact_workflow: dict,
     available_packages: list[str],
 ) -> str:
@@ -111,11 +113,19 @@ async def _run_diagnostic_researcher(
         f"## Workflow\n{json.dumps(compact_workflow, indent=2)}\n\n"
         f"## Available packages\n{json.dumps(available_packages, indent=2)}"
     )
-    result: AIMessage = await _diagnostic_researcher.invoke(
+    result = cast(AIMessage, await _diagnostic_researcher.invoke(
         [HumanMessage(content=prompt)]
-    )
-    log.info("[DiagnosticResearcher] Report produced (%d chars)", len(result.content))
-    return result.content
+    ))
+    content = result.content
+    if isinstance(content, list):
+        report = "".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in content
+        )
+    else:
+        report = content
+    log.info("[DiagnosticResearcher] Report produced (%d chars)", len(report))
+    return report
 
 
 _MAX_DIAGNOSTIC_CHARS = 8000
@@ -136,7 +146,7 @@ _FALLBACK_FIX_RESULT: dict = {
 
 async def _run_fix_composer(
     diagnostic_report: str,
-    error_data: dict,
+    error_data: dict[str, Any],
     compact_workflow: dict,
     fix_attempts: int,
     available_packages: list[str],

@@ -11,7 +11,7 @@ from src.agentic_system.shared.base_agent import BaseAgent
 from src.agentic_system.build_cycle.prompts.node_worker import NODE_WORKER_SYSTEM_PROMPT
 from src.agentic_system.build_cycle.tools import search_n8n_nodes
 from src.services.pipeline.event_bus import get_event_bus
-from src.agentic_system.build_cycle.nodes._node_worker_helpers import (
+from src.agentic_system.build_cycle.nodes.modules._node_worker_helpers import (
     extract_parameters_from_response,
     _validate_node_output,
     _success_result,
