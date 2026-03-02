@@ -1,6 +1,6 @@
 import type { ARIAState } from './state'
 
-export type EventStage = 'rag' | 'plan' | 'build' | 'assemble' | 'deploy' | 'test' | 'fix' | 'activate' | 'system'
+export type EventStage = 'rag' | 'plan' | 'build' | 'assemble' | 'deploy' | 'system'
 export type EventStatus = 'running' | 'success' | 'error' | 'warning'
 export type FeedEventType = 'node_start' | 'node_done' | 'interrupt' | 'done' | 'error' | 'info'
 
@@ -55,24 +55,6 @@ export interface SSEInterruptEvent {
   }
 }
 
-export interface SSEFixEscalationEvent {
-  type: 'interrupt'
-  kind: 'fix_exhausted'
-  payload: {
-    explanation: string
-    error: {
-      node_name?: string
-      message?: string
-      type?: string | null
-      description?: string | null
-      stack?: string | null
-    }
-    fix_attempts: number
-    n8n_url: string
-    options: string[]
-  }
-}
-
 export interface SSEDoneEvent {
   type: 'done'
   aria_state: ARIAState
@@ -100,7 +82,6 @@ export type SSEEnvelope =
   | SSENodeStartEvent
   | SSENodeEvent
   | SSEInterruptEvent
-  | SSEFixEscalationEvent
   | SSEDoneEvent
   | SSEErrorEvent
   | SSEWarningEvent

@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { subscribeSSE } from '@/lib/sse'
-import type { FeedEvent, SSEEnvelope, SSEInterruptEvent, SSEFixEscalationEvent, SSEErrorEvent, ARIAState } from '@/types'
+import type { FeedEvent, SSEEnvelope, SSEInterruptEvent, SSEErrorEvent, ARIAState } from '@/types'
 
 interface EventFeedCallbacks {
   onInterrupt: (kind: 'clarify' | 'credential', payload: SSEInterruptEvent['payload']) => void
-  onFixExhausted?: (payload: SSEFixEscalationEvent['payload']) => void
   onDone: (ariaState: ARIAState) => void
   onError: (message: string) => void
   onStateUpdate?: (ariaState: ARIAState) => void
@@ -50,14 +49,10 @@ function makeDisconnectFeedEvent(): FeedEvent {
 }
 
 function handleInterruptEnvelope(
-  envelope: SSEInterruptEvent | SSEFixEscalationEvent,
+  envelope: SSEInterruptEvent,
   callbacks: EventFeedCallbacks,
 ): void {
-  if (envelope.kind === 'fix_exhausted') {
-    callbacks.onFixExhausted?.(envelope.payload)
-  } else {
-    callbacks.onInterrupt(envelope.kind, envelope.payload)
-  }
+  callbacks.onInterrupt(envelope.kind, envelope.payload)
 }
 
 export function useEventFeed(
