@@ -3,9 +3,6 @@ export type WorkflowStatus =
   | 'planning'
   | 'interrupted'
   | 'building'
-  | 'testing'
-  | 'fixing'
-  | 'replanning'
   | 'done'
   | 'failed'
 
@@ -21,11 +18,7 @@ export interface ARIAState {
   node_build_results?: Array<{ node_name: string; node_json: unknown; credentials_used: unknown; validation_passed: boolean; validation_errors: string[] }>
   workflow_json?: Record<string, unknown>
   n8n_workflow_id?: string
-  n8n_execution_id?: string
-  webhook_url?: string
-  execution_result?: import('./execution').ExecutionResult
-  classified_error?: import('./execution').ClassifiedError
-  fix_attempts?: number
+  n8n_workflow_url?: string
   pending_credential_types?: string[]
   credential_guide_payload?: import('./credentials').CredentialGuidePayload
   messages?: import('./messages').LangChainMessage[]
@@ -34,7 +27,6 @@ export interface ARIAState {
   resolved_credential_ids?: Record<string, string>
   pending_question?: string
   user_description?: string
-  hitl_explanation?: string | null
 
 }
 
