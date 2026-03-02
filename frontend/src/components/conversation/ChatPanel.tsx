@@ -21,9 +21,24 @@ interface ChatPanelProps {
 const COL = '680px';
 
 const SUGGESTIONS = [
-  { icon: Zap,        label: 'Monitor GitHub PRs', sub: 'Get Slack alerts on new pull requests' },
-  { icon: RefreshCw,  label: 'Sync two apps',      sub: 'Keep Notion and Slack in sync automatically' },
-  { icon: BookOpen,   label: 'Send a daily digest', sub: 'Email a summary every morning' },
+  {
+    icon: Zap,
+    label: 'Gmail → AI → Telegram',
+    sub: 'Summarize new emails and send to Telegram',
+    prompt: 'When I receive an email in Gmail, summarize it with AI and send the summary to my Telegram chat. Only process unread emails, keep summaries under 200 words.',
+  },
+  {
+    icon: RefreshCw,
+    label: 'GitHub → Slack alerts',
+    sub: 'Get Slack notifications on new PRs',
+    prompt: 'Monitor my GitHub repository for new pull requests. When a new PR is opened, send a formatted Slack message with the PR title, author, and link.',
+  },
+  {
+    icon: BookOpen,
+    label: 'Daily email digest',
+    sub: 'Summarize RSS feeds every morning',
+    prompt: 'Every day at 8 AM, fetch the latest articles from an RSS feed, summarize the top 5 with AI, and send me a digest email with the summaries and links.',
+  },
 ];
 
 function TypingDots() {
@@ -127,7 +142,7 @@ export function ChatPanel({ messages, activities, isStreaming, isCommitted, erro
               {SUGGESTIONS.map(s => (
                 <button key={s.label} className="suggestion-card"
                   style={{ width: '160px' }}
-                  onClick={() => { setInput(s.label); textareaRef.current?.focus(); }}>
+                  onClick={() => { setInput(s.prompt); textareaRef.current?.focus(); }}>
                   <s.icon size={15} style={{ color: 'var(--accent-orange)' }} />
                   <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{s.label}</span>
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{s.sub}</span>
