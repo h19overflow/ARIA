@@ -20,7 +20,7 @@ export const getJobStatus = (jobId: string): Promise<JobStatusResponse> =>
 // Build interrupt resume (clarify / credential)
 export const submitResume = (
   jobId: string,
-  kind: 'clarify' | 'provide' | 'resume' | 'retry' | 'replan' | 'abort' | 'discuss',
+  kind: 'clarify' | 'provide' | 'resume',
   value?: string | Record<string, unknown>
 ): Promise<void> => {
   let body: Record<string, unknown>
@@ -28,8 +28,6 @@ export const submitResume = (
     body = { action: 'clarify', value }
   } else if (kind === 'provide') {
     body = { action: 'provide', credentials: value }
-  } else if (kind === 'discuss') {
-    body = { action: 'discuss', message: value }
   } else {
     body = { action: kind }
   }
