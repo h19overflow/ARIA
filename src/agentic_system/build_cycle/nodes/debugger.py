@@ -95,7 +95,7 @@ async def _run_two_phase_fix(
     if bus:
         await bus.emit_complete(
             "fix", "Debugger", fix_status,
-            f"Debugger {result['error_type']}: {result['message']}", duration_ms=elapsed,
+            f"Debugger {result.get('error_type', 'unknown')}: {result.get('message', '')}", duration_ms=elapsed,
         )
     return updates
 
@@ -122,6 +122,18 @@ _MAX_DIAGNOSTIC_CHARS = 8000
 _MAX_PROMPT_CHARS = 30000
 
 
+_FALLBACK_FIX_RESULT: dict = {
+    "error_type": "unknown",
+    "node_name": None,
+    "message": "FixComposer returned no structured output",
+    "description": None,
+    "fixed_nodes": None,
+    "fixed_connections": None,
+    "added_nodes": None,
+    "removed_node_names": None,
+}
+
+
 async def _run_fix_composer(
     diagnostic_report: str,
     error_data: dict,
@@ -129,7 +141,11 @@ async def _run_fix_composer(
     fix_attempts: int,
     available_packages: list[str],
 ) -> dict:
-    """Run the Composer to produce a structured fix. Returns a plain dict."""
+    """Run the Composer to produce a structured fix. Returns a plain dict.
+
+    Guards against None output when the LLM fails to produce structured output
+    (e.g. Gemini structured-output mode returns no ``structured_response`` key).
+    """
     capped_report = _cap_text(diagnostic_report, _MAX_DIAGNOSTIC_CHARS)
     prompt = (
         f"Attempt: {fix_attempts + 1}/3\n\n"
@@ -140,6 +156,9 @@ async def _run_fix_composer(
     )
     prompt = _cap_text(prompt, _MAX_PROMPT_CHARS)
     output = await _fix_composer.invoke([HumanMessage(content=prompt)])
+    if output is None:
+        log.warning("[FixComposer] Returned None (structured output failed); using fallback")
+        return dict(_FALLBACK_FIX_RESULT)
     return output.model_dump()
 
 

@@ -5,14 +5,14 @@ import json
 import time
 import uuid
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 
 from src.agentic_system.shared.base_agent import BaseAgent
-from src.agentic_system.build_cycle.schemas.node_plan import WorkerOutput
 from src.agentic_system.build_cycle.prompts.node_worker import NODE_WORKER_SYSTEM_PROMPT
 from src.agentic_system.build_cycle.tools import search_n8n_nodes
 from src.services.pipeline.event_bus import get_event_bus
 from src.agentic_system.build_cycle.nodes._node_worker_helpers import (
+    extract_parameters_from_response,
     _validate_node_output,
     _success_result,
     _failure_result,
@@ -22,10 +22,11 @@ _HORIZONTAL_SPACING_PX = 250
 _DEFAULT_Y_POSITION = 300
 _TRIGGER_TYPES = {"n8n-nodes-base.webhook", "n8n-nodes-base.scheduletrigger", "n8n-nodes-base.cron"}
 
-
-_agent = BaseAgent[WorkerOutput](
+# NOTE: No schema= here. Gemini's structured output mode (response_format)
+# causes it to return empty parameters {}. Without it, Gemini correctly
+# populates parameters from search results and prompt hints.
+_agent = BaseAgent(
     prompt=NODE_WORKER_SYSTEM_PROMPT,
-    schema=WorkerOutput,
     name="NodeWorker",
     tools=[search_n8n_nodes],
     recursion_limit=20,
@@ -46,8 +47,9 @@ async def node_worker_node(state: dict) -> dict:
         cred_ids: dict = state.get("resolved_credential_ids", {})
         prompt = _build_worker_prompt(node_spec, cred_ids)
 
-        output: WorkerOutput = await _agent.invoke([HumanMessage(content=prompt)])
-        node_json = _assemble_node_json(node_spec, output)
+        ai_message: AIMessage = await _agent.invoke([HumanMessage(content=prompt)])
+        parameters = extract_parameters_from_response(ai_message, node_spec)
+        node_json = _assemble_node_json(node_spec, parameters)
 
         validation_errors = _validate_node_output(node_json)
         if validation_errors:
@@ -90,7 +92,7 @@ def _build_worker_prompt(node_spec: dict, cred_ids: dict) -> str:
 
 # ── Node JSON assembly ────────────────────────────────────────────────────────
 
-def _assemble_node_json(node_spec: dict, output: WorkerOutput) -> dict:
+def _assemble_node_json(node_spec: dict, parameters: dict) -> dict:
     """Combine NodeSpec metadata with LLM-generated parameters into full n8n node."""
     node: dict = {
         "id": str(uuid.uuid4()),
@@ -98,7 +100,7 @@ def _assemble_node_json(node_spec: dict, output: WorkerOutput) -> dict:
         "type": node_spec["node_type"],
         "typeVersion": 1,
         "position": _calculate_position(node_spec.get("position_index", 0)),
-        "parameters": output.parameters,
+        "parameters": parameters,
     }
     _attach_webhook_id_if_needed(node)
     _attach_credentials_if_present(node, node_spec)

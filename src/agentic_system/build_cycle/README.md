@@ -78,44 +78,6 @@ graph TD
     AC --> TU
 ```
 
----
-
-## 3. Component Map — Shared Dependencies
-
-What nodes reach outside the `build_cycle/` folder.
-
-```mermaid
-graph LR
-    subgraph Nodes["build_cycle nodes"]
-        NP["node_planner"]
-        NW["node_worker"]
-        AS["assembler"]
-        DB["debugger"]
-        DP["deploy"]
-        TS["test"]
-        AC["activate"]
-    end
-
-    subgraph External["External (shared/)"]
-        BS["BaseAgent\nbase_agent.py"]
-        ST["search_n8n_nodes tool\ntools/search_nodes.py"]
-        CD["ChromaDB\nChromaStore"]
-        N8["N8nClient\nboundary/n8n/client.py"]
-        ND["node_discovery.py\ndiscover_installed_prefixes()"]
-        NCM["node_credential_map.py\nNODE_CREDENTIAL_MAP"]
-        EB["event_bus.py\nget_event_bus()"]
-    end
-
-    NP & NW & AS & DB --> BS
-    NP & NW & AS & DB --> ST
-    ST --> CD
-    NP --> ND
-    DP & TS & AC --> N8
-    NP & DB --> NCM
-    NP & NW & AS & DB & DP & TS & AC --> EB
-```
-
-**Plain English:** Every agentic node (`BaseAgent`) uses the `search_n8n_nodes` tool which hits ChromaDB. Every deterministic node calls `N8nClient` to talk to n8n. Every node emits events to the SSE bus so the UI can show progress.
 
 ---
 

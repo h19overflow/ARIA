@@ -10,3 +10,7 @@ _graph_mock = MagicMock()
 _graph_mock.build_aria_graph = MagicMock()
 _graph_mock.compile_aria_graph = MagicMock()
 sys.modules.setdefault("src.agentic_system.graph", _graph_mock)
+
+# Optional / environment-only dependencies not installed in unit-test environments.
+for _mod in ("weave", "langchain_chroma"):
+    sys.modules.setdefault(_mod, MagicMock())

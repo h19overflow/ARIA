@@ -27,22 +27,10 @@ def normalize_node(raw: dict) -> N8nDocument:
     operations = raw.get("operations", [])
     parameters = raw.get("parameters", [])
     ops_text = ", ".join(operations) if operations else ""
+    params_text = "\n".join(f"- {p}" for p in parameters) if parameters else ""
     node_type = raw.get("node_type", "")
 
-    # Construct a prototypical node JSON structure to embed
-    node_template = {
-        "parameters": {},
-        "name": name,
-        "type": node_type,
-        "typeVersion": raw.get("type_version", 1),
-        "position": [0, 0]
-    }
-    template_json_str = json.dumps(node_template, indent=2)
-
-    text = f"Node: {name}. {description}"
-    if ops_text:
-        text += f" Operations: {ops_text}."
-    text += f"\n\nJSON Template:\n```json\n{template_json_str}\n```"
+    text = _build_node_text(name, node_type, description, ops_text, params_text)
 
     return N8nDocument(
         id=f"node::{raw.get('node_type', name).lower().replace(' ', '_')}",
@@ -58,6 +46,21 @@ def normalize_node(raw: dict) -> N8nDocument:
             "parameters_count": str(len(parameters)),
         },
     )
+
+
+def _build_node_text(
+    name: str, node_type: str, description: str,
+    ops_text: str, params_text: str,
+) -> str:
+    """Build the embedded text for a node document."""
+    text = f"Node: {name} (type: {node_type}). {description}"
+    if ops_text:
+        text += f"\n\nOperations: {ops_text}."
+    if params_text:
+        text += f"\n\nNode parameters:\n{params_text}"
+    else:
+        text += "\n\nNode parameters: See node documentation for required parameters."
+    return text
 
 
 def normalize_workflow_template(raw: dict) -> N8nDocument:

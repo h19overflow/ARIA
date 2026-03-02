@@ -180,6 +180,30 @@ async def test_debugger_node_calls_researcher_then_composer(base_state):
 
 
 @pytest.mark.asyncio
+async def test_debugger_node_composer_returns_none_does_not_crash(base_state):
+    """When FixComposer.invoke() returns None (Gemini structured output failure),
+    the node must NOT crash with AttributeError and should return a stable state update."""
+    fake_report = AIMessage(content="## Root Cause\nsome diagnostic")
+
+    with patch(
+        "src.agentic_system.build_cycle.nodes.debugger._diagnostic_researcher"
+    ) as mock_researcher, patch(
+        "src.agentic_system.build_cycle.nodes.debugger._fix_composer"
+    ) as mock_composer:
+        mock_researcher.invoke = AsyncMock(return_value=fake_report)
+        # Simulate base_agent returning None (structured_response key missing)
+        mock_composer.invoke = AsyncMock(return_value=None)
+
+        result = await debugger_node(base_state)
+
+        # Should not crash; should return a valid update dict
+        assert isinstance(result, dict)
+        assert "classified_error" in result
+        assert result["classified_error"]["type"] == "unknown"
+        assert result["fix_attempts"] == 1
+
+
+@pytest.mark.asyncio
 async def test_debugger_node_auth_auto_attach_shortcut(base_state):
     """Auth errors with matching credentials skip LLM entirely."""
     base_state["execution_result"]["error"]["message"] = "401 Unauthorized"

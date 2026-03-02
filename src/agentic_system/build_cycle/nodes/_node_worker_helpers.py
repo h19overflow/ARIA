@@ -1,5 +1,57 @@
-"""Helper functions for node_worker_node — validation and result construction."""
+"""Helper functions for node_worker_node — validation, parsing, and result construction."""
 from __future__ import annotations
+
+import json
+import logging
+import re
+
+from langchain_core.messages import AIMessage
+
+log = logging.getLogger("aria.node_worker")
+
+
+def extract_parameters_from_response(ai_message: AIMessage, node_spec: dict) -> dict:
+    """Parse parameters dict from the LLM's text response, falling back to hints."""
+    raw_text = _get_message_text(ai_message)
+    parsed = _parse_json_from_text(raw_text)
+
+    if isinstance(parsed, dict) and parsed.get("parameters"):
+        return parsed["parameters"]
+    if isinstance(parsed, dict) and parsed:
+        return parsed
+
+    log.warning("[NodeWorker] Could not parse parameters, using parameter_hints")
+    return node_spec.get("parameter_hints", {})
+
+
+def _get_message_text(ai_message: AIMessage) -> str:
+    """Extract text content from an AIMessage (handles Gemini's list format)."""
+    content = ai_message.content
+    if isinstance(content, list):
+        return "".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in content
+        )
+    return str(content)
+
+
+def _parse_json_from_text(text: str) -> dict | None:
+    """Extract a JSON object from text, handling markdown code fences."""
+    fence_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+    if fence_match:
+        try:
+            return json.loads(fence_match.group(1))
+        except json.JSONDecodeError:
+            pass
+
+    brace_start = text.find("{")
+    if brace_start >= 0:
+        try:
+            return json.loads(text[brace_start:])
+        except json.JSONDecodeError:
+            pass
+
+    return None
 
 
 def _validate_node_output(node_json: dict) -> list[str]:

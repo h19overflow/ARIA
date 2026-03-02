@@ -125,12 +125,34 @@ def _extract_operations(soup: BeautifulSoup) -> list[str]:
 
 
 def _extract_parameters(soup: BeautifulSoup) -> list[str]:
+    """Extract parameter names from the 'Node parameters' section.
+
+    Tries two strategies:
+    1. List items (<ul>/<table>) directly under a 'parameter' heading.
+    2. Sub-headings (<h3>) nested under a 'Node parameters' <h2> section.
+    """
+    # Strategy 1: list items under a parameter heading
     for heading in soup.find_all(["h2", "h3"]):
         if "parameter" in heading.get_text(strip=True).lower():
             sibling = heading.find_next_sibling()
             if sibling and sibling.name in ("ul", "table"):
                 return [li.get_text(strip=True) for li in sibling.find_all("li")]
-    return []
+
+    # Strategy 2: h3 sub-headings under a 'Node parameters' h2
+    in_params = False
+    params: list[str] = []
+    for heading in soup.find_all(["h2", "h3"]):
+        text = heading.get_text(strip=True).rstrip("#").strip()
+        if heading.name == "h2" and "parameter" in text.lower():
+            in_params = True
+            continue
+        if heading.name == "h2" and in_params:
+            break
+        if heading.name == "h3" and in_params:
+            desc_el = heading.find_next_sibling("p")
+            desc = desc_el.get_text(strip=True)[:200] if desc_el else ""
+            params.append(f"{text}: {desc}" if desc else text)
+    return params
 
 
 # ---------------------------------------------------------------------------
