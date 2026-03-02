@@ -80,14 +80,22 @@ async def _build_connections_via_agent(
     planned_edges: list[dict],
     node_list: list[dict],
 ) -> dict:
-    """Invoke the Assembler agent to produce the n8n connections object."""
+    """Invoke the Assembler agent to produce the n8n connections object.
+
+    Falls back to deterministic wiring if the LLM returns empty connections.
+    """
     prompt = _build_assembler_prompt(planned_edges, node_list)
     output: AssemblerOutput = await _agent.invoke([HumanMessage(content=prompt)])
-    # Convert Pydantic models to plain dicts for n8n API compatibility
-    return {
+    connections = {
         source: conn.model_dump()
         for source, conn in output.connections.items()
     }
+    if connections:
+        logger.info("[Assembler] LLM produced connections for %d sources", len(connections))
+        return connections
+
+    logger.warning("[Assembler] LLM returned empty connections — using deterministic fallback")
+    return _build_connections_from_edges(planned_edges)
 
 
 def _build_assembler_prompt(planned_edges: list[dict], node_list: list[dict]) -> str:
@@ -97,6 +105,31 @@ def _build_assembler_prompt(planned_edges: list[dict], node_list: list[dict]) ->
         f"## Node list\n{json.dumps(node_list, indent=2)}",
     ]
     return "\n\n".join(sections)
+
+
+_BRANCH_INDEX_MAP = {"true": 0, "1": 0, "false": 1, "2": 1, "3": 2}
+
+
+def _build_connections_from_edges(planned_edges: list[dict]) -> dict:
+    """Deterministically build n8n connections from planned edges.
+
+    Handles linear chains and If/Switch branching using standard output indices.
+    """
+    connections: dict[str, dict] = {}
+    for edge in planned_edges:
+        source = edge.get("from_node", "")
+        target = edge.get("to_node", "")
+        branch = edge.get("branch")
+        output_index = _BRANCH_INDEX_MAP.get(str(branch).lower(), 0) if branch else 0
+
+        source_entry = connections.setdefault(source, {"main": []})
+        main_list: list = source_entry["main"]
+        # Pad with empty lists up to the required output index
+        while len(main_list) <= output_index:
+            main_list.append([])
+        main_list[output_index].append({"node": target, "type": "main", "index": 0})
+
+    return connections
 
 
 def _extract_node_list(results: list[dict]) -> list[dict]:
