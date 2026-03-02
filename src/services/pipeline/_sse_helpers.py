@@ -111,7 +111,7 @@ async def wait_resume(redis: Redis, job_id: str) -> object:
     - clarify  → raw string answer
     - provide  → credentials dict
     - select   → selections dict
-    - resume/retry/replan/abort → action string
+    - resume → action string
     """
     pubsub = redis.pubsub()
     await pubsub.subscribe(f"resume:{job_id}")

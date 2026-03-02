@@ -1,13 +1,13 @@
 """ARIA pipeline — Build Cycle LangGraph runner.
 
-Phase 1 (Preflight) is now a conversational agent (PreflightAgent).
-This module owns only Phase 2: the Build Cycle LangGraph subgraph.
+This module owns the Build Cycle LangGraph subgraph:
+planner → workers → assembler → deploy → END.
 
 Build-cycle resume schema
 -------------------------
-  {"action": "retry"}    # user fixed in n8n UI
-  {"action": "replan"}
-  {"action": "abort"}
+  {"action": "clarify", "value": "<answer>"}
+  {"action": "provide", "credentials": {...}}
+  {"action": "resume"}
 """
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ class ARIAPipeline:
         resume_value: dict,
         config: dict,
     ) -> ARIAState:
-        """Resume a build cycle graph that is paused at HITL escalation.
+        """Resume a build cycle graph that is paused at an interrupt.
 
         ``resume_value`` must follow the unified schema — see module docstring.
         """

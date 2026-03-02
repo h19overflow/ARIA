@@ -52,16 +52,12 @@ class JobState(BaseModel):
 
 
 class ResumeRequest(BaseModel):
-    """Unified HITL resume payload.
+    """Unified build interrupt resume payload.
 
     Clarify:              {"action": "clarify", "value": "<user answer>"}
     Credential (paste):   {"action": "provide", "credentials": {"Gmail OAuth2": {...}}}
     Credential (n8n UI):  {"action": "resume"}
     Ambiguity select:     {"action": "select", "selections": {"Gmail OAuth2": "<id>"}}
-    Fix retry:            {"action": "retry"}
-    Fix replan:           {"action": "replan"}
-    Fix abort:            {"action": "abort"}
-    Discuss:              {"action": "discuss", "message": "<user question>"}
     """
     action: str
     value: str | None = None
