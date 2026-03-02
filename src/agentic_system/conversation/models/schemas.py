@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ConversationNotes(BaseModel):
@@ -87,3 +87,22 @@ class ConversationNotes(BaseModel):
         default=False,
         description="True when all credentials are resolved and ready for build.",
     )
+
+    @field_validator("required_integrations", mode="before")
+    @classmethod
+    def normalize_integrations_list(cls, value: list) -> list[str]:
+        """Split any CSV strings and deduplicate."""
+        if not isinstance(value, list):
+            return value
+        result: list[str] = []
+        for item in value:
+            if isinstance(item, str) and "," in item:
+                for part in item.split(","):
+                    stripped = part.strip()
+                    if stripped and stripped not in result:
+                        result.append(stripped)
+            else:
+                stripped = item.strip() if isinstance(item, str) else item
+                if stripped and stripped not in result:
+                    result.append(stripped)
+        return result

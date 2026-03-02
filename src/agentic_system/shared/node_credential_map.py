@@ -1,5 +1,6 @@
 """
-Static mapping of n8n node types to their credential type options.
+Static mapping of n8n node types to their credential type options,
+and integration name aliases for non-standard naming conventions.
 
 Extracted from n8n-nodes-base v2.9.2. The Credential Scanner uses
 this map — no LLM, no Docker exec, pure deterministic Python.
@@ -54,6 +55,34 @@ NODE_CREDENTIAL_MAP: dict[str, list[str]] = {
     "merge": [],
     "splitInBatches": [],
     "noOp": [],
+}
+
+
+INTEGRATION_ALIASES: dict[str, str] = {
+    "gemini": "googleGemini",
+    "google gemini": "googleGemini",
+    "google sheets": "googleSheets",
+    "google drive": "googleDrive",
+    "google calendar": "googleCalendar",
+    "google docs": "googleDocs",
+    "google bigquery": "googleBigQuery",
+    "bigquery": "googleBigQuery",
+    "outlook": "microsoftOutlook",
+    "microsoft outlook": "microsoftOutlook",
+    "teams": "microsoftTeams",
+    "microsoft teams": "microsoftTeams",
+    "excel": "microsoftExcel",
+    "microsoft excel": "microsoftExcel",
+    "openai": "openAi",
+    "open ai": "openAi",
+    "sendgrid": "sendGrid",
+    "clickup": "clickUp",
+    "split in batches": "splitInBatches",
+    "http request": "httpRequest",
+    "http": "httpRequest",
+    "google palm": "googleGemini",
+    "google generative ai": "googleGemini",
+    "google ai": "googleGemini",
 }
 
 

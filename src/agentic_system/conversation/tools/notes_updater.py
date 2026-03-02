@@ -56,7 +56,10 @@ def _set_note(
         return
     if key in _LIST_FIELDS:
         current = getattr(state.notes, key)
-        items = [v.strip() for v in value.split(",") if v.strip()]
+        if isinstance(value, list):
+            items = [str(v).strip() for v in value if str(v).strip()]
+        else:
+            items = [v.strip() for v in str(value).split(",") if v.strip()]
         for item in items:
             if item not in current:
                 current.append(item)

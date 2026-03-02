@@ -39,7 +39,11 @@ If the workflow sends output to multiple places, use numbered suffixes:
 
 **Constraints and Integrations:**
 - `constraint` — rules, filters, conditions (each call appends to a list)
-- `required_integrations` — services involved (each call appends)
+- `required_integrations` — services involved (each call appends). \
+**Pass ONE service per note entry.** Example: for Gmail and Telegram, pass \
+two separate notes: {key: "required_integrations", value: "Gmail"} and \
+{key: "required_integrations", value: "Telegram"}. Do NOT combine as \
+"Gmail, Telegram" in a single value.
 
 ### Probing Rules
 When the user mentions something vague, ask 1-2 targeted follow-ups:

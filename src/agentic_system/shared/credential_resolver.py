@@ -1,7 +1,7 @@
 """Dynamic credential type resolver for n8n integrations.
 
 Resolution chain:
-1. _INTEGRATION_ALIASES (from agent.py)
+1. INTEGRATION_ALIASES (from agent.py)
 2. NODE_CREDENTIAL_MAP (hardcoded fast path)
 3. Convention guessing + n8n API validation
 4. LLM fallback (BaseAgent structured output)
@@ -12,7 +12,10 @@ import logging
 import httpx
 
 from src.api.settings import settings
-from src.agentic_system.shared.node_credential_map import NODE_CREDENTIAL_MAP
+from src.agentic_system.shared.node_credential_map import (
+    INTEGRATION_ALIASES,
+    NODE_CREDENTIAL_MAP,
+)
 from src.agentic_system.shared.credential_llm_fallback import llm_resolve
 
 logger = logging.getLogger(__name__)
@@ -20,35 +23,6 @@ logger = logging.getLogger(__name__)
 # Populated by successful convention guesses and LLM resolutions.
 # Persists for the server lifetime — each integration resolved once.
 _runtime_cache: dict[str, list[str]] = {}
-
-# Aliases for integration names that don't follow naming conventions.
-# Moved here from agent.py — single source of truth.
-_INTEGRATION_ALIASES: dict[str, str] = {
-    "gemini": "googleGemini",
-    "google gemini": "googleGemini",
-    "google sheets": "googleSheets",
-    "google drive": "googleDrive",
-    "google calendar": "googleCalendar",
-    "google docs": "googleDocs",
-    "google bigquery": "googleBigQuery",
-    "bigquery": "googleBigQuery",
-    "outlook": "microsoftOutlook",
-    "microsoft outlook": "microsoftOutlook",
-    "teams": "microsoftTeams",
-    "microsoft teams": "microsoftTeams",
-    "excel": "microsoftExcel",
-    "microsoft excel": "microsoftExcel",
-    "openai": "openAi",
-    "open ai": "openAi",
-    "sendgrid": "sendGrid",
-    "clickup": "clickUp",
-    "split in batches": "splitInBatches",
-    "http request": "httpRequest",
-    "http": "httpRequest",
-    "google palm": "googleGemini",
-    "google generative ai": "googleGemini",
-    "google ai": "googleGemini",
-}
 
 
 def _normalize_to_camel_case(name: str) -> str:
@@ -110,10 +84,22 @@ async def resolve_credential_types(name: str) -> list[str]:
     4. LLM fallback (structured output)
     5. Empty list (skip with warning)
     """
+    # Defensive: split CSV strings that leaked through normalization
+    if "," in name:
+        logger.warning(
+            "resolve_credential_types received CSV string %r — splitting", name,
+        )
+        results: list[str] = []
+        for part in name.split(","):
+            part = part.strip()
+            if part:
+                results.extend(await resolve_credential_types(part))
+        return results
+
     normalized = name.strip().lower().replace("-", "")
 
     # Step 1: Alias lookup
-    alias_key = _INTEGRATION_ALIASES.get(normalized)
+    alias_key = INTEGRATION_ALIASES.get(normalized)
     if alias_key and alias_key in NODE_CREDENTIAL_MAP:
         return NODE_CREDENTIAL_MAP[alias_key]
 
