@@ -83,7 +83,11 @@ async def _build_connections_via_agent(
     """Invoke the Assembler agent to produce the n8n connections object."""
     prompt = _build_assembler_prompt(planned_edges, node_list)
     output: AssemblerOutput = await _agent.invoke([HumanMessage(content=prompt)])
-    return output.connections
+    # Convert Pydantic models to plain dicts for n8n API compatibility
+    return {
+        source: conn.model_dump()
+        for source, conn in output.connections.items()
+    }
 
 
 def _build_assembler_prompt(planned_edges: list[dict], node_list: list[dict]) -> str:

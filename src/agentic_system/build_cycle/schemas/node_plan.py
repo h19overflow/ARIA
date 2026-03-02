@@ -87,14 +87,24 @@ class WorkerOutput(BaseModel):
     parameters: dict = Field(description="Complete n8n node parameters")
 
 
+class ConnectionTarget(BaseModel):
+    """A single connection target on one output port."""
+    node: str = Field(description="Target node name (exact match)")
+    type: str = Field(default="main", description="Connection type, always 'main'")
+    index: int = Field(default=0, description="Input port on target node, usually 0")
+
+
+class NodeConnections(BaseModel):
+    """All outgoing connections from a single source node."""
+    main: list[list[ConnectionTarget]] = Field(
+        description="List of output ports. Each port is a list of connection targets."
+    )
+
+
 class AssemblerOutput(BaseModel):
     """LLM output from the Assembler agent — complete n8n connections object."""
-    connections: dict = Field(
-        description=(
-            "Complete n8n connections dict. Format: "
-            "{nodeName: {main: [[{node: targetName, type: 'main', index: 0}]]}}. "
-            "Each output index is a separate list within 'main'."
-        ),
+    connections: dict[str, NodeConnections] = Field(
+        description="Connections keyed by source node name."
     )
 
 
