@@ -201,7 +201,7 @@ def _build_researcher_prompt(
     """Build the human message for the Researcher agent."""
     sections = [f"## Intent\n{intent}"]
 
-    if topology:
+    if topology and topology.get("nodes"):
         sections.append(f"## Topology\n{json.dumps(topology, indent=2)}")
     else:
         sections.append("## Topology\n(none — infer a linear plan from intent)")
@@ -270,7 +270,7 @@ def _error_plan() -> dict:
         "nodes_to_build": [],
         "planned_edges": [],
         "node_build_results": [],
-        "status": "hitl_escalation",
+        "status": "failed",
         "messages": [HumanMessage(
             content="[Planner] Failed to produce a cycle-free plan after 3 retries. Escalating."
         )],

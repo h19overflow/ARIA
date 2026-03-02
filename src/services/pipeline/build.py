@@ -1,7 +1,7 @@
 """Phase 2 — Build service.
 
 Reads the BuildBlueprint from a committed conversation in Redis,
-streams the build cycle LangGraph subgraph, and handles HITL interrupts.
+streams the build cycle LangGraph subgraph, and handles build interrupts.
 """
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ def _extract_interrupt_value(snapshot: object) -> dict | None:
 async def run_build(
     job_id: str, conversation_id: str, redis: Redis, pipeline: ARIAPipeline,
 ) -> None:
-    """Background task. Reads BuildBlueprint from Redis, runs build cycle, handles HITL."""
+    """Background task. Reads BuildBlueprint from Redis, runs build cycle, handles interrupts."""
     log.info("[%s] Build job started | conversation_id=%s", job_id, conversation_id)
     try:
         aria_state = await _load_state_for_build(conversation_id, redis)
@@ -113,17 +113,11 @@ def _conversation_to_aria_state(state: ConversationState) -> ARIAState:
         "conversation_notes": None,
         "workflow_json": None,
         "n8n_workflow_id": None,
-        "n8n_execution_id": None,
-        "execution_result": None,
-        "classified_error": None,
-        "fix_attempts": 0,
-        "webhook_url": None,
+        "n8n_workflow_url": None,
         "status": "planning",
         "nodes_to_build": [],
         "planned_edges": [],
         "node_build_results": [],
-        "paused_for_input": False,
-        "hitl_explanation": None,
         "job_id": "",
     }
 
@@ -131,7 +125,7 @@ def _conversation_to_aria_state(state: ConversationState) -> ARIAState:
 async def _stream_build(
     job_id: str, state: ARIAState, config: dict, redis: Redis, pipeline: ARIAPipeline,
 ) -> ARIAState:
-    """Stream build cycle graph, resuming through HITL escalation interrupts."""
+    """Stream build cycle graph, resuming through build interrupts."""
     log.info("[%s] Build cycle streaming | blueprint_intent=%r",
              job_id, (state.get("build_blueprint") or {}).get("intent", "")[:60])
     current_input: ARIAState | Command = state  # type: ignore[type-arg]

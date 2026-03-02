@@ -75,12 +75,8 @@ class ARIAState(TypedDict):
     # Build Cycle owned
     workflow_json: dict | None
     n8n_workflow_id: str | None
-    n8n_execution_id: str | None
-    execution_result: ExecutionResult | None
-    classified_error: ClassifiedError | None
-    fix_attempts: int
-    webhook_url: str | None
-    status: str  # "planning" | "building" | "testing" | "fixing" | "done" | "failed" | "replanning"
+    n8n_workflow_url: str | None
+    status: str  # "planning" | "building" | "done" | "failed"
 
     # Node availability — populated by node_planner
     available_node_packages: list[str]
@@ -89,13 +85,6 @@ class ARIAState(TypedDict):
     nodes_to_build: list                                 # NodeSpec dicts from planner; replaced on each write
     planned_edges: list                                  # all edges from planner (no reducer needed)
     node_build_results: Annotated[list, operator.add]   # NodeResult dicts aggregated from parallel workers
-
-    # HITL pause indicator — set True immediately before interrupt(), False after resume.
-    # Frontend can read this without inferring from SSE gaps.
-    paused_for_input: bool
-
-    # LLM-generated explanation shown to the user during a HITL pause.
-    hitl_explanation: str | None
 
     # Job identifier — used by EventBus to publish SSE events from nodes
     job_id: str

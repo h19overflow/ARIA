@@ -80,10 +80,32 @@ async def _build_connections_via_agent(
     planned_edges: list[dict],
     node_list: list[dict],
 ) -> dict:
-    """Invoke the Assembler agent to produce the n8n connections object."""
+    """Invoke the Assembler agent to produce the n8n connections object.
+
+    Falls back to deterministic wiring if the LLM returns empty connections.
+    """
     prompt = _build_assembler_prompt(planned_edges, node_list)
     output: AssemblerOutput = await _agent.invoke([HumanMessage(content=prompt)])
-    return output.connections
+    connections = _convert_assembler_output_to_dict(output)
+    if connections:
+        logger.info("[Assembler] LLM produced connections for %d sources", len(connections))
+        return connections
+
+    logger.warning("[Assembler] LLM returned empty connections — using deterministic fallback")
+    return _build_connections_from_edges(planned_edges)
+
+
+def _convert_assembler_output_to_dict(output: AssemblerOutput) -> dict:
+    """Convert list-based AssemblerOutput to n8n connections dict."""
+    result: dict = {}
+    for entry in output.connections:
+        result[entry.source_node_name] = {
+            "main": [
+                [target.model_dump() for target in port]
+                for port in entry.main
+            ]
+        }
+    return result
 
 
 def _build_assembler_prompt(planned_edges: list[dict], node_list: list[dict]) -> str:
@@ -93,6 +115,31 @@ def _build_assembler_prompt(planned_edges: list[dict], node_list: list[dict]) ->
         f"## Node list\n{json.dumps(node_list, indent=2)}",
     ]
     return "\n\n".join(sections)
+
+
+_BRANCH_INDEX_MAP = {"true": 0, "1": 0, "false": 1, "2": 1, "3": 2}
+
+
+def _build_connections_from_edges(planned_edges: list[dict]) -> dict:
+    """Deterministically build n8n connections from planned edges.
+
+    Handles linear chains and If/Switch branching using standard output indices.
+    """
+    connections: dict[str, dict] = {}
+    for edge in planned_edges:
+        source = edge.get("from_node", "")
+        target = edge.get("to_node", "")
+        branch = edge.get("branch")
+        output_index = _BRANCH_INDEX_MAP.get(str(branch).lower(), 0) if branch else 0
+
+        source_entry = connections.setdefault(source, {"main": []})
+        main_list: list = source_entry["main"]
+        # Pad with empty lists up to the required output index
+        while len(main_list) <= output_index:
+            main_list.append([])
+        main_list[output_index].append({"node": target, "type": "main", "index": 0})
+
+    return connections
 
 
 def _extract_node_list(results: list[dict]) -> list[dict]:
@@ -181,7 +228,7 @@ async def _emit_and_return_error(bus: object, start: float, output: dict) -> dic
     """Emit an error event and return the pre-built error output."""
     elapsed = int((time.monotonic() - start) * 1000)
     if bus:
-        error_msg = output.get("classified_error", {}).get("message", "Unknown error")
+        error_msg = output.get("error_message", "Unknown error")
         await bus.emit_complete("assemble", "Assembler", "error", error_msg, duration_ms=elapsed)
     return output
 
@@ -197,16 +244,9 @@ def _build_validation_failure_output(failed: list[dict]) -> dict:
 
     logger.warning("[Assembler] Validation gate failed — %s", summary)
     return {
-        "status": "fixing",
-        "classified_error": {
-            "type": "schema",
-            "node_name": first_node_name,
-            "message": summary,
-            "description": None,
-            "line_number": None,
-            "stack": None,
-        },
-        "messages": [HumanMessage(content=f"[Assembler] {len(failed)} node(s) failed. Routing to debugger.")],
+        "status": "failed",
+        "error_message": summary,
+        "messages": [HumanMessage(content=f"[Assembler] {len(failed)} node(s) failed validation ({first_node_name}): {summary}")],
     }
 
 
@@ -214,14 +254,7 @@ def _build_edge_error_output(error_message: str) -> dict:
     """Build the state patch for a dangling edge error."""
     logger.warning("[Assembler] Edge validation failed — %s", error_message)
     return {
-        "status": "fixing",
-        "classified_error": {
-            "type": "schema",
-            "node_name": "unknown",
-            "message": error_message,
-            "description": None,
-            "line_number": None,
-            "stack": None,
-        },
-        "messages": [HumanMessage(content=f"[Assembler] Edge error: {error_message}. Routing to debugger.")],
+        "status": "failed",
+        "error_message": error_message,
+        "messages": [HumanMessage(content=f"[Assembler] Edge validation failed: {error_message}")],
     }

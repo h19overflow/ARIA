@@ -7,6 +7,7 @@ import time
 import httpx
 from langchain_core.messages import HumanMessage
 
+from src.api.settings import settings
 from src.agentic_system.shared.state import ARIAState
 from src.boundary.n8n.client import N8nClient
 from src.services.pipeline.event_bus import get_event_bus
@@ -61,16 +62,7 @@ async def deploy_node(state: ARIAState) -> dict:
                 f"Pre-deploy validation: {pre_deploy_error}", duration_ms=elapsed,
             )
         return {
-            "execution_result": {
-                "status": "error", "execution_id": "", "data": None,
-                "error": {
-                    "type": None, "node_name": "unknown",
-                    "message": pre_deploy_error,
-                    "description": "Pre-deploy validation failure",
-                    "line_number": None, "stack": None,
-                },
-            },
-            "status": "fixing",
+            "status": "failed",
             "messages": [HumanMessage(content=f"[Deploy] Validation failed: {pre_deploy_error}")],
         }
 
@@ -102,17 +94,19 @@ async def deploy_node(state: ARIAState) -> dict:
             "deploy", "Deploy", "success",
             f"Deployed workflow {workflow_id}", duration_ms=elapsed,
         )
+    n8n_workflow_url = f"{settings.n8n_base_url.rstrip('/')}/workflow/{workflow_id}"
     return {
         "n8n_workflow_id": workflow_id,
-        "status": "testing",
-        "messages": [HumanMessage(content=f"[Deploy] Workflow deployed: {workflow_id}")],
+        "n8n_workflow_url": n8n_workflow_url,
+        "status": "done",
+        "messages": [HumanMessage(content=f"[Deploy] Workflow created: {n8n_workflow_url}")],
     }
 
 
 def _handle_deploy_error(
     exc: httpx.HTTPStatusError, workflow_json: dict,
 ) -> dict:
-    """Parse n8n deploy error into execution_result for the debugger."""
+    """Return a failed state patch for an n8n HTTP deploy error."""
     body = {}
     try:
         body = exc.response.json() if exc.response.content else {}
@@ -121,27 +115,9 @@ def _handle_deploy_error(
 
     error_msg = body.get("message", str(exc))
     node_name = _extract_node_name_from_error(body, error_msg, workflow_json)
-    node_type = _extract_node_type_from_error(error_msg, workflow_json, node_name)
-
-    description = f"Deploy failed with HTTP {exc.response.status_code}"
-    if node_type:
-        description += f". Node type: {node_type}"
 
     return {
-        "execution_result": {
-            "status": "error",
-            "execution_id": "",
-            "data": None,
-            "error": {
-                "type": None,
-                "node_name": node_name,
-                "message": error_msg,
-                "description": description,
-                "line_number": None,
-                "stack": None,
-            },
-        },
-        "status": "fixing",
+        "status": "failed",
         "messages": [HumanMessage(content=f"[Deploy] Failed ({node_name}): {error_msg}")],
     }
 
@@ -167,21 +143,3 @@ def _extract_node_name_from_error(
             return node.get("name", node_type)
 
     return "unknown"
-
-
-def _extract_node_type_from_error(
-    error_msg: str, workflow_json: dict, node_name: str,
-) -> str:
-    """Extract the n8n node type string for better error reporting."""
-    # If we found the node by name, return its type
-    for node in workflow_json.get("nodes", []):
-        if node.get("name") == node_name:
-            return node.get("type", "")
-
-    # Look for node type patterns in the error message
-    for node in workflow_json.get("nodes", []):
-        node_type = node.get("type", "")
-        if node_type and node_type in error_msg:
-            return node_type
-
-    return ""

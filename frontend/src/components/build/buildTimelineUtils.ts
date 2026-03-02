@@ -20,15 +20,11 @@ export const BUILD_STEPS: Step[] = [
   { id: 'rag',      label: 'Finding templates',  stages: ['rag'] },
   { id: 'engineer', label: 'Designing workflow',  stages: ['plan', 'build', 'assemble'] },
   { id: 'deploy',   label: 'Deploying to n8n',    stages: ['deploy'] },
-  { id: 'test',     label: 'Testing it out',      stages: ['test'] },
-  { id: 'fix',      label: 'Fixing issues',       stages: ['fix'] },
-  { id: 'activate', label: 'Going live',          stages: ['activate'] },
 ]
 
 export function deriveStepStates(
   ariaStatus: WorkflowStatus,
   events: FeedEvent[],
-  fixAttempts: number,
 ): Record<string, StepState> {
   const result: Record<string, StepState> = {}
 
@@ -47,14 +43,12 @@ export function deriveStepStates(
 
     let status: StepStatus = 'pending'
     if (ariaStatus === 'done') {
-      status = step.id === 'fix' && fixAttempts === 0 ? 'pending' : 'done'
+      status = 'done'
     } else if (ariaStatus === 'failed' && errorEvent) {
       status = 'error'
     } else if (stepEvents.length > 0) {
       const isCurrentlyRunning =
-        (ariaStatus === 'building' && ['rag', 'engineer', 'deploy'].includes(step.id)) ||
-        (ariaStatus === 'testing' && step.id === 'test') ||
-        (ariaStatus === 'fixing' && step.id === 'fix')
+        ariaStatus === 'building' && ['rag', 'engineer', 'deploy'].includes(step.id)
       status = isCurrentlyRunning ? 'running' : 'done'
     }
 

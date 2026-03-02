@@ -1,4 +1,4 @@
-import { RefreshCw, Layers, Hash, Link2 } from "lucide-react";
+import { Layers, Link2 } from "lucide-react";
 import type { ARIAState } from "@/types";
 
 interface MetricsBarProps {
@@ -28,16 +28,8 @@ function MetricTile({ icon, label, value }: MetricTileProps) {
 }
 
 export function MetricsBar({ ariaState }: MetricsBarProps) {
-  const execId = ariaState?.execution_result?.execution_id;
-  const webhookUrl = ariaState?.webhook_url;
-
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <MetricTile
-        icon={<RefreshCw size={14} />}
-        label="Fix Attempts"
-        value={ariaState?.fix_attempts ?? 0}
-      />
       <MetricTile
         icon={<Layers size={14} />}
         label="Nodes Built"
@@ -48,14 +40,9 @@ export function MetricsBar({ ariaState }: MetricsBarProps) {
         }
       />
       <MetricTile
-        icon={<Hash size={14} />}
-        label="Execution ID"
-        value={execId ? execId.slice(0, 12) + "…" : undefined}
-      />
-      <MetricTile
         icon={<Link2 size={14} />}
-        label="Webhook URL"
-        value={webhookUrl ? new URL(webhookUrl).pathname : undefined}
+        label="Workflow"
+        value={ariaState?.n8n_workflow_id ? `#${ariaState.n8n_workflow_id}` : undefined}
       />
     </div>
   );

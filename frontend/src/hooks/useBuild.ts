@@ -1,11 +1,9 @@
 import { useState, useCallback, useRef } from 'react'
 import { startBuild, submitResume } from '@/lib/api'
 import { subscribeSSE } from '@/lib/sse'
-import type { ARIAState, WorkflowStatus, FeedEvent, SSEEnvelope, SSEInterruptEvent, SSEFixEscalationEvent, EventStage, EventStatus } from '@/types'
+import type { ARIAState, WorkflowStatus, FeedEvent, SSEEnvelope, SSEInterruptEvent, EventStage, EventStatus } from '@/types'
 
-type BuildInterrupt =
-  | { kind: 'clarify' | 'credential'; payload: SSEInterruptEvent['payload'] }
-  | { kind: 'fix_exhausted'; payload: SSEFixEscalationEvent['payload'] }
+type BuildInterrupt = { kind: 'clarify' | 'credential'; payload: SSEInterruptEvent['payload'] }
 
 export interface BuildState {
   jobId: string | null
@@ -166,7 +164,7 @@ export function useBuild(): UseBuild {
     try {
       await submitResume(
         jobId,
-        kind as 'clarify' | 'provide' | 'resume' | 'retry' | 'replan' | 'abort' | 'discuss',
+        kind as 'clarify' | 'provide' | 'resume',
         value as string | Record<string, unknown>,
       )
     } catch (err) {

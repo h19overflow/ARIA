@@ -21,11 +21,7 @@ export const BUILD_GUIDE: GuideStep[] = [
     detail: 'Nodes are created, connected, and configured automatically. Watch the graph appear in real time.',
   },
   {
-    label: 'The workflow is tested automatically',
-    detail: 'ARIA executes the workflow and checks for errors. If something fails, it will attempt to fix it.',
-  },
-  {
-    label: 'Your workflow goes live',
-    detail: 'Once tests pass, the workflow is activated in n8n. You\'ll get a webhook URL if applicable.',
+    label: 'Your workflow is deployed to n8n',
+    detail: 'Once built, the workflow is saved as an inactive draft. Open it in n8n to review and activate.',
   },
 ]

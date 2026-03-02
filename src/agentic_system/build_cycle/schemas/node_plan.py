@@ -87,13 +87,34 @@ class WorkerOutput(BaseModel):
     parameters: dict = Field(description="Complete n8n node parameters")
 
 
+class ConnectionTarget(BaseModel):
+    """A single connection target on one output port."""
+    node: str = Field(description="Target node name (exact match)")
+    type: str = Field(default="main", description="Connection type, always 'main'")
+    index: int = Field(default=0, description="Input port on target node, usually 0")
+
+
+class SourceNodeConnections(BaseModel):
+    """All outgoing connections from one source node — keyed by source name."""
+    source_node_name: str = Field(
+        description="Exact name of the source node (must match a name from node_list)"
+    )
+    main: list[list[ConnectionTarget]] = Field(
+        description=(
+            "Output ports list. main[0] is output 0, main[1] is output 1, etc. "
+            "Each port contains a list of connection targets. "
+            "For If nodes: main[0]=true branch, main[1]=false branch. "
+            "For linear edges: use main[0] only."
+        ),
+    )
+
+
 class AssemblerOutput(BaseModel):
     """LLM output from the Assembler agent — complete n8n connections object."""
-    connections: dict = Field(
+    connections: list[SourceNodeConnections] = Field(
         description=(
-            "Complete n8n connections dict. Format: "
-            "{nodeName: {main: [[{node: targetName, type: 'main', index: 0}]]}}. "
-            "Each output index is a separate list within 'main'."
+            "One entry per source node that has outgoing edges. "
+            "Every edge from planned_edges MUST appear here."
         ),
     )
 
