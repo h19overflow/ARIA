@@ -25,7 +25,6 @@ export const BUILD_STEPS: Step[] = [
 export function deriveStepStates(
   ariaStatus: WorkflowStatus,
   events: FeedEvent[],
-  _fixAttempts?: number,
 ): Record<string, StepState> {
   const result: Record<string, StepState> = {}
 

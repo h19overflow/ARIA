@@ -146,7 +146,7 @@ function deriveActiveNode(
   knownNodes: string[],
 ): string | null {
   const nodeEvents = events.filter(
-    (e) => e.stage === "build" || e.stage === "fix" || e.stage === "test",
+    (e) => e.stage === "build",
   );
   if (nodeEvents.length === 0) return null;
   const latest = nodeEvents[0];

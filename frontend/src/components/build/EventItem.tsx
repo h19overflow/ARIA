@@ -9,8 +9,6 @@ interface EventItemProps {
 const STAGE_CONFIG: Record<string, { label: string; className: string }> = {
   preflight: { label: 'Pre', className: 'text-[var(--accent-orange)] bg-orange/10' },
   build:     { label: 'Bld', className: 'text-blue-400 bg-blue-500/10' },
-  test:      { label: 'Tst', className: 'text-[var(--color-success)] bg-emerald-500/10' },
-  fix:       { label: 'Fix', className: 'text-[var(--color-warning)] bg-amber-500/10' },
   system:    { label: 'Sys', className: 'text-[var(--text-muted)] bg-white/5' },
 }
 
