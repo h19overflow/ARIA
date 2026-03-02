@@ -270,7 +270,7 @@ def _error_plan() -> dict:
         "nodes_to_build": [],
         "planned_edges": [],
         "node_build_results": [],
-        "status": "hitl_escalation",
+        "status": "failed",
         "messages": [HumanMessage(
             content="[Planner] Failed to produce a cycle-free plan after 3 retries. Escalating."
         )],
