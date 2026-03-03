@@ -63,7 +63,7 @@ async def _publish_complete(
     """Publish a node complete SSE event and persist job state."""
     await publish(redis, job_id, SSEEvent(
         type="node", stage=stage, node_name=node_name, event_id=event_id,
-        status="running", message=f"{node_name} completed",
+        status="success", message=f"{node_name} completed",
         tools=tools, duration_ms=duration_ms, timestamp=ts,
         progress=progress, aria_state=serialize(current_state),
     ))
