@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { NodeGraph } from "@/components/build/NodeGraph";
+import { BuildCanvas } from "@/components/build/BuildCanvas";
 import { BuildEmptyState } from "@/components/build/BuildEmptyState";
 import { BuildHeader } from "@/components/build/BuildHeader";
 import { BuildSidebar } from "@/components/build/BuildSidebar";
@@ -52,20 +52,22 @@ export function BuildPage({ conversationId }: BuildPageProps) {
               storageKey="guide-phase2"
             />
           </div>
-          <div className="flex-1 overflow-hidden bg-graph-grid relative">
+          <div className="flex-1 overflow-hidden relative">
             {hasTopology ? (
-              <NodeGraph
+              <BuildCanvas
                 topology={ariaState?.topology ?? null}
                 ariaState={ariaState}
                 status={status}
                 events={events}
               />
             ) : (
-              <BuildEmptyState
-                status={status}
-                error={error}
-                onRetry={() => start(conversationId)}
-              />
+              <div className="w-full h-full bg-graph-grid">
+                <BuildEmptyState
+                  status={status}
+                  error={error}
+                  onRetry={() => start(conversationId)}
+                />
+              </div>
             )}
 
             {/* Clarify drawer — shown for mid-build clarification questions */}
