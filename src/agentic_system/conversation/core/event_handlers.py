@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from .state import ConversationState
 from ..tools.notes_updater import (
     update_notes_state,
+    remove_item_from_note,
     update_notes_on_scan_credentials,
     update_notes_on_save_credential_result,
     update_notes_on_credentials_commit,
@@ -63,6 +64,19 @@ async def handle_tool_end_state(
         update_notes_state(state, tool_args)
         await sync_required_nodes_if_needed(state)
         yield {"type": "tool_event", "tool": "take_note", "data": tool_args}
+    elif tool_name == "remove_note":
+        removed = remove_item_from_note(state, tool_args)
+        if removed and tool_args.get("key") == "required_integrations":
+            await sync_required_nodes_if_needed(state)
+        yield {
+            "type": "tool_event",
+            "tool": "remove_note",
+            "data": {
+                "key": tool_args.get("key", ""),
+                "value": tool_args.get("value", ""),
+                "removed": removed,
+            },
+        }
     elif tool_name == "batch_notes":
         raw_notes = tool_args.get("notes", [])
         note_pairs: List[Dict[str, Any]] = []
