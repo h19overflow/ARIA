@@ -29,6 +29,16 @@ class BatchNotesInput(BaseModel):
     )
 
 
+class RemoveNoteInput(BaseModel):
+    """Input schema for the remove_note tool."""
+    key: str = Field(
+        description="The list field to remove from: 'required_integrations' or 'constraints'.",
+    )
+    value: str = Field(
+        description="The exact item to remove from the list.",
+    )
+
+
 class CommitNotesInput(BaseModel):
     """Input schema for the commit_notes tool."""
     summary: str = Field(
@@ -67,6 +77,17 @@ async def take_note(key: str, value: Optional[str] = None) -> str:
     return f"Action recorded: Saved note for key '{key}' with value '{value}'."
 
 
+@tool("remove_note", args_schema=RemoveNoteInput)
+async def remove_note(key: str, value: str) -> str:
+    """Remove a single item from a list field (required_integrations or constraints).
+
+    Use when the user wants to drop, remove, or exclude a specific
+    service or constraint. Do NOT use take_note with value=null — that
+    wipes the entire list.
+    """
+    return f"Action recorded: Removed '{value}' from '{key}'."
+
+
 @tool("commit_notes", args_schema=CommitNotesInput)
 async def commit_notes(summary: str) -> str:
     """Commits the gathered requirements and finalizes the conversation phase.
@@ -85,3 +106,9 @@ from .credential_tools import (  # noqa: E402, F401
     save_credential,
     commit_preflight,
 )
+
+__all__ = [
+    "batch_notes", "take_note", "remove_note", "commit_notes",
+    "scan_credentials", "set_shared_required_nodes",
+    "get_credential_schema", "save_credential", "commit_preflight",
+]

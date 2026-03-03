@@ -67,6 +67,26 @@ def _set_note(
         setattr(state.notes, key, value)
 
 
+def remove_item_from_note(
+    state: ConversationState, args: Dict[str, Any]
+) -> bool:
+    """Remove a single item from a list field.
+
+    Returns True if item was found and removed.
+    """
+    key, value = args.get("key"), args.get("value")
+    if not key or not value or key not in _LIST_FIELDS:
+        return False
+    current = getattr(state.notes, key, [])
+    if value in current:
+        current.remove(value)
+        state.notes.raw_notes.pop(key, None)
+        if key == "required_integrations":
+            state.notes.required_nodes = []
+        return True
+    return False
+
+
 def update_notes_on_scan_credentials(
     state: ConversationState, scan_data: dict
 ) -> None:
