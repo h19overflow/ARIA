@@ -32,7 +32,7 @@ export interface AriaEdgeData {
 function findBuildResult(
   ariaState: ARIAState | null,
   nodeName: string,
-): { error?: string; node_json?: unknown } | undefined {
+) {
   const results = ariaState?.node_build_results;
   if (!Array.isArray(results)) return undefined;
   return results.find((r) => r.node_name === nodeName);
@@ -45,7 +45,7 @@ function deriveNodeStatus(
 ): NodeStatus {
   if (activeNode === nodeName) return "active";
   const result = findBuildResult(ariaState, nodeName);
-  if (result?.error) return "failed";
+  if (result?.validation_errors?.length) return "failed";
   const deployed = (ariaState?.workflow_json?.nodes as Array<{ name?: string }>) ?? [];
   if (deployed.some((n) => n.name === nodeName)) return "done";
   if (result) return "done";
