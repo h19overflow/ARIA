@@ -8,8 +8,8 @@ import time
 from langchain_core.messages import AIMessage, HumanMessage
 
 from src.agentic_system.shared.base_agent import BaseAgent
-from src.agentic_system.shared.state import ARIAState, WorkflowTopology
-from src.agentic_system.build_cycle.schemas.node_plan import NodePlan, PlannedEdge
+from src.agentic_system.shared.state import ARIAState, WorkflowTopology, WorkflowEdge
+from src.agentic_system.build_cycle.schemas.node_plan import NodePlan, NodeSpec, PlannedEdge
 from src.agentic_system.build_cycle.prompts.node_researcher import NODE_RESEARCHER_SYSTEM_PROMPT
 from src.agentic_system.build_cycle.prompts.plan_composer import PLAN_COMPOSER_SYSTEM_PROMPT
 from src.agentic_system.build_cycle.nodes.modules._credential_resolver import resolve_node_credentials
@@ -239,6 +239,38 @@ def _build_composer_prompt(
     return "\n\n".join(sections)
 
 
+# ── Topology helpers ──────────────────────────────────────────────────────────
+
+def _detect_branch_nodes(edges: list[PlannedEdge]) -> list[str]:
+    """Find nodes with multiple outbound edges or explicit branch labels."""
+    outbound_count: dict[str, int] = {}
+    branch_set: set[str] = set()
+    for edge in edges:
+        outbound_count[edge.from_node] = outbound_count.get(edge.from_node, 0) + 1
+        if edge.branch:
+            branch_set.add(edge.from_node)
+    for node, count in outbound_count.items():
+        if count > 1:
+            branch_set.add(node)
+    return sorted(branch_set)
+
+
+def _build_topology(nodes: list[NodeSpec], edges: list[PlannedEdge]) -> WorkflowTopology:
+    """Derive a WorkflowTopology from the planner's node list and edges."""
+    node_names = [spec.node_name for spec in nodes]
+    workflow_edges: list[WorkflowEdge] = [
+        {"from_node": e.from_node, "to_node": e.to_node, "branch": e.branch}
+        for e in edges
+    ]
+    entry = node_names[0] if node_names else ""
+    return {
+        "nodes": node_names,
+        "edges": workflow_edges,
+        "entry_node": entry,
+        "branch_nodes": _detect_branch_nodes(edges),
+    }
+
+
 # ── State conversion ─────────────────────────────────────────────────────────
 
 def _plan_to_state_update(plan: NodePlan, resolved_credential_ids: dict, available_packages: list[str]) -> dict:
@@ -248,6 +280,7 @@ def _plan_to_state_update(plan: NodePlan, resolved_credential_ids: dict, availab
     return {
         "nodes_to_build": nodes,
         "planned_edges": [edge.model_dump() for edge in plan.edges],
+        "topology": _build_topology(plan.nodes, plan.edges),
         "node_build_results": [],
         "available_node_packages": available_packages,
         "messages": [HumanMessage(
