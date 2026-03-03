@@ -108,6 +108,16 @@ export function useBuild(): UseBuild {
           return
         }
 
+        if (envelope.type === 'state_sync') {
+          setState((prev) => ({
+            ...prev,
+            ariaState: envelope.aria_state
+              ? { ...prev.ariaState, ...(envelope.aria_state as Partial<ARIAState>) }
+              : prev.ariaState,
+          }))
+          return
+        }
+
         if (envelope.type === 'interrupt') {
           setState((prev) => ({
             ...prev,

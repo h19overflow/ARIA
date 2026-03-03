@@ -97,9 +97,13 @@ async def apply_build_chunk(redis: Redis, job_id: str, chunk: dict, current_stat
             continue
         current_state = {**current_state, **update}  # type: ignore[assignment]
         log.debug("[%s] Build node completed | node=%s", job_id, node_name)
+        serialized = serialize(current_state)
         await write_job(redis, job_id, JobState(
             job_id=job_id, status=current_state.get("status", "building"),  # type: ignore[arg-type]
-            aria_state=serialize(current_state),
+            aria_state=serialized,
+        ))
+        await publish(redis, job_id, SSEEvent(
+            type="state_sync", node_name=node_name, aria_state=serialized,
         ))
     return current_state
 

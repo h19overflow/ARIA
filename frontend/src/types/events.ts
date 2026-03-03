@@ -74,6 +74,12 @@ export interface SSEWarningEvent {
   timestamp?: string
 }
 
+export interface SSEStateSyncEvent {
+  type: 'state_sync'
+  node_name?: string
+  aria_state?: Record<string, unknown>
+}
+
 export interface SSEPingEvent {
   type: 'ping'
 }
@@ -85,4 +91,5 @@ export type SSEEnvelope =
   | SSEDoneEvent
   | SSEErrorEvent
   | SSEWarningEvent
+  | SSEStateSyncEvent
   | SSEPingEvent
