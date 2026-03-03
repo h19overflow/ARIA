@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # n8n
     n8n_base_url: str = "http://localhost:5678"
+    n8n_public_url: str = "http://localhost:5678"
     n8n_api_key: str = ""
     # installed community packages (fallback when introspection unavailable)
     n8n_installed_packages: list[str] = []

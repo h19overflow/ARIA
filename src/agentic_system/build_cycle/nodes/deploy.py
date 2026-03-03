@@ -94,7 +94,7 @@ async def deploy_node(state: ARIAState) -> dict:
             "deploy", "Deploy", "success",
             f"Deployed workflow {workflow_id}", duration_ms=elapsed,
         )
-    n8n_workflow_url = f"{settings.n8n_base_url.rstrip('/')}/workflow/{workflow_id}"
+    n8n_workflow_url = f"{settings.n8n_public_url.rstrip('/')}/workflow/{workflow_id}"
     return {
         "n8n_workflow_id": workflow_id,
         "n8n_workflow_url": n8n_workflow_url,
