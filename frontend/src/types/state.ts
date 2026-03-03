@@ -13,9 +13,21 @@ export interface ARIAState {
   intent?: string
   intent_summary?: string
   topology?: import('./topology').Topology
-  nodes_to_build?: Array<{ node_name: string; node_type: string; role: string; credential_type?: string | null; connected_to: string[] }>
+  nodes_to_build?: Array<{
+    node_name: string
+    node_type: string
+    parameter_hints?: Record<string, unknown>
+    credential_id?: string | null
+    credential_type?: string | null
+    position_index?: number
+  }>
   planned_edges?: unknown[]
-  node_build_results?: Array<{ node_name: string; node_json: unknown; credentials_used: unknown; validation_passed: boolean; validation_errors: string[] }>
+  node_build_results?: Array<{
+    node_name: string
+    node_json: unknown
+    validation_passed: boolean
+    validation_errors: string[]
+  }>
   workflow_json?: Record<string, unknown>
   n8n_workflow_id?: string
   n8n_workflow_url?: string
