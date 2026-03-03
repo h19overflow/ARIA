@@ -13,7 +13,7 @@ from .state import get_state, save_state, ConversationState
 from ..models.schemas import ConversationNotes
 from .prompts import CONVERSATION_SYSTEM_PROMPT
 from ..tools.tools import (
-    batch_notes, take_note, commit_notes,
+    batch_notes, take_note, remove_note, commit_notes,
     scan_credentials, set_shared_required_nodes,
     get_credential_schema, save_credential, commit_preflight,
 )
@@ -55,7 +55,7 @@ class ConversationAgent(BaseAgent):
 
     def __init__(self, name: str = "ConversationAgent"):
         super().__init__(
-            tools=[batch_notes, take_note, commit_notes],
+            tools=[batch_notes, take_note, remove_note, commit_notes],
             prompt=CONVERSATION_SYSTEM_PROMPT,
             name=name,
             model_name="gemini-3-flash-preview",
@@ -137,7 +137,7 @@ class ConversationAgent(BaseAgent):
             set_shared_required_nodes(required_nodes)
 
         all_tools = [
-            batch_notes, take_note, commit_notes,
+            batch_notes, take_note, remove_note, commit_notes,
             scan_credentials, get_credential_schema,
             save_credential, commit_preflight,
         ]

@@ -67,6 +67,10 @@ ask:
 user message and record them in a single call. Each note is {key, value}.
 - **`take_note(key, value)`**: Use ONLY for single corrections or deleting \
 a note (value: null). Never use for initial capture — use batch_notes.
+- **`remove_note(key, value)`**: Remove a SINGLE item from a list field \
+(`required_integrations` or `constraints`). Use when the user says to drop, \
+remove, or exclude a specific service or constraint. Do NOT use take_note \
+with value=null for this — that wipes the entire list.
 - **`commit_notes(summary)`**: Call when the commit decision framework is met.
 
 ### Extract-First Rule
