@@ -115,6 +115,41 @@ body,
   animation: panGrid 15s linear infinite;
 }
 
+/* React Flow dark theme overrides */
+.react-flow__pane {
+  cursor: grab;
+}
+.react-flow__pane:active {
+  cursor: grabbing;
+}
+.react-flow__node {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-size: inherit !important;
+  color: inherit !important;
+  width: auto !important;
+}
+.react-flow__edge-path {
+  stroke-linecap: round;
+}
+.react-flow__controls {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-muted);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+}
+.react-flow__controls-button {
+  background: var(--bg-elevated);
+  border-color: var(--border-subtle);
+  fill: var(--text-secondary);
+}
+.react-flow__controls-button:hover {
+  background: var(--bg-overlay);
+}
+
 /* Glass effect */
 .glass {
   background: rgba(255, 255, 255, 0.03);
